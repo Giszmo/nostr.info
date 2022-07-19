@@ -1,0 +1,54 @@
+.event {
+  white-space: nowrap;
+  background-color: lightgray;
+}
+
+.kind-0 {
+  background-color: lightblue;
+}
+
+.kind-1 {
+  background-color: lightgreen;
+}
+
+.kind-2 {
+  background-color: pink;
+}
+
+.kind-3 {
+  background-color: navy;
+  color: white;
+}
+
+.kind-4 {
+  background-color: lightcoral;
+}
+
+.kind-5 {
+  background-color: brown;
+  color: white;
+}
+
+.kind-6 {
+  background-color: darkblue;
+  color: yellow;
+}
+
+.kind-7 {
+  background-color: bisque;
+}
+
+.kind-60 {
+  background-color: darkgray;
+  color: lightgray
+}
+
+.meta {
+  display: inline-block;
+  overflow: clip;
+  width: 15em;
+}
+
+.meta > img {
+  height: 1em;
+}
