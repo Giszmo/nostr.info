@@ -47,8 +47,11 @@
   display: inline-block;
   overflow: clip;
   width: 15em;
+  cursor: pointer;
 }
 
 .meta > img {
+  object-fit: cover;
+  width: 1em;
   height: 1em;
 }

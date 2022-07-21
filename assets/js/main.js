@@ -85,11 +85,18 @@ function filterByKind() {
   }
 }
 
+function setPubkey(pubkey) {
+  pubkeyFilter.value=pubkey
+  dirty=true
+}
+
 function nameFromPubkey(pubkey) {
   const m = meta[pubkey]
   const img = (m && m.picture) || '/assets/smallNoicon.png'
   const name = (m && m.name) || pubkey || 'unknown'
-  return `<span class="meta"><img src="${img}">&nbsp;${name}</span>`
+  return `<span class="meta" onclick="setPubkey('${pubkey}')">
+  <img src="${img}">&nbsp;${name}
+</span>`
 }
 
 function eventBadge(event) {
