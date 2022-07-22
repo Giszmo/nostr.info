@@ -1,8 +1,25 @@
 window.addEventListener('load', () => {
-  setupWs('wss://relay.nostr.info/')
-  setupWs('wss://nostr-pub.wellorder.net')
-  setupWs('wss://relay.damus.io')
-  setupWs('wss://nostr.rocks')
+  window.relays = [
+    'wss://nostr-pub.wellorder.net',
+    'wss://rsslay.fiatjaf.com',
+    'wss://nostr.bitcoiner.social',
+    'wss://nostr-relay.wlvs.space',
+    'wss://nostr.onsats.org',
+    'wss://nostr-relay.untethr.me',
+    'wss://nostr-verified.wellorder.net',
+    'wss://relay.damus.io',
+    'wss://nostr.openchain.fr',
+    'wss://relay.nostr.info',
+    'wss://freedom-relay.herokuapp.com/ws',
+    'wss://nostr.drss.io',
+    'wss://nostr.delo.software',
+    'wss://nostr.unknown.place',
+    'wss://relayer.fiatjaf.com',
+    'wss://nostr-relay.freeberty.net',
+    'wss://nostr.rocks',
+    'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion',
+  ]
+  relays.forEach((r, id) => { setupWs(r, id) })
   window.kindFilter = document.getElementById("kind-filter")
   window.pubkeyFilter = document.getElementById("pubkey-filter")
   window.degreeFilter = document.getElementById("degree-filter")
@@ -79,7 +96,7 @@ function filterByKind() {
   if (kind === 'all') {
     return received
   } else if (kind === 'unknown') {
-    const knownKinds = [0,1,2,3,4,5,6,7,60]
+    const knownKinds = [0,1,2,3,4,5,6,7,30,60]
     return received.filter(ev => !knownKinds.includes(ev.kind))
   } else {
     return received.filter(it => it.kind == kind)
@@ -108,8 +125,11 @@ function setExpand(id) {
 function rawEventWidget(event) {
   // TODO: show copy button which copies without pretty-print
   const e = JSON.parse(JSON.stringify(event))
+  const eRelays = e.relays.map(it=>`<li>${relays[it]}</li>`).join('')
   delete e.degree
-  return `<pre>${escapeHTML(JSON.stringify(e, null, 2))}</pre>`
+  delete e.relays
+  
+  return `<br>Received in this order from:<ol>${eRelays}</ol><pre>${escapeHTML(JSON.stringify(e, null, 2))}</pre>`
 }
 
 function eventBadge(event) {
@@ -139,7 +159,8 @@ function eventBadge(event) {
         break
       }
     case 4: {
-        const recipientPubkey = event.tags.filter(it=>it[0] === 'p')[0][1]
+        const pTag = event.tags.find(it=>it[0] === 'p')
+        const recipientPubkey = pTag && pTag[1]
         const recipient = recipientPubkey
           ? ` to ${nameFromPubkey(recipientPubkey)}`
           : ''
@@ -160,6 +181,10 @@ function eventBadge(event) {
           : `explicit ${escapeHTML(event.content)}`}.`
         break
       }
+    case 30: {
+        badge += ` Something about chess: ${escapeHTML(event.content)}`
+        break
+      }
     case 60: {
         badge += ` Something about ride sharing: ${escapeHTML(event.content)}`
         break
@@ -174,13 +199,24 @@ function eventBadge(event) {
     : '')
 }
 
-function setupWs(url) {
+function setupWs(url, id) {
   const ws = new WebSocket(url)
   ws.onmessage = msg => {
-    const arr = JSON.parse(msg.data)
+    var arr
+    try {
+      arr = JSON.parse(msg.data)
+    } catch (e) {
+      console.log(`${url} sent weird msg "${msg.data}".`)
+      return
+    }
     if (arr[0] === 'EVENT') {
+      const event = arr[2]
+      const prior = received.find(e=>e.id==event.id)
+      if (prior) {
+        prior.relays.push(id)
+        return // this event was handled already
+      }
       if (arr[1] == "meta") {
-        const event = arr[2]
         if (event.kind === 0) {
           try {
             const m = JSON.parse(event.content)
@@ -190,13 +226,16 @@ function setupWs(url) {
           }
         }
       } if (arr[1] == "follows") {
-        const event = arr[2]
         if (event.kind === 3) {
           follows[event.pubkey] = event.tags.filter(it => it[0] === "p").map(it => it[1])
         }
       } else if (arr[1] === "main") {
-        const event = arr[2]
-        received.unshift(event)
+        event.relays = [id]
+        if (!event.tags) {
+          console.log(`${url} sent event with no tags.`)
+          event.tags = []
+        }
+        received.push(event)
       }
       dirty = true
     } else if (arr[0] === 'EOSE') {
@@ -208,9 +247,10 @@ function setupWs(url) {
     }
   }
   ws.onclose = () => {
-    setTimeout(() => {
-      setupWs(url)
-    }, 5000)
+    console.log(`${url} disconnected. Not reconnecting in 5s`)
+    // setTimeout(() => {
+    //   setupWs(url)
+    // }, 5000)
   }
   ws.onopen = event => {
     ws.send(`["REQ","main",{"limit":${LIMIT},"before":${(new Date().getTime() / 1000 + 60 * 60)}}]`)

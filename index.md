@@ -17,6 +17,7 @@ layout: home
   <option value="5">kind-5: Deletions</option>
   <option value="6">kind-6: Quoted Boost</option>
   <option value="7">kind-7: Reactions</option>
+  <option value="30">kind-30: Chess</option>
   <option value="60">kind-60: Ride Sharing</option>
 </select>
 <br>
