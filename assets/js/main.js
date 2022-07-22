@@ -1,24 +1,29 @@
 window.addEventListener('load', () => {
   window.relays = [
     'wss://nostr-pub.wellorder.net',
-    'wss://rsslay.fiatjaf.com',
-    'wss://nostr.bitcoiner.social',
     'wss://nostr-relay.wlvs.space',
-    'wss://nostr.onsats.org',
-    'wss://nostr-relay.untethr.me',
     'wss://nostr-verified.wellorder.net',
-    'wss://relay.damus.io',
     'wss://nostr.openchain.fr',
+    'wss://relay.damus.io',
     'wss://relay.nostr.info',
-    'wss://freedom-relay.herokuapp.com/ws',
+    'wss://nostr-relay.untethr.me',
+    'wss://nostr.bitcoiner.social',
+    'wss://nostr.onsats.org',
     'wss://nostr.drss.io',
+    'wss://nostr.rocks',
+    'wss://rsslay.fiatjaf.com',
+    'wss://freedom-relay.herokuapp.com/ws',
     'wss://nostr.delo.software',
     'wss://nostr.unknown.place',
     'wss://relayer.fiatjaf.com',
     'wss://nostr-relay.freeberty.net',
-    'wss://nostr.rocks',
     'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion',
-  ]
+  ].map(it=>{ return {
+    url: it,
+    connected: false,
+    answered: false,
+    events: 0
+  }})
   relays.forEach((r, id) => { setupWs(r, id) })
   window.kindFilter = document.getElementById("kind-filter")
   window.pubkeyFilter = document.getElementById("pubkey-filter")
@@ -39,8 +44,18 @@ const meta = {}
 const follows = {}
 
 function update() {
-  // dedupe
-  received = [...new Map(received.map(x => [x.id, x])).values()]
+  const relayState = '<table>' +
+    '<tr><td>Relay</td><td>Events<sup>1</sup></td><td>Connection<sup>2</sup></td></tr>' +
+    relays.map(r=>`<tr><td>${r.url}</td><td>${r.events}</td><td>${
+      r.connected
+        ? 'true'
+        : r.answered
+          ? 'lost'
+          : 'false'
+        }</td></tr>`) +
+        `<tr><td colspan="3"><sup>1</sup> counting all events received after requesting ${LIMIT} most recent events.<br>Events received to determine names and follows are not counted.</td></tr>` +
+        '<tr><td colspan="3"><sup>2</sup> "false" meaning connection never succeeded.</td></tr>' +
+    '</table>'
   // newest first
   received = received.sort( (a,b) => b.created_at - a.created_at )
   // clip to only LIMIT events
@@ -49,7 +64,7 @@ function update() {
   const kindFiltered = filterByKind()
   const filtered = filterByPubkey(kindFiltered)
   
-  output.innerHTML = `${filtered.length}/${LIMIT} Events:<br>`
+  output.innerHTML = `${relayState}<br>${filtered.length}/${LIMIT} Events:<br>`
     + filtered.map(it => eventBadge(it)).join('<br>')
   
   if (pubkeyFilter.value) {
@@ -125,7 +140,7 @@ function setExpand(id) {
 function rawEventWidget(event) {
   // TODO: show copy button which copies without pretty-print
   const e = JSON.parse(JSON.stringify(event))
-  const eRelays = e.relays.map(it=>`<li>${relays[it]}</li>`).join('')
+  const eRelays = e.relays.map(it=>`<li>${relays[it].url}</li>`).join('')
   delete e.degree
   delete e.relays
   
@@ -199,21 +214,26 @@ function eventBadge(event) {
     : '')
 }
 
-function setupWs(url, id) {
-  const ws = new WebSocket(url)
+function setupWs(relay, id) {
+  const ws = new WebSocket(relay.url)
   ws.onmessage = msg => {
     var arr
     try {
       arr = JSON.parse(msg.data)
     } catch (e) {
-      console.log(`${url} sent weird msg "${msg.data}".`)
+      console.log(`${relay.url} sent weird msg "${msg.data}".`)
       return
     }
     if (arr[0] === 'EVENT') {
       const event = arr[2]
+      if (arr[1] === "main") {
+        relay.events++
+      }
       const prior = received.find(e=>e.id==event.id)
       if (prior) {
-        prior.relays.push(id)
+        if (0 > prior.relays.findIndex(i=>i==id)) {
+          prior.relays.push(id)
+        }
         return // this event was handled already
       }
       if (arr[1] == "meta") {
@@ -232,7 +252,7 @@ function setupWs(url, id) {
       } else if (arr[1] === "main") {
         event.relays = [id]
         if (!event.tags) {
-          console.log(`${url} sent event with no tags.`)
+          console.log(`${relay.url} sent event with no tags.`)
           event.tags = []
         }
         received.push(event)
@@ -247,13 +267,18 @@ function setupWs(url, id) {
     }
   }
   ws.onclose = () => {
-    console.log(`${url} disconnected. Not reconnecting in 5s`)
+    relay.connected = false
+    dirty = true
+    console.log(`${relay.url} disconnected. Not reconnecting in 5s`)
     // setTimeout(() => {
     //   setupWs(url)
     // }, 5000)
   }
   ws.onopen = event => {
-    ws.send(`["REQ","main",{"limit":${LIMIT},"before":${(new Date().getTime() / 1000 + 60 * 60)}}]`)
+    relay.connected = true
+    relay.answered = true
+    dirty = true
+    ws.send(`["REQ","main",{"limit":${LIMIT},"until":${(new Date().getTime() / 1000 + 60 * 60).toFixed()}}]`)
     ws.send('["REQ","meta",{"kinds":[0]}]')
     ws.send('["REQ","follows",{"kinds":[3]}]')
   }
