@@ -17,7 +17,7 @@ window.addEventListener('load', () => {
     'wss://nostr.unknown.place',
     'wss://relayer.fiatjaf.com',
     'wss://nostr-relay.freeberty.net',
-    'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion',
+    // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion',
   ].map(it=>{ return {
     url: it,
     connected: false,
@@ -52,7 +52,7 @@ function update() {
         : r.answered
           ? 'lost'
           : 'false'
-        }</td></tr>`) +
+        }</td></tr>`).join('') +
         `<tr><td colspan="3"><sup>1</sup> counting all events received after requesting ${LIMIT} most recent events.<br>Events received to determine names and follows are not counted.</td></tr>` +
         '<tr><td colspan="3"><sup>2</sup> "false" meaning connection never succeeded.</td></tr>' +
     '</table>'
