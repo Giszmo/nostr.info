@@ -7,6 +7,7 @@ window.addEventListener('load', () => {
   window.pubkeyFilter = document.getElementById("pubkey-filter")
   window.degreeFilter = document.getElementById("degree-filter")
   window.output = document.getElementById("output")
+  window.expandedEvent = ""
   setInterval(() => {
     if (dirty) {
       update()
@@ -99,12 +100,27 @@ function nameFromPubkey(pubkey) {
 </span>`
 }
 
+function setExpand(id) {
+  expandedEvent = id
+  dirty = true
+}
+
+function rawEventWidget(event) {
+  // TODO: show copy button which copies without pretty-print
+  const e = JSON.parse(JSON.stringify(event))
+  delete e.degree
+  return `<pre>${escapeHTML(JSON.stringify(e, null, 2))}</pre>`
+}
+
 function eventBadge(event) {
   const degree = pubkeyFilter.value
     ? `(D=${event.degree}) `
     : ''
   const from = nameFromPubkey(event.pubkey)
-  var badge = `<span class="event kind-${event.kind}">${timeFormat(event.created_at)}${degree} ${from} `
+  const expandCollapse = (event.id === expandedEvent)
+    ? `<span class='collapse' onclick='setExpand("")'>[➖] </span>`
+    : `<span class='expand' onclick='setExpand("${event.id}")'>[➕] </span>`
+  var badge = `<span class="event kind-${event.kind}">${expandCollapse}${timeFormat(event.created_at)}${degree} ${from} `
   switch (event.kind) {
     case 0: {
         badge += `Updated metadata.`
@@ -153,7 +169,9 @@ function eventBadge(event) {
         break
       }
   }
-  return badge + '</span>'
+  return badge + '</span>' + (event.id === expandedEvent
+    ? rawEventWidget(event)
+    : '')
 }
 
 function setupWs(url) {

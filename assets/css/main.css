@@ -55,3 +55,12 @@
   width: 1em;
   height: 1em;
 }
+
+.expand, .collapse {
+  cursor: pointer;
+}
+
+#output > pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
