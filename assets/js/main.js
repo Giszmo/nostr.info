@@ -6,6 +6,10 @@ window.addEventListener('load', () => {
     'wss://nostr.openchain.fr',
     'wss://relay.damus.io',
     'wss://relay.nostr.info',
+    // 'wss://nostr-relay.untethr.me',
+    'wss://relay.minds.com/nostr/v1/ws',
+    'wss://nostr.oxtr.dev',
+    'wss://nostr.semisol.dev',
     'wss://nostr-relay.untethr.me',
     'wss://nostr.bitcoiner.social',
     'wss://nostr.onsats.org',
@@ -20,11 +24,17 @@ window.addEventListener('load', () => {
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion',
   ].map(it=>{ return {
     url: it,
-    connected: false,
-    answered: false,
-    events: 0
+    tried: -1, // we tried to connect it
+    connected: false, // currently connected
+    answered: false, // was connected in the past
+    events: 0 // event counter
   }})
   relays.forEach((r, id) => { setupWs(r, id) })
+  window.tab = document.getElementById("tab")
+  window.relayFilters = document.getElementById("relay-filters")
+  window.relayQualityFilter = document.getElementById("relay-filter")
+  window.connectRelaysBtn = document.getElementById("connectNewRelays")
+  window.eventFilters = document.getElementById("event-filters")
   window.kindFilter = document.getElementById("kind-filter")
   window.pubkeyFilter = document.getElementById("pubkey-filter")
   window.degreeFilter = document.getElementById("degree-filter")
@@ -37,25 +47,69 @@ window.addEventListener('load', () => {
   }, 1000)
 })
 
-const LIMIT = 2000 // how many events to show
+const LIMIT = 500 // how many events to show
 var received = []
 var dirty = true
 const meta = {}
 const follows = {}
 
 function update() {
-  const relayState = '<table>' +
+  eventFilters.hidden = true
+  relayFilters.hidden = true
+  switch(tab.value) {
+    case "relays":
+      relayFilters.hidden = false
+      output.innerHTML = relaysTable()
+      break
+    case "events":
+      if (pubkeyFilter.value) {
+        degreeFilter.removeAttribute('disabled')
+      } else {
+        degreeFilter.setAttribute('disabled', '')
+      }
+      eventFilters.hidden = false
+      output.innerHTML = eventsTable()
+      break
+  }
+  dirty = false
+}
+
+function connectRelays() {
+  relays.forEach((r, id) => {
+    if (r.tried < 0) {
+      setupWs(r, id)
+    }
+  })
+}
+
+function relaysTable() {
+  connectRelaysBtn.hidden = relays.filter(it=>it.tried<0).length === 0
+  return '<table>' +
     '<tr><td>Relay</td><td>Events<sup>1</sup></td><td>Connection<sup>2</sup></td></tr>' +
-    relays.map(r=>`<tr><td>${r.url}</td><td>${r.events}</td><td>${
-      r.connected
-        ? 'true'
-        : r.answered
-          ? 'lost'
-          : 'false'
+    relays.filter(r=>{
+      switch (relayQualityFilter.value) {
+        case 'all': return true
+        case 'didConnect': return r.answered
+        case 'sent': return r.events > 0
+        case 'sentMany': return r.events >= LIMIT
+        case 'sentConnected': return r.events >= LIMIT && r.connected
+        default: return false
+      }
+    }).map(r=>`<tr><td>${r.url}</td><td>${r.events}</td><td>${
+      r.tried < 0
+        ? '?'
+        : r.connected
+          ? 'true'
+          : r.answered
+            ? 'lost'
+            : 'false'
         }</td></tr>`).join('') +
         `<tr><td colspan="3"><sup>1</sup> counting all events received after requesting ${LIMIT} most recent events.<br>Events received to determine names and follows are not counted.</td></tr>` +
-        '<tr><td colspan="3"><sup>2</sup> "false" meaning connection never succeeded.</td></tr>' +
+        '<tr><td colspan="3"><sup>2</sup> "false" = connection never succeeded. "?" = we haven\'t tried yet. Press button above to try.</td></tr>' +
     '</table>'
+}
+
+function eventsTable() {
   // newest first
   received = received.sort( (a,b) => b.created_at - a.created_at )
   // clip to only LIMIT events
@@ -64,15 +118,8 @@ function update() {
   const kindFiltered = filterByKind()
   const filtered = filterByPubkey(kindFiltered)
   
-  output.innerHTML = `${relayState}<br>${filtered.length}/${LIMIT} Events:<br>`
+  return `${filtered.length}/${LIMIT} Events:<br>`
     + filtered.map(it => eventBadge(it)).join('<br>')
-  
-  if (pubkeyFilter.value) {
-    degreeFilter.removeAttribute('disabled')
-  } else {
-    degreeFilter.setAttribute('disabled', '')
-  }
-  dirty = false
 }
 
 function filterByPubkey(list) {
@@ -139,12 +186,24 @@ function setExpand(id) {
 
 function rawEventWidget(event) {
   // TODO: show copy button which copies without pretty-print
-  const e = JSON.parse(JSON.stringify(event))
-  const eRelays = e.relays.map(it=>`<li>${relays[it].url}</li>`).join('')
-  delete e.degree
-  delete e.relays
+  const e = JSON.stringify(
+    event,
+    (key, value) => {
+      if (["relays"].includes(key)) {
+        return undefined
+      }
+      return value
+    },
+    2)
+  const eRelays = '<table><tr><td>#</td><td>Relay</td><td>dt</td><td>event #<sup>1</sup></td></tr>' +
+    event.relays.map((it,i)=>`<tr><td>${i+1}</td><td>${relays[it.id].url.slice(6)}</td><td>${
+    i==0
+      ? 'first'
+      : `+${it.timeMs - event.relays[0].timeMs}ms`
+    }</td><td>${it.count}</td></tr>`).join('') +
+    '<tr><td colspan="4"><sup>1</sup>The n-th event processed from this relay.</td></tr></table>'
   
-  return `<br>Received in this order from:<ol>${eRelays}</ol><pre>${escapeHTML(JSON.stringify(e, null, 2))}</pre>`
+  return `<br>Received in this order from:${eRelays}<pre>${escapeHTML(e)}</pre>`
 }
 
 function eventBadge(event) {
@@ -153,8 +212,8 @@ function eventBadge(event) {
     : ''
   const from = nameFromPubkey(event.pubkey)
   const expandCollapse = (event.id === expandedEvent)
-    ? `<span class='collapse' onclick='setExpand("")'>[➖] </span>`
-    : `<span class='expand' onclick='setExpand("${event.id}")'>[➕] </span>`
+    ? `<span class='collapse' onclick='setExpand("")'>[–] </span>`
+    : `<span class='expand' onclick='setExpand("${event.id}")'>[+] </span>`
   var badge = `<span class="event kind-${event.kind}">${expandCollapse}${timeFormat(event.created_at)}${degree} ${from} `
   switch (event.kind) {
     case 0: {
@@ -214,10 +273,15 @@ function eventBadge(event) {
     : '')
 }
 
+const ts = () => (new Date()).getTime()
+
 function setupWs(relay, id) {
   const ws = new WebSocket(relay.url)
+  relay.ws = ws
+  relay.tried = ts()
   ws.onmessage = msg => {
     var arr
+    dirty = true
     try {
       arr = JSON.parse(msg.data)
     } catch (e) {
@@ -231,38 +295,60 @@ function setupWs(relay, id) {
       }
       const prior = received.find(e=>e.id==event.id)
       if (prior) {
-        if (0 > prior.relays.findIndex(i=>i==id)) {
-          prior.relays.push(id)
+        if (0 > prior.relays.findIndex(i=>i.id==id)) {
+          prior.relays.push({id: id,count:relay.events,timeMs:ts()})
         }
         return // this event was handled already
       }
-      if (arr[1] == "meta") {
-        if (event.kind === 0) {
-          try {
-            const m = JSON.parse(event.content)
-            meta[event.pubkey] = m
-          } catch(e) {
-            console.log(`Should "${escapeHTML(event.content)}" be valid JSON?`)
+      switch (arr[1]) {
+        case 'meta':
+          if (event.kind === 0) {
+            try {
+              const m = JSON.parse(event.content)
+              meta[event.pubkey] = m
+            } catch(e) {
+              console.log(`Should "${escapeHTML(event.content)}" be valid JSON?`)
+            }
           }
-        }
-      } if (arr[1] == "follows") {
-        if (event.kind === 3) {
-          follows[event.pubkey] = event.tags.filter(it => it[0] === "p").map(it => it[1])
-        }
-      } else if (arr[1] === "main") {
-        event.relays = [id]
-        if (!event.tags) {
-          console.log(`${relay.url} sent event with no tags.`)
-          event.tags = []
-        }
-        received.push(event)
+          break
+        case 'follows':
+          if (event.kind === 3) {
+            follows[event.pubkey] = event.tags.filter(it => it[0] === "p").map(it => it[1])
+          }
+          break
+        case 'relays':
+          const ipRegExp = /[0-9]+.[0-9]+.[0-9]+.[0-9]+/g
+          const relayUrl = event
+            .content
+            .replace(/(\n|\r|\t|\/| )+$/, '')
+            .replace(/^(\n|\r|\t| )+/, '')
+            .toLowerCase()
+          if (relays.findIndex(it=>it.url==relayUrl)>=0 || // we have this one already.
+              !relayUrl.startsWith('wss://') || // only ssl for now
+              ipRegExp.test(relayUrl) || // IPs don't support ssl
+              relayUrl.includes('localhost')) { // localhost?
+            break
+          }
+          relays.push({
+            url: relayUrl,
+            tried: -1,
+            connected: false,
+            answered: false,
+            events: 0
+          })
+          break
+        case 'main':
+          event.relays = [{id: id,count:relay.events,timeMs:ts()}]
+          if (!event.tags) {
+            console.log(`${relay.url} sent event with no tags.`)
+            event.tags = []
+          }
+          received.push(event)
+          break
       }
-      dirty = true
     } else if (arr[0] === 'EOSE') {
-      if (arr[1] === 'meta') {
-        ws.send('["CLOSE","meta"]')
-      } else if (arr[1] === 'follows') {
-        ws.send('["CLOSE","follows"]')
+      if (['meta','follows','relays'].includes(arr[1])) {
+        ws.send(`["CLOSE","${arr[1]}"]`)
       }
     }
   }
@@ -278,9 +364,10 @@ function setupWs(relay, id) {
     relay.connected = true
     relay.answered = true
     dirty = true
-    ws.send(`["REQ","main",{"limit":${LIMIT},"until":${(new Date().getTime() / 1000 + 60 * 60).toFixed()}}]`)
+    ws.send(`["REQ","main",{"limit":${LIMIT},"until":${(ts() / 1000 + 60 * 60).toFixed()}}]`)
     ws.send('["REQ","meta",{"kinds":[0]}]')
     ws.send('["REQ","follows",{"kinds":[3]}]')
+    ws.send('["REQ","relays",{"kinds":[2]}]')
   }
 }
 

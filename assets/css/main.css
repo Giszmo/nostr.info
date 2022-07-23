@@ -50,7 +50,8 @@
 
 .meta {
   display: inline-block;
-  overflow: clip;
+  display: inline-flex;
+  overflow-x: clip;
   width: 15em;
   cursor: pointer;
 }
