@@ -40,20 +40,39 @@ window.addEventListener('load', () => {
   window.degreeFilter = document.getElementById("degree-filter")
   window.output = document.getElementById("output")
   window.expandedEvent = ""
-  setInterval(() => {
-    if (dirty) {
-      update()
-    }
-  }, 1000)
 })
 
 const LIMIT = 500 // how many events to show
+const throttleMs = 500
 var received = []
-var dirty = true
 const meta = {}
 const follows = {}
 
+var tUpdate = 0
+function setDirty() {
+  const t = ts()
+  // ms since last scheduled update. Negative if in the future.
+  const dt = t - tUpdate
+  if (dt > 0) {
+    // No update is scheduled for now or the future. Schedule one for at least
+    // [throttleMs] ms after the prior one.
+    tUpdate = Math.max(tUpdate + throttleMs, t)    
+    setTimeout(() => {
+      update()
+    }, tUpdate - t)
+  }
+}
+
 function update() {
+  const nearFuture = ts() / 1000 + 60 * 60
+  received = received
+    // near future
+    .filter(it=>it.created_at<nearFuture)
+    // newest first
+    .sort( (a,b) => b.created_at - a.created_at )
+    // clip to only LIMIT events
+    .slice(0, LIMIT)
+
   eventFilters.hidden = true
   relayFilters.hidden = true
   switch(tab.value) {
@@ -71,7 +90,6 @@ function update() {
       output.innerHTML = eventsTable()
       break
   }
-  dirty = false
 }
 
 function connectRelays() {
@@ -110,11 +128,6 @@ function relaysTable() {
 }
 
 function eventsTable() {
-  // newest first
-  received = received.sort( (a,b) => b.created_at - a.created_at )
-  // clip to only LIMIT events
-  received = received.slice(0, LIMIT)
-  
   const kindFiltered = filterByKind()
   const filtered = filterByPubkey(kindFiltered)
   
@@ -167,7 +180,7 @@ function filterByKind() {
 
 function setPubkey(pubkey) {
   pubkeyFilter.value=pubkey
-  dirty=true
+  setDirty()
 }
 
 function nameFromPubkey(pubkey) {
@@ -181,7 +194,7 @@ function nameFromPubkey(pubkey) {
 
 function setExpand(id) {
   expandedEvent = id
-  dirty = true
+  setDirty()
 }
 
 function rawEventWidget(event) {
@@ -281,7 +294,7 @@ function setupWs(relay, id) {
   relay.tried = ts()
   ws.onmessage = msg => {
     var arr
-    dirty = true
+    setDirty()
     try {
       arr = JSON.parse(msg.data)
     } catch (e) {
@@ -354,7 +367,7 @@ function setupWs(relay, id) {
   }
   ws.onclose = () => {
     relay.connected = false
-    dirty = true
+    setDirty()
     console.log(`${relay.url} disconnected. Not reconnecting in 5s`)
     // setTimeout(() => {
     //   setupWs(url)
@@ -363,7 +376,7 @@ function setupWs(relay, id) {
   ws.onopen = event => {
     relay.connected = true
     relay.answered = true
-    dirty = true
+    setDirty()
     ws.send(`["REQ","main",{"limit":${LIMIT},"until":${(ts() / 1000 + 60 * 60).toFixed()}}]`)
     ws.send('["REQ","meta",{"kinds":[0]}]')
     ws.send('["REQ","follows",{"kinds":[3]}]')

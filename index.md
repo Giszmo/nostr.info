@@ -5,7 +5,7 @@ layout: home
 <link rel="stylesheet" href="/assets/css/main.css">
 <script src="/assets/js/main.js"></script>
 
-<select name="tab" id="tab" onchange="dirty=true">
+<select name="tab" id="tab" onchange="setDirty()">
   <option value="relays">Show Relays</option>
   <option value="events">Show Events</option>
 </select>
@@ -13,7 +13,7 @@ layout: home
 
 <div id="relay-filters">
   <label for="relay-filter">Filter by Relay performance:</label>
-  <select name="relay-filter" id="relay-filter" onchange="dirty=true">
+  <select name="relay-filter" id="relay-filter" onchange="setDirty()">
     <option value="sentConnected">Sent us many without dropping</option>
     <option value="sentMany">Sent us many events</option>
     <option value="sent">Sent us events</option>
@@ -24,7 +24,7 @@ layout: home
 </div>
 <div id="event-filters">
   <label for="kind-filter">Filter by Kind:</label>
-  <select name="kind-filter" id="kind-filter" onchange="dirty=true">
+  <select name="kind-filter" id="kind-filter" onchange="setDirty()">
     <option value="all">kind-*: All kinds</option>
     <option value="unknown">kind-?: Stuff we don't handle yet</option>
     <option value="0">kind-0: Metadata</option>
@@ -40,9 +40,9 @@ layout: home
   </select>
   <br>
   <label for="pubkey-filter">Filter by Pubkey:</label>
-  <input type="text" name="pubkey-filter" id="pubkey-filter" onchange="dirty=true">
+  <input type="text" name="pubkey-filter" id="pubkey-filter" onchange="setDirty()">
   <label for="degree-filter">... and follows of degree:</label>
-  <select name="degree-filter" id="degree-filter" disabled onchange="dirty=true">
+  <select name="degree-filter" id="degree-filter" disabled onchange="setDirty()">
     <option value="0">Only the pubkey</option>
     <option value="1">Follows of the pubkey</option>
     <option value="2">Follows² of the pubkey</option>
