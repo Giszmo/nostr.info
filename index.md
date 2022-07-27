@@ -17,7 +17,7 @@ layout: home
     <option value="sentConnected">Sent us many without dropping</option>
     <option value="sentMany">Sent us many events</option>
     <option value="sent">Sent us events</option>
-    <option value="didConnect" default>Accepted WebSocket connection</option>
+    <option value="didConnect" selected>Accepted WebSocket connection</option>
     <option value="all">All</option>
   </select>
   <br><input id="connectNewRelays" type="button" onclick="connectRelays()" value="Connect new relays!">

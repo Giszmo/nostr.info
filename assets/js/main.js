@@ -27,7 +27,10 @@ window.addEventListener('load', () => {
     tried: -1, // we tried to connect it
     connected: false, // currently connected
     answered: false, // was connected in the past
-    events: 0 // event counter
+    events: 0, // event counter
+    wrongKind: 0, // count unexpected events
+    invalid: 0, // events with missing parts
+    msg: ""
   }})
   relays.forEach((r, id) => { setupWs(r, id) })
   window.tab = document.getElementById("tab")
@@ -103,7 +106,7 @@ function connectRelays() {
 function relaysTable() {
   connectRelaysBtn.hidden = relays.filter(it=>it.tried<0).length === 0
   return '<table>' +
-    '<tr><td>Relay</td><td>Events<sup>1</sup></td><td>Connection<sup>2</sup></td></tr>' +
+    '<tr><td>Relay</td><td>Events<sup>1</sup></td><td>Connection<sup>2</sup></td><td>Comment</td></tr>' +
     relays.filter(r=>{
       switch (relayQualityFilter.value) {
         case 'all': return true
@@ -121,9 +124,15 @@ function relaysTable() {
           : r.answered
             ? 'lost'
             : 'false'
-        }</td></tr>`).join('') +
-        `<tr><td colspan="3"><sup>1</sup> counting all events received after requesting ${LIMIT} most recent events.<br>Events received to determine names and follows are not counted.</td></tr>` +
-        '<tr><td colspan="3"><sup>2</sup> "false" = connection never succeeded. "?" = we haven\'t tried yet. Press button above to try.</td></tr>' +
+        }</td><td>${ (r.wrongKind > 0
+          ? r.wrongKind + ' unrequested'
+          : '') + (r.invalid > 0
+            ? '<br>' + r.invalid + ' invalid'
+            : '') + (r.msg.length > 0
+              ? ` (${r.msg})`
+              : '')}</td></tr>`).join('') +
+        `<tr><td colspan="5"><sup>1</sup> counting all events received after requesting ${LIMIT} most recent events.<br>Events received to determine names and follows are not counted.</td></tr>` +
+        '<tr><td colspan="5"><sup>2</sup> "false" = connection never succeeded. "?" = we haven\'t tried yet. Press button above to try.</td></tr>' +
     '</table>'
 }
 
@@ -311,7 +320,9 @@ function setupWs(relay, id) {
         if (0 > prior.relays.findIndex(i=>i.id==id)) {
           prior.relays.push({id: id,count:relay.events,timeMs:ts()})
         }
-        return // this event was handled already
+        if (arr[1] === "main") {
+          return // this event was handled by main already
+        }
       }
       switch (arr[1]) {
         case 'meta':
@@ -322,37 +333,53 @@ function setupWs(relay, id) {
             } catch(e) {
               console.log(`Should "${escapeHTML(event.content)}" be valid JSON?`)
             }
+          } else {
+            relay.wrongKind++
+            relay.msg = msg.data
           }
           break
         case 'follows':
           if (event.kind === 3) {
             follows[event.pubkey] = event.tags.filter(it => it[0] === "p").map(it => it[1])
+          } else {
+            relay.wrongKind++
+            relay.msg = msg.data
           }
           break
         case 'relays':
-          const ipRegExp = /[0-9]+.[0-9]+.[0-9]+.[0-9]+/g
-          const relayUrl = event
-            .content
-            .replace(/(\n|\r|\t|\/| )+$/, '')
-            .replace(/^(\n|\r|\t| )+/, '')
-            .toLowerCase()
-          if (relays.findIndex(it=>it.url==relayUrl)>=0 || // we have this one already.
-              !relayUrl.startsWith('wss://') || // only ssl for now
-              ipRegExp.test(relayUrl) || // IPs don't support ssl
-              relayUrl.includes('localhost')) { // localhost?
-            break
+          if (event.kind === 2) {
+            const ipRegExp = /[0-9]+.[0-9]+.[0-9]+.[0-9]+/g
+            const relayUrl = event
+              .content
+              .replace(/(\n|\r|\t|\/| )+$/, '')
+              .replace(/^(\n|\r|\t| )+/, '')
+              .toLowerCase()
+            if (relays.findIndex(it=>it.url==relayUrl)>=0 || // we have this one already.
+                !relayUrl.startsWith('wss://') || // only ssl for now
+                ipRegExp.test(relayUrl) || // IPs don't support ssl
+                relayUrl.includes('localhost')) { // localhost?
+              break
+            }
+            relays.push({
+              url: relayUrl,
+              tried: -1,
+              connected: false,
+              answered: false,
+              events: 0,
+              wrongKind: 0,
+              invalid: 0,
+              msg: ""
+            })
+          } else {
+            relay.wrongKind++
+            relay.msg = msg.data
           }
-          relays.push({
-            url: relayUrl,
-            tried: -1,
-            connected: false,
-            answered: false,
-            events: 0
-          })
           break
         case 'main':
           event.relays = [{id: id,count:relay.events,timeMs:ts()}]
           if (!event.tags) {
+            relay.invalid++
+            relay.msg = msg.data
             console.log(`${relay.url} sent event with no tags.`)
             event.tags = []
           }
@@ -363,15 +390,19 @@ function setupWs(relay, id) {
       if (['meta','follows','relays'].includes(arr[1])) {
         ws.send(`["CLOSE","${arr[1]}"]`)
       }
+    } else {
+      console.log(`Unexpected command ${arr[0]}`)
     }
   }
   ws.onclose = () => {
     relay.connected = false
     setDirty()
-    console.log(`${relay.url} disconnected. Not reconnecting in 5s`)
-    // setTimeout(() => {
-    //   setupWs(url)
-    // }, 5000)
+    console.log(`${relay.url} disconnected.`)
+  }
+  ws.onerror = (e) => {
+    relay.connected = false
+    setDirty()
+    console.log(`${relay.url} had an error: ${JSON.stringify(e)}`)
   }
   ws.onopen = event => {
     relay.connected = true
