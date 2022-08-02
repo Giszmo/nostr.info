@@ -1,0 +1,147 @@
+---
+layout: home
+permalink: /relayr/
+---
+
+<ol>
+  <li>Pick a <select name="relay" id="relay">
+    <option value="wss://relay.nostr.info" selected>relay</option>
+    <option value="wss://relay.nostr.info">relay.nostr.info</option>
+    <option value="wss://nostr-pub.wellorder.net">nostr-pub.wellorder.net</option>
+    <option value="wss://relay.damus.io">relay.damus.io</option>
+    <option value="wss://nostr-relay.wlvs.space">nostr-relay.wlvs.space</option>
+    <option value="wss://nostr-relay.untethr.me">nostr-relay.untethr.me</option>
+    <option value="ws://localhost:7070">localhost:7070</option>
+  </select></li>
+  <li>Send <select id="querySelect" onchange="input.value=querySelect.value">
+    <option value='["REQ","cn",
+    {"limit":2,"kinds":[0]},
+    {"limit":2,"kinds":[1]},
+    {"limit":2,"kinds":[2]}]'>queries</option>
+    <option value='["REQ","cn",{"authors":["46fcbe3065eaf1ae7811465924e48923363ff3f526bd6f73d7c184b16bd8ce4d"],"kinds":[4],"limit":1000} ]'>All kind 4 events from pubkey</option>
+    <option value='["REQ","cn",{"#p":["46fcbe3065eaf1ae7811465924e48923363ff3f526bd6f73d7c184b16bd8ce4d"],"kinds":[4],"limit":1000} ]'>All kind 4 events to pubkey</option>
+  </select></li>
+  <li>... or send <a onclick='input.value=JSON.stringify(["EVENT","channel name",{"id":"4d84fae57fa93c836f161e75e404f6e489fb6c9737cc18cc0f757b7f3cacbaa6","pubkey":"b021c176157909a4515e3a182d92c17c28c62c9304974d944e49da562888a4b0","created_at":1642760731,"kind":2,"tags":[],"content":"wss://rsslay.fiatjaf.com","sig":"bdc8f2a7a731328bb002dae805ff1b21b1a175e48693e4d2c8fbc97f50fff506cd0f0dda8f6792b3d0ded88219211ed3161a36e86827c06ceb7becdba2008977"}])'>events</a></li>
+  <li>See what the relay replies: <span id="connectionState">Loading ...</span></li>
+</ol>
+<textarea id="input" placeholder="Queries or events" style="min-height: 6em;"></textarea>
+<p><button type="button" id="send" onClick="sendInput()">Send</button></p>
+<textarea id="output" wrap="off" style="min-height: 20em;"></textarea>
+<script>
+const querySelect = document.getElementById("querySelect")
+const relay = document.getElementById("relay")
+const input = document.getElementById("input")
+const output = document.getElementById("output")
+const connectionState = document.getElementById("connectionState")
+var ws
+
+window.received = []
+window.onload = () => {
+  input.value=querySelect.value
+  setupWebSocket()
+}
+relay.onchange = setupWebSocket
+
+function sendInput() {
+  output.value = ""
+  window.received = []
+  ws.send(input.value)
+}
+
+function setupWebSocket() {
+  if (ws) {
+    ws.onclose = () => {}
+    ws.close()
+  }
+  getNip11()
+  connectionState.innerHTML = `<span class="warning">Connecting to ${relay.value}</span>`
+  ws = new WebSocket(relay.value);
+  ws.onmessage = msg => {
+    if (msg.data.startsWith('["RID",')) {
+      const rid = JSON.parse(msg.data)[1]
+      console.log(rid)
+    } else {
+      window.received.push(msg.data)
+    }
+  }
+  ws.onclose = () => {
+    connectionState.innerHTML = `<span class="error">Disconnected</span>`
+  }
+  ws.onopen = () => {
+    connectionState.innerHTML = `<span class="info">Connected to ${ws.url}</span>`
+    ws.send('["RID"]')
+    sendInput()
+  }
+  ws.onerror = (e) => {
+    connectionState.innerHTML = `<span class="error">Error (${ws.url}): ${e}</span>`
+  }
+}
+
+function getNip11() {
+  const url = 'https' + relay.value.slice(3)
+  const options = {
+    method: 'get',
+    headers: {
+      Accept: 'application/nostr+json'
+    }
+  }
+  fetch(url, options)
+    .then(console.log)
+}
+
+setInterval(() => {
+  const l = window.received.length
+  var msgs = ""
+  for (var i=10; i>0; i--) {
+    if (l >= i) {
+      msgs += window.received[l-i] + "\n"
+    }
+  }
+  output.value = `Received ${l} events. Last ones received (probably oldest):
+${msgs}`
+  }, 500)
+</script>
+<style>
+  * {
+    box-sizing: border-box;
+    font-family: Georgia, serif;
+    color: rgba(0, 0, 0, 0.75);
+  }
+
+  html {
+    background: #f5f5f5;
+  }
+
+  body {
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 400;
+    margin: 30px 0;
+    text-align: center;
+  }
+
+  textarea {
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    border: 0;
+    outline: 0;
+    padding: 20px;
+    font-size: 18px;
+    resize: none;
+  }
+
+  .error {
+    background-color: lightcoral;
+  }
+
+  .warning {
+    background-color: lightgray;
+  }
+
+  .info {
+    background-color: lightgreen;
+  }
+</style>
