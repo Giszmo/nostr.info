@@ -202,7 +202,7 @@ function nameFromPubkey(pubkey) {
   const img = (m && m.picture) || '/assets/smallNoicon.png'
   const name = (m && m.name) || pubkey || 'unknown'
   return `<span class="meta" onclick="setPubkey('${pubkey}')">
-  <img src="${img}">&nbsp;${name}
+  <img src="${img}">&nbsp;${escapeHTML(name)}
 </span>`
 }
 
@@ -273,7 +273,7 @@ function eventBadge(event) {
         break
       }
     case 6: {
-        badge += ` made a "quoted boost". Damus sends and interprets those. ${JSON.stringify({tags:event.tags,content:event.content})}`
+        badge += ` made a "quoted boost". Damus sends and interprets those. ${JSON.stringify({tags:event.tags,content:escapeHTML(event.content)})}`
         break
       }
     case 7: {
@@ -291,7 +291,7 @@ function eventBadge(event) {
         break
       }
     default: {
-        badge += ` unhandled kind ${event.kind} event with ${JSON.stringify({tags:event.tags,content:event.content})}.`
+        badge += ` unhandled kind ${event.kind} event with ${JSON.stringify({tags:event.tags,content:escapeHTML(event.content)})}.`
         break
       }
   }
@@ -302,7 +302,22 @@ function eventBadge(event) {
 
 const ts = () => (new Date()).getTime()
 
+function testNip11(relay) {
+  const httpUrl = 'https' +  relay.url.slice(3)
+  fetch(httpUrl, {
+    headers: {
+      Accept: "application/nostr+json"
+    }
+  }).then(it => {
+    it.json().then(it => {
+      relay.nip11=it
+      console.log(it)
+    }).catch(console.error)
+  }).catch(console.error)
+}
+
 function setupWs(relay, id) {
+  // testNip11(relay)
   const ws = new WebSocket(relay.url)
   relay.ws = ws
   relay.tried = ts()
