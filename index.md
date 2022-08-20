@@ -2,54 +2,36 @@
 layout: home
 ---
 
-<link rel="stylesheet" href="/assets/css/main.css">
-<script src="/assets/js/main.js"></script>
+## What is nostr?
 
-<select name="tab" id="tab" onchange="setDirty()">
-  <option value="relays">Show Relays</option>
-  <option value="events">Show Events</option>
-</select>
-<br>
+"nostr" stands for "**N**otes and **O**ther **S**tuff **T**ransmitted by
+**R**elays" and is an open protocol for censorship-resistant global networks
+created by [@fiatjaf](https://github.com/fiatjaf).
 
-<div id="relay-filters">
-  <label for="relay-filter">Filter by Relay performance:</label>
-  <select name="relay-filter" id="relay-filter" onchange="setDirty()">
-    <option value="sentConnected">Sent us many without dropping</option>
-    <option value="sentMany">Sent us many events</option>
-    <option value="sent">Sent us events</option>
-    <option value="didConnect" selected>Accepted WebSocket connection</option>
-    <option value="all">All</option>
-  </select>
-  <br><input id="connectNewRelays" type="button" onclick="connectRelays()" value="Connect new relays!">
-</div>
-<div id="event-filters">
-  <label for="kind-filter">Filter by Kind:</label>
-  <select name="kind-filter" id="kind-filter" onchange="setDirty()">
-    <option value="all">kind-*: All kinds</option>
-    <option value="unknown">kind-?: Stuff we don't handle yet</option>
-    <option value="0">kind-0: Metadata</option>
-    <option value="1">kind-1: Public Post</option>
-    <option value="2">kind-2: Relay Recommendation</option>
-    <option value="3">kind-3: Follows List</option>
-    <option value="4">kind-4: DM</option>
-    <option value="5">kind-5: Deletions</option>
-    <option value="6">kind-6: Quoted Boost</option>
-    <option value="7">kind-7: Reactions</option>
-    <option value="30">kind-30: Chess</option>
-    <option value="60">kind-60: Ride Sharing</option>
-  </select>
-  <br>
-  <label for="pubkey-filter">Filter by Pubkey:</label>
-  <input type="text" name="pubkey-filter" id="pubkey-filter" onchange="setDirty()">
-  <label for="degree-filter">... and follows of degree:</label>
-  <select name="degree-filter" id="degree-filter" disabled onchange="setDirty()">
-    <option value="0">Only the pubkey</option>
-    <option value="1">Follows of the pubkey</option>
-    <option value="2">Follows² of the pubkey</option>
-    <option value="3">Follows³ of the pubkey</option>
-    <option value="4">Follows⁴ of the pubkey</option>
-    <option value="5">Follows⁵ of the pubkey</option>
-  </select>
-</div>
-<br>
-<div id="output"></div>
+You can find a very decent overview of tools and projects at
+[aljazceru/awesome-nostr](https://github.com/aljazceru/awesome-nostr)!
+
+## What is nostr.info?
+
+Nostr.info aims to be the
+"blockchain.info" of nostr - not necessarily the blockchain.com it turned into.
+
+Blockchain.info started out as a collection of interesting charts and
+interactive tools to explore the Bitcoin blockchain and core performance
+parameters and nostr.info was registered to provide something similar for the
+nostr ecosystem.
+
+The current state might be more a playground but features to come are:
+
+- Show all events and help the user interpret them. Check out
+  [Relays](/relays/). It already gives some idea of recent events. If you want
+  to dig into one specific event, try out [nostr.com](https://nostr.com)
+- Show all relays and their features and performance - a bit like
+  [nostr-registry](https://nostr-registry.netlify.app/). [Relays](/relays/)
+  already does this a bit but expect a lot more to come!
+- Provide a nostr client under this domain
+- Charts
+  - Events per hour/day/week
+  - Split by kind/size
+  - Active pubkeys per hour/day/week
+  - Follows graphs - and how they change over time
