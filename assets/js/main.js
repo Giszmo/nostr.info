@@ -443,7 +443,7 @@ Number.prototype.pad = function(size) {
 
 function timeFormat(ts) {
   let d = new Date(ts * 1000)
-  return `${d.getYear()-100}-${(d.getMonth()+1).pad(2)}-${(d.getDate()+1).pad(2)} ` +
+  return `${d.getYear()-100}-${(d.getMonth()+1).pad(2)}-${(d.getDate()).pad(2)} ` +
          `${d.getHours().pad(2)}:${d.getMinutes().pad(2)}:${d.getSeconds().pad(2)}`
 }
 
