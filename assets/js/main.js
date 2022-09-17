@@ -286,6 +286,12 @@ function eventBadge(event) {
         badge += ` Something about chess: ${escapeHTML(event.content)}`
         break
       }
+    case 42: {
+        const eTag = event.tags.find(tag => tag[0] === 'e')
+        const publicChatPubkey = eTag[1];
+        badge += ` Sent a new message to channel ${publicChatPubkey}`
+        break
+    }
     case 60: {
         badge += ` Something about ride sharing: ${escapeHTML(event.content)}`
         break
