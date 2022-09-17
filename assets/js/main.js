@@ -286,6 +286,11 @@ function eventBadge(event) {
         badge += ` Something about chess: ${escapeHTML(event.content)}`
         break
       }
+    case 40: {
+        const content = JSON.parse(event.content)
+        badge += ` Created a new channel called "${content.name}"`
+        break
+    }
     case 42: {
         const eTag = event.tags.find(tag => tag[0] === 'e')
         const publicChatPubkey = eTag[1];
