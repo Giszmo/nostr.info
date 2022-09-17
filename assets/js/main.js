@@ -297,8 +297,8 @@ function eventBadge(event) {
     }
     case 42: {
         const eTag = event.tags.find(tag => tag[0] === 'e')
-        const publicChatPubkey = eTag[1];
-        badge += ` Sent a new message to channel ${publicChatPubkey}`
+        const channelPubkey = eTag[1];
+        badge += ` Sent a new message to channel ${channelPubkey}`
         break
     }
     case 43: {
