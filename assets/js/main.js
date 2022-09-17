@@ -291,6 +291,10 @@ function eventBadge(event) {
         badge += ` Created a new channel called "${content.name}"`
         break
     }
+    case 41: {
+        badge += ` Updated channel metadata`
+        break
+    }
     case 42: {
         const eTag = event.tags.find(tag => tag[0] === 'e')
         const publicChatPubkey = eTag[1];
