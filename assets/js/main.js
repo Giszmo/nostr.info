@@ -303,7 +303,6 @@ function eventBadge(event) {
     }
     case 43: {
         const content = JSON.parse(event.content)
-        console.log(content)
         const reason = content.reason ? content.reason : "Unknown reason"
         badge += ` Hid a message (${reason})`
         break
