@@ -308,6 +308,14 @@ function eventBadge(event) {
         badge += ` Hid a message (${reason})`
         break
     }
+    case 44: {
+        const pTag = event.tags.find(tag => tag[0] === 'p')
+        const mutedPubkey = pTag[1]
+        const content = JSON.parse(event.content)
+        const reason = content.reason ? content.reason : "Unknown reason"
+        badge += ` Muted user ${nameFromPubkey(mutedPubkey)} (${reason})}}`
+        break
+    }
     case 60: {
         badge += ` Something about ride sharing: ${escapeHTML(event.content)}`
         break
