@@ -301,6 +301,13 @@ function eventBadge(event) {
         badge += ` Sent a new message to channel ${publicChatPubkey}`
         break
     }
+    case 43: {
+        const content = JSON.parse(event.content)
+        console.log(content)
+        const reason = content.reason ? content.reason : "Unknown reason"
+        badge += ` Hid a message (${reason})`
+        break
+    }
     case 60: {
         badge += ` Something about ride sharing: ${escapeHTML(event.content)}`
         break
