@@ -287,6 +287,35 @@ function eventBadge(event) {
         badge += ` Something about chess: ${escapeHTML(event.content)}`
         break
       }
+    case 40: {
+        const content = JSON.parse(event.content)
+        badge += ` Created a new channel called "${content.name}"`
+        break
+    }
+    case 41: {
+        badge += ` Updated channel metadata`
+        break
+    }
+    case 42: {
+        const eTag = event.tags.find(tag => tag[0] === 'e')
+        const channelPubkey = eTag[1];
+        badge += ` Sent a new message to channel ${channelPubkey}`
+        break
+    }
+    case 43: {
+        const content = JSON.parse(event.content)
+        const reason = content.reason ? content.reason : "Unknown reason"
+        badge += ` Hid a message (${reason})`
+        break
+    }
+    case 44: {
+        const pTag = event.tags.find(tag => tag[0] === 'p')
+        const mutedPubkey = pTag[1]
+        const content = JSON.parse(event.content)
+        const reason = content.reason ? content.reason : "Unknown reason"
+        badge += ` Muted user ${nameFromPubkey(mutedPubkey)} (${reason})}}`
+        break
+    }
     case 60: {
         badge += ` Something about ride sharing: ${escapeHTML(event.content)}`
         break

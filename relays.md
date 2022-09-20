@@ -38,6 +38,11 @@ permalink: /relays/
     <option value="6">kind-6: Quoted Boost</option>
     <option value="7">kind-7: Reactions</option>
     <option value="30">kind-30: Chess</option>
+    <option value="40">kind-40: Channel created</option>
+    <option value="41">kind-41: Channel metadata update</option>
+    <option value="42">kind-42: Channel message</option>
+    <option value="43">kind-43: Hide message</option>
+    <option value="44">kind-44: Mute user</option>
     <option value="60">kind-60: Ride Sharing</option>
   </select>
   <br>
