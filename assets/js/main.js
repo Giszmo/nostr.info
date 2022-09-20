@@ -26,7 +26,8 @@ window.addEventListener('load', () => {
     'wss://nostr-relay-dev.wlvs.space',
     'wss://nostr.zaprite.io',
     'wss://nostr-pub.semisol.dev',
-    // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion',
+    'wss://nostr.ono.re',
+    // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
     url: it,
     tried: -1, // we tried to connect it
