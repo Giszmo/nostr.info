@@ -186,7 +186,7 @@ function filterByKind() {
   if (kind === 'all') {
     return received
   } else if (kind === 'unknown') {
-    const knownKinds = [0,1,2,3,4,5,6,7,30,60]
+    const knownKinds = [0,1,2,3,4,5,6,7,30,40,41,42,43,44,60]
     return received.filter(ev => !knownKinds.includes(ev.kind))
   } else {
     return received.filter(it => it.kind == kind)
@@ -298,8 +298,10 @@ function eventBadge(event) {
     }
     case 42: {
         const eTag = event.tags.find(tag => tag[0] === 'e')
-        const channelPubkey = eTag[1];
-        badge += ` Sent a new message to channel ${channelPubkey}`
+        if (eTag) {
+          const channelPubkey = eTag[1];
+          badge += ` Sent a new message to channel ${channelPubkey}`
+        }
         break
     }
     case 43: {
