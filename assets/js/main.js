@@ -1,5 +1,6 @@
 window.addEventListener('load', () => {
   window.relays = [
+    'wss://nostr.p2sh.co',
     'wss://nostr-pub.wellorder.net',
     'wss://nostr-relay.wlvs.space',
     'wss://nostr-verified.wellorder.net',
