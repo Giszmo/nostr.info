@@ -30,6 +30,16 @@ window.addEventListener('load', () => {
     'wss://nostr.ono.re',
     'wss://relay.nostr.nu',
     'wss://nostr.developer.li',
+    'wss://relay.nostr.scot',
+    'wss://relay.snort.social',
+    'wss://brb.io',
+    'wss://nostr.fmt.wiz.biz',
+    'wss://relay.nostr.bg',
+    'wss://nostr.zebedee.cloud',
+    'wss://nostr.onsats.org',
+    'wss://no.str.cr',
+    'wss://relay.nostr.ch',
+    'wss://nostr.bitcoiner.social',
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
     url: it,
