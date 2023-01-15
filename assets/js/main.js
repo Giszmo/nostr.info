@@ -1,5 +1,6 @@
 window.addEventListener('load', () => {
   window.relays = [
+    'wss://nostr.p2sh.co',
     'wss://nostr-pub.wellorder.net',
     'wss://nostr-relay.wlvs.space',
     'wss://nostr-verified.wellorder.net',
@@ -27,6 +28,8 @@ window.addEventListener('load', () => {
     'wss://nostr.zaprite.io',
     'wss://nostr-pub.semisol.dev',
     'wss://nostr.ono.re',
+    'wss://relay.nostr.nu',
+    'wss://nostr.developer.li',
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
     url: it,
