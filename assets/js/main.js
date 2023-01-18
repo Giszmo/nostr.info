@@ -23,6 +23,7 @@ window.addEventListener('load', () => {
     'wss://nostr-2.zebedee.cloud',
     'wss://nostr3.actn.io',
     'wss://nostr-3.orba.ca',
+    'wss://relay.nostr-latam.link',
     'wss://nostr.8e23.net',
     'wss://nostr.actn.io',
     'wss://nostr-alpha.gruntwerk.org',
