@@ -38,6 +38,7 @@ window.addEventListener('load', () => {
     'wss://nostr.zebedee.cloud',
     'wss://no.str.cr',
     'wss://relay.nostr.ch',
+    'wss://relay.nostr-latam.link',
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
     url: it,
