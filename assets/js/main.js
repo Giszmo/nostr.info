@@ -88,6 +88,7 @@ window.addEventListener('load', () => {
     'wss://nostr.nymsrelay.com',
     'wss://nostr.ono.re',
     'wss://nostr.onsats.org',
+    'wss://nostr.ownscale.org',
     'wss://nostr.oooxxx.ml',
     'wss://nostr.openchain.fr',
     'wss://nostr.orangepill.dev',
