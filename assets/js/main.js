@@ -1,5 +1,6 @@
 window.addEventListener('load', () => {
   window.relays = [
+    'wss://lightningrelay.com',
     'wss://astral.ninja',
     'wss://brb.io',
     'wss://btc.klendazu.com',
