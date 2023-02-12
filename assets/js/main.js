@@ -222,7 +222,8 @@ window.addEventListener('load', () => {
     'wss://student.chadpolytechnic.com',
     'wss://wizards.wormrobot.org',
     'wss://wlvs.space',
-    'wss://middling.myddns.me:8080'
+    'wss://middling.myddns.me:8080',
+    'wss://relay.nostr.or.jp'
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
     url: it,
