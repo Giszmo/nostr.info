@@ -1,6 +1,7 @@
 window.addEventListener('load', () => {
   window.relays = [
     'wss://astral.ninja',
+    'wss://at.nostrworks.com',
     'wss://brb.io',
     'wss://btc.klendazu.com',
     'wss://deschooling.us',
