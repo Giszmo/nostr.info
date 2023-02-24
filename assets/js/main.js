@@ -7,6 +7,7 @@ function shuffle(array) {
 
 window.addEventListener('load', () => {
   window.relays = [
+    'wss://nostr.wine',
     'wss://astral.ninja',
     'wss://brb.io',
     'wss://btc.klendazu.com',
