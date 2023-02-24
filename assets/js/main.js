@@ -1,3 +1,10 @@
+function shuffle(array) {
+  var random = array.map(Math.random);
+  array.sort(function(a, b) {
+    return random[a] - random[b];
+  });
+}
+
 window.addEventListener('load', () => {
   window.relays = [
     'wss://astral.ninja',
@@ -234,6 +241,7 @@ window.addEventListener('load', () => {
     invalid: 0, // events with missing parts
     msg: ""
   }})
+  shuffle(relays)
   relays.forEach((r, id) => { setupWs(r, id) })
   window.tab = document.getElementById("tab")
   window.relayFilters = document.getElementById("relay-filters")
@@ -247,7 +255,7 @@ window.addEventListener('load', () => {
   window.expandedEvent = ""
 })
 
-const LIMIT = 500 // how many events to show
+const LIMIT = 100 // how many events to show
 const throttleMs = 500
 var received = []
 const meta = {}
