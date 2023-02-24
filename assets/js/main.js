@@ -217,6 +217,7 @@ window.addEventListener('load', () => {
     'wss://relay.r3d.red',
     'wss://relay.realsearch.cc',
     'wss://relay.ryzizub.com',
+    'wss://nostr-01.dorafactory.org',
     'wss://relay.sendstr.com',
     'wss://relay.snort.social',
     'wss://relay.sovereign-stack.org',
