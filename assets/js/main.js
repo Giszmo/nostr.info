@@ -1,7 +1,16 @@
+function shuffle(array) {
+  var random = array.map(Math.random);
+  array.sort(function(a, b) {
+    return random[a] - random[b];
+  });
+}
+
 window.addEventListener('load', () => {
   window.relays = [
     'wss://lightningrelay.com',
+    'wss://nostr.wine',
     'wss://astral.ninja',
+    'wss://at.nostrworks.com',
     'wss://brb.io',
     'wss://btc.klendazu.com',
     'wss://deschooling.us',
@@ -89,6 +98,7 @@ window.addEventListener('load', () => {
     'wss://nostr.nymsrelay.com',
     'wss://nostr.ono.re',
     'wss://nostr.onsats.org',
+    'wss://nostr.ownscale.org',
     'wss://nostr.oooxxx.ml',
     'wss://nostr.openchain.fr',
     'wss://nostr.orangepill.dev',
@@ -180,6 +190,7 @@ window.addEventListener('load', () => {
     'wss://relay.lexingtonbitcoin.org',
     'wss://relay.minds.com/nostr/v1/ws',
     'wss://relay.minds.io/nostr/v1/ws',
+    'wss://relay.mynostr.id',
     'wss://relay.n057r.club',
     'wss://relay.nosphr.com',
     'wss://relay.nostr.au',
@@ -209,6 +220,7 @@ window.addEventListener('load', () => {
     'wss://relay.r3d.red',
     'wss://relay.realsearch.cc',
     'wss://relay.ryzizub.com',
+    'wss://nostr-01.dorafactory.org',
     'wss://relay.sendstr.com',
     'wss://relay.snort.social',
     'wss://relay.sovereign-stack.org',
@@ -223,7 +235,8 @@ window.addEventListener('load', () => {
     'wss://student.chadpolytechnic.com',
     'wss://wizards.wormrobot.org',
     'wss://wlvs.space',
-    'wss://middling.myddns.me:8080'
+    'wss://middling.myddns.me:8080',
+    'wss://relay.nostr.or.jp'
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
     url: it,
@@ -235,6 +248,7 @@ window.addEventListener('load', () => {
     invalid: 0, // events with missing parts
     msg: ""
   }})
+  shuffle(relays)
   relays.forEach((r, id) => { setupWs(r, id) })
   window.tab = document.getElementById("tab")
   window.relayFilters = document.getElementById("relay-filters")
@@ -248,7 +262,7 @@ window.addEventListener('load', () => {
   window.expandedEvent = ""
 })
 
-const LIMIT = 500 // how many events to show
+const LIMIT = 100 // how many events to show
 const throttleMs = 500
 var received = []
 const meta = {}
