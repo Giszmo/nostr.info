@@ -189,6 +189,7 @@ window.addEventListener('load', () => {
     'wss://relay.lexingtonbitcoin.org',
     'wss://relay.minds.com/nostr/v1/ws',
     'wss://relay.minds.io/nostr/v1/ws',
+    'wss://relay.mynostr.id',
     'wss://relay.n057r.club',
     'wss://relay.nosphr.com',
     'wss://relay.nostr.au',
