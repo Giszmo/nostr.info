@@ -83,6 +83,7 @@ window.addEventListener('load', () => {
     'wss://nostr.lnprivate.network',
     'wss://nostr.mado.io',
     'wss://nostr.massmux.com',
+    'wss://nostr.middling.mydns.jp',
     'wss://nostr.mikedilger.com',
     'wss://nostr.milou.lol',
     'wss://nostr.mom',
@@ -235,7 +236,6 @@ window.addEventListener('load', () => {
     'wss://student.chadpolytechnic.com',
     'wss://wizards.wormrobot.org',
     'wss://wlvs.space',
-    'wss://middling.myddns.me:8080',
     'wss://relay.nostr.or.jp'
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
