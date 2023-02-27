@@ -236,7 +236,8 @@ window.addEventListener('load', () => {
     'wss://student.chadpolytechnic.com',
     'wss://wizards.wormrobot.org',
     'wss://wlvs.space',
-    'wss://relay.nostr.or.jp'
+    'wss://relay.nostr.or.jp',
+    'wss://nostr.azte.co'
     // 'ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion'
   ].map(it=>{ return {
     url: it,
