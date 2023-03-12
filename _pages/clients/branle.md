@@ -1,19 +1,17 @@
 ---
 title: Branle
 permalink: /branle/
-url:
+web:
 github: fiatjaf/branle
 instances:
-- url: https://branle.netlify.app/
-  name: netlify
-  comment: a test
-- url: https://branle.netlify.app/
-  name: netlify
-- https://nostr.rocks/
 tags:
 - social
 - client
 license: MIT
 ---
 
-just a test
+Branle was the first client to feature posting, replying and DMs, a feature its
+author always dreaded and even removed from Branle later on.
+
+Branle is meanwhile obsolete and its GitHub repository is "archived" but it
+lives on in its fork [Astral](/astral/).

@@ -44,9 +44,9 @@ The current state might be more a playground but features to come are:
     {%- if p.github -%}
       {%- assign url = p.github | prepend: "https://github.com/" -%}
     {%- else -%}
-      {%- assign url = p.url -%}
+      {%- assign url = p.web -%}
     {%- endif -%}
-* **[{{ p.title }}]({{ url }})** {% if p.github %}![stars](https://img.shields.io/github/stars/{{ p.github}}.svg?style=social){% endif %}
+* **[{{ p.title }}]({{ url }})** {% if p.github %}![stars](https://img.shields.io/github/stars/{{ p.github}}.svg?style=social){% endif %} {% if p.content.size > 20 %}[(more)]({{p.permalink}}){% endif %}
     {% for i in p.instances %}
     * [{{ i.name | default: i }}]({{ i.url | default: i }}){% if i.comment %}: {{ i.comment }}{% endif %}
     {% endfor %}
