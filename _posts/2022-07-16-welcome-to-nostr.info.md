@@ -12,5 +12,4 @@ blockchain.info - a site full of geeky stats and trends to share with the
 world how the network is doing.
 
 If you want to shoot me a message, feel free to contact me on nostr
-(pubkey `46fcbe3065eaf1ae7811465924e48923363ff3f526bd6f73d7c184b16bd8ce4d`),
-via mail or Twitter.
+`npub1gm7tuvr9atc6u7q3gevjfeyfyvmrlul4y67k7u7hcxztz67ceexs078rf6`!
