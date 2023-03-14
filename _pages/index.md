@@ -38,17 +38,30 @@ The current state might be more a playground but features to come are:
   - Follows graphs - and how they change over time
 
 ## Nostr Overview
+<<<<<<< HEAD
 ### Clients 
 {% for p in site.pages %}
   {% if p.tags contains "client" %}
+=======
+### Clients
+
+<table>
+{%- for p in site.pages -%}
+  {%- if p.tags contains "client" -%}
+>>>>>>> 27a515258fe08b535fb53c33fd705abb5f66304a
     {%- if p.github -%}
       {%- assign url = p.github | prepend: "https://github.com/" -%}
     {%- else -%}
       {%- assign url = p.web -%}
     {%- endif -%}
-* **[{{ p.title }}]({{ url }})** {% if p.github %}![stars](https://img.shields.io/github/stars/{{ p.github}}.svg?style=social){% endif %} {% if p.content.size > 20 %}[(more)]({{p.permalink}}){% endif %}
-    {% for i in p.instances %}
-    * [{{ i.name | default: i }}]({{ i.url | default: i }}){% if i.comment %}: {{ i.comment }}{% endif %}
-    {% endfor %}
-  {% endif %}
-{% endfor %}
+    <tr>
+      <td><strong><a href="{{ url }}">{{ p.title }}</a></strong><br>
+      <ul>{%- for i in p.instances -%}
+              <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
+              {%- endfor -%}</ul></td>
+      <td>{%- if p.github -%}<img src="https://img.shields.io/github/stars/{{ p.github }}.svg?style=social" alt="stars">{%- endif -%}</td>
+      <td>{%- if p.content.size > 20 -%}<a href="{{ p.permalink }}">🔍</a>{%- endif -%}</td>
+    </tr>
+  {%- endif -%}
+{%- endfor -%}
+</table>

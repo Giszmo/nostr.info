@@ -7,8 +7,11 @@ instances:
 tags:
 - social
 - client
+<<<<<<< HEAD
 platforms:
 - mobile
+=======
+>>>>>>> 27a515258fe08b535fb53c33fd705abb5f66304a
 license: GPL-3
 ---
 
