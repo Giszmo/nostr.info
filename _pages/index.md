@@ -38,7 +38,7 @@ The current state might be more a playground but features to come are:
   - Follows graphs - and how they change over time
 
 ## Nostr Overview
-
+### Clients 
 {% for p in site.pages %}
   {% if p.tags contains "client" %}
     {%- if p.github -%}
