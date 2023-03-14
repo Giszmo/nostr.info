@@ -15,4 +15,4 @@ platforms:
 license: MIT
 ---
 
-Users can their nostr public and private keys to play with other nostr users or bots using a nostr relay. 
+Users can use their nostr public and private keys to play with other nostr users or bots using a nostr relay. 

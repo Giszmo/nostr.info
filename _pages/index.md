@@ -38,17 +38,12 @@ The current state might be more a playground but features to come are:
   - Follows graphs - and how they change over time
 
 ## Nostr Overview
-<<<<<<< HEAD
-### Clients 
-{% for p in site.pages %}
-  {% if p.tags contains "client" %}
-=======
+
 ### Clients
 
 <table>
 {%- for p in site.pages -%}
   {%- if p.tags contains "client" -%}
->>>>>>> 27a515258fe08b535fb53c33fd705abb5f66304a
     {%- if p.github -%}
       {%- assign url = p.github | prepend: "https://github.com/" -%}
     {%- else -%}

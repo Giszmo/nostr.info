@@ -12,11 +12,10 @@ platforms:
 license: 
 ---
 
-<<<<<<< HEAD
 ### A Nostr Browser in Clojure
 
 A desktop client for the nostr protocol.
-=======
+
 # A Nostr Browser in Clojure
 
 ![more-speech](/images/more-speech.png)
@@ -32,4 +31,4 @@ A desktop client for the nostr protocol.
 > No Fluff. Just Stuff (To borrow a phrase). No fancy colors or glitter, no doo-dads, bells, or whistles. Just a simple way to scan, read, and compose messages.
 
 The most recent update for this is on March 5, 2023.
->>>>>>> 27a515258fe08b535fb53c33fd705abb5f66304a
+
