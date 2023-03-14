@@ -37,25 +37,4 @@ The current state might be more a playground but features to come are:
   - Active pubkeys per hour/day/week
   - Follows graphs - and how they change over time
 
-## Nostr Overview
-### Clients
-
-<table>
-{%- for p in site.pages -%}
-  {%- if p.tags contains "client" -%}
-    {%- if p.github -%}
-      {%- assign url = p.github | prepend: "https://github.com/" -%}
-    {%- else -%}
-      {%- assign url = p.web -%}
-    {%- endif -%}
-    <tr>
-      <td><strong><a href="{{ url }}">{{ p.title }}</a></strong><br>
-      <ul>{%- for i in p.instances -%}
-              <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
-              {%- endfor -%}</ul></td>
-      <td>{%- if p.github -%}<img src="https://img.shields.io/github/stars/{{ p.github }}.svg?style=social" alt="stars">{%- endif -%}</td>
-      <td>{%- if p.content.size > 20 -%}<a href="{{ p.permalink }}">🔍</a>{%- endif -%}</td>
-    </tr>
-  {%- endif -%}
-{%- endfor -%}
-</table>
+{% include nostrLinks.html %}
