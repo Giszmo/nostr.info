@@ -1,80 +1,7 @@
-<style>
-  #results {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: start;
-    justify-content: start;
-    position: relative;
-  }
-  
-  .result {
-    width: 15em;
-    min-height: 3em;
-    background: #DDD;
-    margin: 1em;
-    border-radius: 20px;
-    padding: 1em;
-    display: flex;
-    flex-wrap: wrap;
-    position: relative;
-  }
-  
-  .name {
-    position: relative;
-    width: 100%;
-  }
-  
-  .details {
-    position: absolute;
-    bottom: 1em;
-    right: 1em;
-  }
-
-  .gh {
-    position: absolute;
-    top: 1em;
-    right: 1em;
-  }
-  
-  .tags {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: start;
-    justify-content: start;
-    position: relative;
-  }
-  
-  .tag {
-    background: #BBB;
-    margin: 0.2em;
-    margin-left: 0;
-    border-radius: 5px;
-    padding: 0.2em;
-    display: flex;
-    flex-wrap: wrap;
-    position: relative;
-    cursor:pointer;
-    cursor:hand;
-  }
-
-  .tag.active {
-    background: #8B8;
-  }
-  
-  .tag.available {
-    background: #BBB;
-  }
-  
-  .tag.unavailable {
-    background: #B88;
-  }
-</style>
-
-<h2>Nostr Links</h2>
+<h2>Projects</h2>
 
 <div id="toggles" class="tags"></div>
+
 <div id="results">
   {%- for p in site.pages -%}
     {%- if p.tags -%}
@@ -83,10 +10,10 @@
       {%- else -%}
         {%- assign url = p.web -%}
       {%- endif -%}
-      <div class="result {{ p.tags | join: " " }}">
+      <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }}">
         <div class="name"><a href="{{ url }}">{{ p.title }}</a></div>
         <div class="details"></div>
-        <div class="tags">{%- for t in p.tags -%}{% include tag.html tag=t %}{%- endfor -%}</div>
+        <div class="tags">{%- for t in p.platforms -%}{% include tag.html tag=t %}{%- endfor -%}{%- for t in p.tags -%}{% include tag.html tag=t %}{%- endfor -%}</div>
         <div class="instances"><ul>{%- for i in p.instances -%}
                 <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
                 {%- endfor -%}</ul></div>
@@ -118,40 +45,36 @@ function updateAvailableTags() {
       ...new Set(
         window.stuff.filter(st =>
           window.activeTags.every(it =>
-            st.tags.includes(it)
-          )).map(it=>it.tags).flat())]
+            st.tags.includes(it) || st.platforms.includes(it)
+          )).map(it => it.tags.concat(it.platforms)).flat())]
   } else {
     window.availableTags = window.allTags
   }
+}
+
+function addToggle(name, cls) {
+  const btn = document.createElement("div")
+  btn.setAttribute("class", `tag ${name} ${cls}`)
+  btn.setAttribute("onclick", `clickTag('${name}')`)
+  btn.innerHTML = name
+  toggles.append(btn)
 }
 
 function update() {
   updateAvailableTags()
   toggles.replaceChildren()
   window.activeTags.forEach(t => {
-    const btn = document.createElement("div")
-    btn.setAttribute("class", `tag ${t} active`)
-    btn.setAttribute("onclick", `clickTag('${t}')`)
-    btn.innerHTML = t
-    toggles.append(btn)
+    addToggle(t, 'active')
   })
   window.availableTags.forEach(t => {
     if (window.activeTags.includes(t))
       return
-    const btn = document.createElement("div")
-    btn.setAttribute("class", `tag ${t} available`)
-    btn.setAttribute("onclick", `clickTag('${t}')`)
-    btn.innerHTML = t
-    toggles.append(btn)
+    addToggle(t, 'available')
   })
   window.allTags.forEach(t => {
     if (window.activeTags.includes(t) || window.availableTags.includes(t))
       return
-    const btn = document.createElement("div")
-    btn.setAttribute("class", `tag ${t} unavailable`)
-    btn.setAttribute("onclick", `clickTag('${t}')`)
-    btn.innerHTML = t
-    toggles.append(btn)
+    addToggle(t, 'unavailable')
   })
   if (window.activeTags.length) {
     document.querySelectorAll('.result').forEach(it => it.style.display = 'none')
@@ -161,3 +84,5 @@ function update() {
   }
 }
 </script>
+
+<link rel="stylesheet" href="{{ base_path }}/assets/css/nostrLinks.css" />

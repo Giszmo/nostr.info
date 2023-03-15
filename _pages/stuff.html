@@ -18,9 +18,12 @@ window.stuff = [
     "github": "{{ p.github }}",
     "instances": {{ p.instances | jsonify }},
     "tags": {{ p.tags | jsonify }},
+    "platforms": {{ p.platforms | jsonify }},
     "license": "{{ p.license }}"
   }{% unless forloop.last %},{% endunless %}
 {%- endfor -%}
 ]
 window.activeTags = ["client"]
-window.allTags = {{ site.pages | map: "tags" | compact | uniq | jsonify }}
+{% assign t = site.pages | map: "tags" %}
+{% assign p = site.pages | map: "platforms" %}
+window.allTags = {{ p | concat: t | compact | uniq | jsonify }}

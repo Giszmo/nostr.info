@@ -1,0 +1,71 @@
+#results {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: start;
+  position: relative;
+}
+
+.result {
+  width: 15em;
+  min-height: 3em;
+  background: #DDD;
+  margin: 1em;
+  border-radius: 20px;
+  padding: 1em;
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.name {
+  position: relative;
+  width: 100%;
+}
+
+.details {
+  position: absolute;
+  bottom: 1em;
+  right: 1em;
+}
+
+.gh {
+  position: absolute;
+  top: 1em;
+  right: 1em;
+}
+
+.tags {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: start;
+  position: relative;
+}
+
+.tag {
+  background: #BBB;
+  margin: 0.2em;
+  margin-left: 0;
+  border-radius: 5px;
+  padding: 0.2em;
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  cursor:pointer;
+  cursor:hand;
+}
+
+.tag.active {
+  background: #8B8;
+}
+
+.tag.available {
+  background: #BBB;
+}
+
+.tag.unavailable {
+  background: #B88;
+}
