@@ -5,12 +5,16 @@ web:
 github: unclebob/more-speech
 instances:
 tags:
-- social
+- chat
 - client
 platforms:
-- desktop 
+- linux 
 license: 
 ---
+
+### A Nostr Browser in Clojure
+
+A desktop client for the nostr protocol.
 
 # A Nostr Browser in Clojure
 
@@ -27,3 +31,4 @@ license:
 > No Fluff. Just Stuff (To borrow a phrase). No fancy colors or glitter, no doo-dads, bells, or whistles. Just a simple way to scan, read, and compose messages.
 
 The most recent update for this is on March 5, 2023.
+

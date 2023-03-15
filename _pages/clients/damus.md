@@ -7,6 +7,8 @@ instances:
 tags:
 - social
 - client
+platforms:
+- iOS
 license: GPL-3
 ---
 
