@@ -5,7 +5,7 @@ permalink: /relays/
 ---
 
 <link rel="stylesheet" href="/assets/css/main.css">
-<script src="/assets/js/main.js"></script>
+<script src="/js/relays.js"></script>
 
 <select name="tab" id="tab" onchange="setDirty()">
   <option value="relays">Show Relays</option>
