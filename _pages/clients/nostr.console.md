@@ -6,6 +6,9 @@ github: vishalxl/nostr_console
 instances:
 tags:
 - client
+- social
+- dm
+- chat
 platforms:
 - desktop
 license: AGPL-3.0
