@@ -6,6 +6,7 @@ github: emeceve/loquaz
 instances:
 tags:
 - client
+- dm
 platforms:
 - desktop
 license: MIT

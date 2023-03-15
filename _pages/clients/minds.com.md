@@ -1,12 +1,9 @@
 ---
 title: Minds.com
 permalink: /minds.com/
-web:
-github: Minds/nostr-nips
+web: https://minds.com
+github: 
 instances:
-- name: Minds.com
-  url: https://minds.com
-  comment: Minds is a social network with plans integrate a nostr relay and functions in their social network.  
 tags:
 - social
 - client

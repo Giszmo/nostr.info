@@ -8,7 +8,7 @@ instances:
   url: https://cmdruid.github.io/nostr-emitter/examples/nostr-chat/
   comment: Instance managed by @cmdruid
 tags:
-- social
+- chat
 - client
 platforms:
 - web

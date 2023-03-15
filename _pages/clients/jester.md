@@ -8,7 +8,6 @@ instances:
   comment: Web interface for using Jester to play chess via the nostr protocol
 tags:
 - social
-- application
 - games
 platforms:
 - web
