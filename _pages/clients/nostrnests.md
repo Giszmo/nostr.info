@@ -9,9 +9,7 @@ instances:
   comment: Audio space
 tags:
 - social
-- voice chat
-- podcast recording
-- audio stream 
+- audio
 platforms:
 - web
 license: 

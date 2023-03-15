@@ -41,12 +41,23 @@ function clickTag(t) {
 
 function updateAvailableTags() {
   if (window.activeTags.length) {
-    window.availableTags = [
-      ...new Set(
-        window.stuff.filter(st =>
-          window.activeTags.every(it =>
-            st.tags.includes(it) || st.platforms.includes(it)
-          )).map(it => it.tags.concat(it.platforms)).flat())]
+    window.availableTags = []
+    function addFrom(name) {
+      window.availableTags.push(
+        ...new Set(
+          window.stuff.filter(st => {
+            const t = (st.tags || []).concat(st.platforms || [])
+            return window
+              .activeTags
+              .every( it => t.includes(it) )
+          })
+          .map(it => it[name] || [])
+          .flat()
+        )
+      )
+    }
+    addFrom('platforms')
+    addFrom('tags')
   } else {
     window.availableTags = window.allTags
   }

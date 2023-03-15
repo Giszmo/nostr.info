@@ -18,8 +18,8 @@ tags:
 - client
 platforms:
 - web
-- android
-- iOS
+- Android
+- iPhone
 license: MIT
 ---
 

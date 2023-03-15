@@ -7,7 +7,7 @@ instances:
 tags:
 - client
 platforms:
-- linux
+- Linux
 license: MIT
 ---
 

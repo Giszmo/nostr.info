@@ -10,7 +10,6 @@ instances:
 tags:
 - client
 - dm
-- lightning request sats
 platforms:
 - web
 license: 

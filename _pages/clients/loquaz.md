@@ -8,9 +8,9 @@ tags:
 - client
 - dm
 platforms:
-- linux
-- macos
-- windows
+- Linux
+- macOS
+- Windows
 license: MIT
 ---
 

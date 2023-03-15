@@ -8,7 +8,7 @@ tags:
 - contact management
 - profile manager
 platforms:
-- testflight
+- iPhone
 license: GPL-3.0
 ---
 

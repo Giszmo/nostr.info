@@ -11,11 +11,11 @@ tags:
 - social
 - client
 platforms:
-- android 
-- ios 
-- linux
-- macos 
-- windows 
+- Android 
+- iPhone 
+- Linux
+- macOS 
+- Windows 
 - web
 license: GPL-3.0
 ---

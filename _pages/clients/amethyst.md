@@ -9,9 +9,9 @@ tags:
 - client
 - dm
 - chat
-- lightning tips
+- lightningTips
 platforms:
-- android
+- Android
 license: MIT
 ---
 

@@ -7,9 +7,9 @@ instances:
 tags:
 - cli
 platforms:
-- linux
+- Linux
 - macOS
-- windows  
+- Windows  
 license: MIT
 ---
 

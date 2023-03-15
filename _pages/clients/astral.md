@@ -15,7 +15,7 @@ tags:
 - social
 - client
 - dm
-- lightning tips
+- lightningTips
 license: MIT
 ---
 

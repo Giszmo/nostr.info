@@ -7,9 +7,9 @@ instances:
 tags:
 - client
 platforms:
-- linux
-- macos
-- windows
+- Linux
+- macOS
+- Windows
 license: MIT
 ---
 

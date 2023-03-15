@@ -10,7 +10,7 @@ instances:
 tags:
 - blog
 - social
-- private notes
+- privateNotes
 platforms:
 - web
 license: MIT

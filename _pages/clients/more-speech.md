@@ -8,7 +8,7 @@ tags:
 - chat
 - client
 platforms:
-- linux 
+- Linux 
 license: 
 ---
 

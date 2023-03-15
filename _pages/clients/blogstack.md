@@ -8,8 +8,9 @@ instances:
   url: https://blogstack.io
   comment: Blog instance 
 tags:
+- client
 - blog
-- lightning tips
+- lightningTips
 platforms:
 - web
 license: GPL-3.0

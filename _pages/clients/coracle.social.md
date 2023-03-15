@@ -13,9 +13,9 @@ tags:
 - dm 
 - chat
 platforms:
-- linux
-- macos
-- windows
+- Linux
+- macOS
+- Windows
 - web
 license: MPL-2.0
 ---

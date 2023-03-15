@@ -24,6 +24,6 @@ window.stuff = [
 {%- endfor -%}
 ]
 window.activeTags = ["client"]
-{% assign t = site.pages | map: "tags" %}
 {% assign p = site.pages | map: "platforms" %}
+{% assign t = site.pages | map: "tags" %}
 window.allTags = {{ p | concat: t | compact | uniq | jsonify }}

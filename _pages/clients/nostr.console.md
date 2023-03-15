@@ -10,9 +10,9 @@ tags:
 - dm
 - chat
 platforms:
-- linux
-- macos
-- windows
+- Linux
+- macOS
+- Windows
 license: AGPL-3.0
 ---
 

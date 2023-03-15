@@ -8,8 +8,9 @@ instances:
   url: https://sendstr.com
   comment: Sendstr is an open source end-to-end encrypted shared clipboard app built on top of Nostr
 tags:
+- client
 - social
-- application
+- tool
 platforms:
 - web
 license: MIT
