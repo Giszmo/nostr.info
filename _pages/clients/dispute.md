@@ -10,7 +10,6 @@ instances:
 tags:
 - social
 - client
-- debate
 platforms:
 - desktop
 - mobile

@@ -38,7 +38,6 @@ The current state might be more a playground but features to come are:
   - Follows graphs - and how they change over time
 
 ## Nostr Overview
-
 ### Clients
 
 <table>

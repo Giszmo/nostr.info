@@ -8,7 +8,7 @@ instances:
   url: https://nosbin.com
   comment: A Nostr pastebin instance ran by Jack Chakany
 tags:
-- social
+- tool
 - client
 platforms:
 - desktop

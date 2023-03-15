@@ -12,7 +12,7 @@ tags:
 - client
 platforms:
 - web
-license: None
+license: 
 ---
 
 > A twitter-style Nostr web client
