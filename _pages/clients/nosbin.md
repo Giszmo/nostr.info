@@ -11,7 +11,8 @@ tags:
 - tool
 - client
 platforms:
-- desktop
+- web
 license: MIT
 ---
+
 A decentralized pasting platform built on Nostr.

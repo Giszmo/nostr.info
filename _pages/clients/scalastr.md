@@ -7,8 +7,11 @@ instances:
 tags:
 - social
 - client
+- wip
 platforms:
-- cross-platform
+- linux
+- windows
+- macos
 license: MIT
 ---
 

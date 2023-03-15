@@ -8,7 +8,7 @@ tags:
 - social
 - client
 platforms:
-- mobile
+- iOS
 license: GPL-3
 ---
 

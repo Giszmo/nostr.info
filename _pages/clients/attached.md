@@ -7,10 +7,11 @@ instances:
 tags:
 - social
 - client
+- wip
 platforms:
-- mobile
 license: GPL-3.0
 ---
 
 > A completely Open-Source mobile client for the nostr-protocol built using React Native.
+
 

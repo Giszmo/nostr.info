@@ -10,8 +10,10 @@ tags:
 - dm
 - chat
 platforms:
-- desktop
+- linux
+- macos
+- windows
 license: AGPL-3.0
 ---
 
-Nostr console is an open-source twitter-like social network, direct chat app and group chat all bundled into one program. Built on the decentralized Nostr protocol.
+> Nostr console is an open-source twitter-like social network, direct chat app and group chat all bundled into one program. Built on the decentralized Nostr protocol.

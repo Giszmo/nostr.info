@@ -5,10 +5,10 @@ web:
 github: unclebob/more-speech
 instances:
 tags:
-- social
+- chat
 - client
 platforms:
-- desktop 
+- linux 
 license: 
 ---
 

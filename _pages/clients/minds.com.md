@@ -8,7 +8,7 @@ tags:
 - social
 - client
 platforms:
-- cross-platform
+- web
 license: MIT
 ---
 

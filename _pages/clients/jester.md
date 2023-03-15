@@ -7,8 +7,8 @@ instances:
   url: https://jesterui.github.io/
   comment: Web interface for using Jester to play chess via the nostr protocol
 tags:
-- social
-- games
+- game
+- chess
 platforms:
 - web
 license: MIT

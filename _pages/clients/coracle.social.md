@@ -10,7 +10,12 @@ instances:
 tags:
 - social
 - client
+- dm 
+- chat
 platforms:
+- linux
+- macos
+- windows
 - web
 license: MPL-2.0
 ---
@@ -18,4 +23,6 @@ license: MPL-2.0
 > A beginner-friendly nostr web client.
 > 
 > Coracle is a web client for the Nostr protocol. While Nostr is useful for many things, Coracle focuses on providing a high-quality social media experience.
+
+It is possible to run coracle on a desktop browser locally via npm.
 

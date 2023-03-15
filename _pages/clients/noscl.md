@@ -7,7 +7,7 @@ instances:
 tags:
 - client
 platforms:
-- desktop
+- linux
 license: Public Domain
 ---
 A command line client written in Go for Nostr created by fiatjaf.

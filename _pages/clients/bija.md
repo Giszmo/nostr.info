@@ -8,7 +8,7 @@ tags:
 - social
 - client
 platforms:
-- desktop
+- linux
 license: MIT
 ---
 

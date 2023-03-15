@@ -11,9 +11,12 @@ tags:
 - social
 - client
 platforms:
-- desktop
+- linux
+- macOS
+- windows
 - android
 - iOS 
+- web
 license: MIT
 ---
 
