@@ -1,0 +1,26 @@
+---
+layout: none
+permalink: /js/stuff.js
+---
+
+window.stuff = [
+{% assign ps = "" | split: "" %}
+{%- for p in site.pages -%}
+  {% if p.tags %}
+    {% assign ps = ps | push: p %}
+  {% endif %}
+{%- endfor -%}
+{%- for p in ps -%}
+  {
+    "title": "{{ p.title }}",
+    "permalink": "{{ p.permalink }}",
+    "web": "{{ p.web }}",
+    "github": "{{ p.github }}",
+    "instances": {{ p.instances | jsonify }},
+    "tags": {{ p.tags | jsonify }},
+    "license": "{{ p.license }}"
+  }{% unless forloop.last %},{% endunless %}
+{%- endfor -%}
+]
+window.activeTags = ["client"]
+window.allTags = {{ site.pages | map: "tags" | compact | uniq | jsonify }}
