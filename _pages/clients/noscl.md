@@ -6,6 +6,7 @@ github: fiatjaf/noscl
 instances:
 tags:
 - client
+- cli
 platforms:
 - Linux
 license: Public Domain
