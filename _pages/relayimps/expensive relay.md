@@ -4,7 +4,7 @@ permalink: /expensive relay/
 web: 
 github: fiatjaf/relayer/tree/master/expensive
 tags:
-- relay implementation
+- relayImplementation
 programming language: Go
 license: 
 nips:

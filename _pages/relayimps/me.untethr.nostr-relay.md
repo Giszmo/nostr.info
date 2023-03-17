@@ -4,7 +4,7 @@ permalink:
 web: 
 github: atdixon/me.untethr.nostr-relay
 tags:
-- relay implementation
+- relayImplementation
 programming language: Clojure
 license: 
 nips:

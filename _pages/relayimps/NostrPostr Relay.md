@@ -4,7 +4,7 @@ permalink: /NostrPoster-Relay/
 web: 
 github: Giszmo/NostrPostr/tree/master/NostrRelay
 tags:
-- relay implementation
+- relayImplementation
 programming language: 
 - Javascript
 - Kotlin

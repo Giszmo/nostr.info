@@ -4,7 +4,7 @@ permalink: /Minds Nostr Relay/
 web: 
 github: https://gitlab.com/minds/infrastructure/nostr-relay
 tags:
-- relay implementation
+- relayImplementation
 programming language: Javascript
 license: GNU AGPL-3.0
 nips:

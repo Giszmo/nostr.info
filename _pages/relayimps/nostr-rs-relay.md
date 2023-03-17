@@ -4,7 +4,7 @@ permalink: /nostr-rs-relay/
 web: https://sr.ht/~gheartsfield/nostr-rs-relay/
 github: scsibug/nostr-rs-relay
 tags:
-- relay implementation
+- relayImplementation
 programming language: 
 license:
 nips: 

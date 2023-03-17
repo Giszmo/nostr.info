@@ -4,7 +4,7 @@ permalink:
 web: 
 github: johnny423/pyrelay
 tags:
-- relay implementation
+- relayImplementation
 programming language: 
 license: Apache-2.0
 nips: 

@@ -4,7 +4,7 @@ permalink: /Astro/
 web: 
 github: Nostrology/astro
 tags:
-- relay implementation 
+- relayImplementation 
 platforms: 
 programming language: Elixir, Javascript
 license: MIT

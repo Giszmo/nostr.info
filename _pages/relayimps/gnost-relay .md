@@ -4,7 +4,7 @@ permalink: /gnost-relay/
 web: 
 github: barkyq/gnost-relay
 tags:
-- relay implementation
+- relayImplementation
 programming language: Go
 license: GPL-3.0
 nips: 

@@ -4,7 +4,7 @@ permalink: /nostrex/
 web: 
 github: RiverFinancial/nostrex
 tags:
-- relay implementation
+- relayImplementation
 programming language: 
 - Elixir
 - Javascript

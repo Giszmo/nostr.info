@@ -4,7 +4,7 @@ permalink: /nostrpy/
 web: 
 github: monty888/nostrpy
 tags:
-- relay implementation
+- relayImplementation
 programming language:
 - Python
 - Javascript 

@@ -4,7 +4,7 @@ permalink: /RelayerBasic/
 web: 
 github: fiatjaf/relayer/tree/master/basic
 tags:
-- relay implementation
+- relayImplementation
 programming language: 
 - Go
 license: Unlicense
