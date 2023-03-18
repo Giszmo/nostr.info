@@ -26,4 +26,5 @@ window.stuff = [
 window.activeTags = ["client"]
 {% assign p = site.pages | map: "platforms" %}
 {% assign t = site.pages | map: "tags" %}
-window.allTags = {{ p | concat: t | compact | uniq | jsonify }}
+{% assign n = site.pages | map: "nips" %}
+window.allTags = {{ p | concat: t | concat: n | compact | uniq | jsonify }}

@@ -69,3 +69,11 @@
 .tag.unavailable {
   background: #B88;
 }
+
+.platform {
+  border: solid blue 1px;
+}
+
+.nip {
+  border: solid orange 1px;
+}

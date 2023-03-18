@@ -1,8 +1,8 @@
 ---
 title: Minds Nostr Relay
 permalink: /mindsNostrRelay/
-web: 
-github: infrastructure/nostr-relay
+web: https://gitlab.com/minds/infrastructure/nostr-relay
+github: 
 tags:
 - relay
 progLang: 

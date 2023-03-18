@@ -10,10 +10,14 @@
       {%- else -%}
         {%- assign url = p.web -%}
       {%- endif -%}
-      <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }}">
+      <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }} {{ p.nips | join: " " }}">
         <div class="name"><a href="{{ url }}">{{ p.title }}</a></div>
         <div class="details"></div>
-        <div class="tags">{%- for t in p.platforms -%}{% include tag.html tag=t %}{%- endfor -%}{%- for t in p.tags -%}{% include tag.html tag=t %}{%- endfor -%}</div>
+        <div class="tags">
+          {%- for t in p.platforms -%}{% include tag.html tag=t type="platform" %}{%- endfor -%}
+          {%- for t in p.tags -%}{% include tag.html tag=t type="tag" %}{%- endfor -%}
+          {%- for t in p.nips -%}{% include tag.html tag=t type="nip" %}{%- endfor -%}
+        </div>
         <div class="instances"><ul>{%- for i in p.instances -%}
                 <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
                 {%- endfor -%}</ul></div>
@@ -46,7 +50,9 @@ function updateAvailableTags() {
       window.availableTags.push(
         ...new Set(
           window.stuff.filter(st => {
-            const t = (st.tags || []).concat(st.platforms || [])
+            const t = (st.tags || [])
+              .concat(st.platforms || [])
+              .concat(st.nips || [])
             return window
               .activeTags
               .every( it => t.includes(it) )
@@ -58,6 +64,7 @@ function updateAvailableTags() {
     }
     addFrom('platforms')
     addFrom('tags')
+    addFrom('nips')
   } else {
     window.availableTags = window.allTags
   }
