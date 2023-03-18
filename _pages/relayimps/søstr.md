@@ -4,8 +4,8 @@ permalink: /søstr/
 web: 
 github: metasikander/s0str
 tags:
-- relayImplementation
-programming language: Rust
+- relay
+progLang: Rust
 license: 
 ---
 
