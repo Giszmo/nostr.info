@@ -8,10 +8,14 @@ instances:
   url: https://votestr.com/
   comment: Votestr polling demo 
 tags:
-- polling app
+- polling
 platforms:
 - web
 license: MIT
+progLang:
+- TS
+- JS
+authorNPub:
 ---
 
 > Vote in polls using nostr and blind signatures

@@ -13,6 +13,7 @@ tags:
 platforms:
 - web
 license: 
+authorNPub:
 ---
 
 > Nostr client on Android

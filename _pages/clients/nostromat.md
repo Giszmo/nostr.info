@@ -5,9 +5,12 @@ web: https://nostrom.at/
 github: ekimber/nostromat
 instances:
 tags:
-- wip
+- client
 platforms:
-license: 
+license:
+progLang:
+- Clojure
+authorNPub:  
 ---
 
 This seems to be a work-in-progress.

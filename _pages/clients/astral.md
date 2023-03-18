@@ -17,6 +17,10 @@ tags:
 - dm
 - lightningTips
 license: MIT
+progLang:
+- Vue
+- JS
+authorNPub: npub13sx6fp3pxq5rl70x0kyfmunyzaa9pzt5utltjm0p8xqyafndv95q3saapa
 ---
 
 > Branle fork

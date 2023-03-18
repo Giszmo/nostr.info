@@ -8,4 +8,8 @@ tags:
 - social
 - client
 license:
+progLang:
+authorNPub:
 ---
+
+A social network that somewhat looks like Instagram.

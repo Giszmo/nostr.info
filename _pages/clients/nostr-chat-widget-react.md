@@ -13,6 +13,9 @@ tags:
 platforms:
 - web
 license: MIT
+progLang:
+- JS
+authorNPub: npub1taycl7qfuqk9dp0rhkse8lxhz3az9eanjug8j4ympwehvslnetxqkujg5y
 ---
 
 A Nostr chat widget embeddable on web pages. 

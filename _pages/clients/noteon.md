@@ -12,10 +12,13 @@ tags:
 - client
 - chat
 - dm
-- group chat
 platforms:
 - web
 license: MIT
+progLang:
+- TS
+- JS
+authorNPub: npub19nd6uks59q2qdg9d6u3e4tupgmu9lvdvag2aa0gj3faajcgwlj9s9wh5ml
 ---
 
 > A Nostr client focusing direct message and channel message. The main goal is to have an instant messaging application that is easy on people and has a modern touch.

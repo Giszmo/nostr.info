@@ -14,6 +14,10 @@ tags:
 platforms:
 - web
 license: MIT
+progLang:
+- TS
+- TS
+authorNPub:
 ---
 
 Sendstr is an open source end-to-end encrypted shared clipboard app built on top of Nostr.

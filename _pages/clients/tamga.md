@@ -5,11 +5,14 @@ web: https://tamga.pages.dev/
 github: erdaltoprak/tamga
 instances:
 tags:
-- contact management
-- profile manager
+- contactManagement
+- profileManager
 platforms:
 - iPhone
 license: GPL-3.0
+progLang:
+- Swift
+authorNPub: 
 ---
 
 > An offline first nostr contact & profile manager for iOS!

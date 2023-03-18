@@ -13,6 +13,9 @@ tags:
 platforms:
 - web
 license: CC0-1.0
+progLang:
+- JS
+authorNPub: 
 ---
 
 > An end-to-end group encrypted event emitter, built on the Nostr protocol.

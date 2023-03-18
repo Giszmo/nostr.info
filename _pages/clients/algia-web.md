@@ -11,6 +11,9 @@ platforms:
 - macOS
 - Windows
 license: MIT
+progLang:
+- Python
+authorNPub:  
 ---
 
 > algia CLI command backed server-side rendering Nostr web client

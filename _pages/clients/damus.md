@@ -10,6 +10,10 @@ tags:
 platforms:
 - iPhone
 license: GPL-3
+progLang:
+- Swift
+- C
+authorNPub: npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s
 ---
 
 Damus' fills the demand for nostr in the iOS market. 

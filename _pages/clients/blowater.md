@@ -8,7 +8,9 @@ tags:
 - dm
 platforms:
 - web
-license: 
+license:
+progLang:
+authorNPub: 
 ---
 
 > A desktop Web client focusing on chat with delightful UX.

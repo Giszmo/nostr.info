@@ -8,9 +8,12 @@ tags:
 - social
 - client
 platforms:
-- Linux 
+- Linux
 - Windows
 license: MIT
+progLang: 
+- Rust
+authorNPub: npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c
 ---
 
 > Gossip follows people at they relays they profess to post to. That means it has to discover which relays those are (see https://github.com/nostr-protocol/nips/blob/master/65.md) and make smart relay selection choices based on things like which relays cover the most people you follow.

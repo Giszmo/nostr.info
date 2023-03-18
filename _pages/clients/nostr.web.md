@@ -1,8 +1,8 @@
 ---
 title: Nostr Web
 permalink: /nostr.web/
-web: 
-github: nostr/nostrweb
+web: https://git.qcode.ch/nostr/nostrweb
+github: 
 instances:
 - name: Nostr.ch
   url: https://nostr.ch/
@@ -13,6 +13,9 @@ tags:
 platforms:
 - web
 license: MIT
+progLang:
+- JS
+authorNPub:
 ---
 
 > A web interface to Nostr.
