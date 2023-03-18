@@ -6,7 +6,7 @@ github: infrastructure/nostr-relay
 tags:
 - relay
 progLang: 
-- Javascript
+- JS
 license: GNU AGPL-3.0
 nips:
 - NIP-09 

@@ -15,7 +15,7 @@ platforms:
 - macOS
 - Windows
 - Android
-- iPhone 
+- iPhone
 - web
 license: MIT
 ---

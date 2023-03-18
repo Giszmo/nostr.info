@@ -6,7 +6,7 @@ github: Cameri/nostream
 tags:
 - relay
 progLang: 
-- Typescript
+- TS
 license: MIT
 nips: 
 - NIP-09

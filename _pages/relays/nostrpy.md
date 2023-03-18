@@ -7,7 +7,7 @@ tags:
 - relay
 progLang:
 - Python
-- Javascript 
+- JS
 license: MIT
 ---
 

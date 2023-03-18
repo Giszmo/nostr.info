@@ -6,7 +6,7 @@ github: scsibug/nostr-rs-relay
 tags:
 - relay
 progLang:
-- Rust 
+- Rust
 license:
 nips: 
 - NIP-09

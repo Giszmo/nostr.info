@@ -7,7 +7,7 @@ tags:
 - relay
 progLang: 
 - Elixir
-- Javascript
+- JS
 license: GPL-3.0
 nips:
 ---

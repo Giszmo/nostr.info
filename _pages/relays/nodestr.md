@@ -6,7 +6,7 @@ github: Dolu89/nodestr-relay
 tags:
 - relay
 progLang: 
-- Typescript
+- TS
 license: 
 ---
 

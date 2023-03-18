@@ -7,7 +7,7 @@ tags:
 - relay
 progLang: 
 - Kotlin
-license: MIT License
+license: MIT
 nips:
 - NIP-09
 ---
