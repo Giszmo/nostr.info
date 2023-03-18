@@ -4,8 +4,8 @@ permalink: /nostrpy/
 web: 
 github: monty888/nostrpy
 tags:
-- relayImplementation
-programming language:
+- relay
+progLang:
 - Python
 - Javascript 
 license: MIT

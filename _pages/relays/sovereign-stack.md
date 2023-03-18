@@ -4,7 +4,7 @@ permalink: /sovereign-stack/
 web: https://git.sovereign-stack.org/ss/sovereign-stack
 github: 
 tags:
-- relayImplementation
+- relay
 programming language: 
 license: 
 ---

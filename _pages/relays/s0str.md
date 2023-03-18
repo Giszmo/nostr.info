@@ -1,11 +1,11 @@
 ---
-title: søstr
-permalink: /søstr/
+title: s0str
+permalink: /s0str/
 web: 
 github: metasikander/s0str
 tags:
 - relay
-progLang: Rust
+programming language: Rust
 license: 
 ---
 

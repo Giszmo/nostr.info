@@ -4,8 +4,9 @@ permalink: /NNostr/
 web: 
 github: Kukks/NNostr
 tags:
-- relayImplementation
-programming language: C# 
+- relay
+progLang: 
+- C""# 
 license:
 nips: 
 ---

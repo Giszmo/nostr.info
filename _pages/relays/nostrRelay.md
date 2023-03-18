@@ -4,9 +4,10 @@ permalink: /nostr_relay/
 web: https://code.pobblelabs.org/fossil/nostr_relay/index
 github: 
 tags:
-- relayImplementation
-programming language: 
-license: Copyright
+- relay
+progLang: 
+license: 
+- Copyright
 nips: 
 - NIP-09
 - NIP-26

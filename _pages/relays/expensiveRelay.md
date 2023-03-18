@@ -1,11 +1,12 @@
 ---
-title: expensive relay
-permalink: /expensive relay/
+title: Expensive Relay
+permalink: /expensiveRelay/
 web: 
 github: fiatjaf/relayer/tree/master/expensive
 tags:
-- relayImplementation
-programming language: Go
+- relay
+progLang: 
+- Go
 license: 
 nips:
 ---

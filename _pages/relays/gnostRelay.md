@@ -1,11 +1,12 @@
 ---
-title: gnost-relay 
-permalink: /gnost-relay/
+title: gnostRelay 
+permalink: /gnostRelay/
 web: 
 github: barkyq/gnost-relay
 tags:
-- relayImplementation
-programming language: Go
+- relay
+progLang: 
+- Go
 license: GPL-3.0
 nips: 
 - NIP-09

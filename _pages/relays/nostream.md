@@ -4,8 +4,9 @@ permalink: /nostream/
 web: 
 github: Cameri/nostream
 tags:
-- relayImplementation
-programming language: Typescript
+- relay
+progLang: 
+- Typescript
 license: MIT
 nips: 
 - NIP-09

@@ -1,11 +1,11 @@
 ---
 title: PyRelay
-permalink: 
+permalink: /PyRelay/
 web: 
 github: johnny423/pyrelay
 tags:
-- relayImplementation
-programming language: 
+- relay
+progLang: 
 license: Apache-2.0
 nips: 
 - NIP-09

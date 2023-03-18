@@ -1,11 +1,11 @@
 ---
-title: NostrPostr Relay
-permalink: /NostrPoster-Relay/
+title: NostrPostrRelay
+permalink: /nostrPosterRelay/
 web: 
 github: Giszmo/NostrPostr/tree/master/NostrRelay
 tags:
-- relayImplementation
-programming language: 
+- relay
+progLang: 
 - Javascript
 - Kotlin
 license: 

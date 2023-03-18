@@ -1,11 +1,12 @@
 ---
 title: me.untethr.nostr-relay
-permalink: 
+permalink: /untethr/
 web: 
 github: atdixon/me.untethr.nostr-relay
 tags:
-- relayImplementation
-programming language: Clojure
+- relay
+progLang: 
+- Clojure
 license: 
 nips:
 - NIP-42

@@ -4,8 +4,9 @@ permalink: /nostring/
 web: 
 github: xbol0/nostring
 tags:
-- relayImplementation
-programming language: Deno
+- relay
+progLang: 
+- Deno
 license: MIT
 nips: 
 - NIP-09

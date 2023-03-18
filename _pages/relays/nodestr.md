@@ -4,8 +4,9 @@ permalink: /nodestr/
 web: 
 github: Dolu89/nodestr-relay
 tags:
-- relayImplementation
-programming language: Typescript
+- relay
+progLang: 
+- Typescript
 license: 
 ---
 

@@ -1,11 +1,12 @@
 ---
 title: Minds Nostr Relay
-permalink: /Minds Nostr Relay/
+permalink: /mindsNostrRelay/
 web: 
-github: https://gitlab.com/minds/infrastructure/nostr-relay
+github: infrastructure/nostr-relay
 tags:
-- relayImplementation
-programming language: Javascript
+- relay
+progLang: 
+- Javascript
 license: GNU AGPL-3.0
 nips:
 - NIP-09 

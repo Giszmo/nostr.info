@@ -1,11 +1,12 @@
 ---
 title: nostr-rs-relay
-permalink: /nostr-rs-relay/
+permalink: /nostrRSRelay/
 web: https://sr.ht/~gheartsfield/nostr-rs-relay/
 github: scsibug/nostr-rs-relay
 tags:
-- relayImplementation
-programming language: 
+- relay
+progLang:
+- Python3 
 license:
 nips: 
 - NIP-09

@@ -4,8 +4,9 @@ permalink: /knostr/
 web: 
 github: lpicanco/knostr
 tags:
-- relayImplementation
-programming language: Kotlin
+- relay
+progLang: 
+- Kotlin
 license: MIT License
 nips:
 - NIP-09

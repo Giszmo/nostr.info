@@ -4,7 +4,7 @@ permalink: /strfry/
 web: 
 github: hoytech/strfry
 tags:
-- relayImplementation
+- relay
 programming language: 
 - C++
 - Perl

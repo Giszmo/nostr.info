@@ -4,8 +4,8 @@ permalink: /nostrex/
 web: 
 github: RiverFinancial/nostrex
 tags:
-- relayImplementation
-programming language: 
+- relay
+progLang: 
 - Elixir
 - Javascript
 license: GPL-3.0

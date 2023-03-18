@@ -4,8 +4,9 @@ permalink: /Nex/
 web: 
 github: lebrunel/nex
 tags:
-- relayImplementation
-programming language: Elixir
+- relay
+progLang: 
+- Elixir
 license: Apache-2.0
 nips: 
 - NIP-09
