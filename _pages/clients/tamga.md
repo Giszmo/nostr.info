@@ -5,8 +5,8 @@ web: https://tamga.pages.dev/
 github: erdaltoprak/tamga
 instances:
 tags:
-- contact management
-- profile manager
+- contactManagement
+- profileManager
 platforms:
 - iPhone
 license: GPL-3.0

@@ -8,7 +8,7 @@ tags:
 - social
 - client
 platforms:
-- Android 
+- Android
 - iPhone
 license: MIT
 ---
