@@ -13,4 +13,4 @@ license: MIT
 nips:
 ---
 
-An Nostr relay, built using Elixir.
+A Nostr relay, built using Elixir.

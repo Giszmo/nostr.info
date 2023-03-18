@@ -5,7 +5,8 @@ web:
 github: metasikander/s0str
 tags:
 - relay
-programming language: Rust
+progLang:
+- Rust
 license: 
 ---
 

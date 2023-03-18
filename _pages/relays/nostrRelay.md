@@ -5,9 +5,9 @@ web: https://code.pobblelabs.org/fossil/nostr_relay/index
 github: 
 tags:
 - relay
-progLang: 
+progLang:
+- Python
 license: 
-- Copyright
 nips: 
 - NIP-09
 - NIP-26

@@ -1,13 +1,13 @@
 ---
 title: Expensive Relay
 permalink: /expensiveRelay/
-web: 
-github: fiatjaf/relayer/tree/master/expensive
+web: https://github.com/fiatjaf/relayer/tree/master/expensive
+github: fiatjaf/relayer
 tags:
 - relay
 progLang: 
 - Go
-license: 
+license: Unlicense
 nips:
 ---
 

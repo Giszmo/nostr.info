@@ -6,7 +6,7 @@ github: Kukks/NNostr
 tags:
 - relay
 progLang: 
-- C""# 
+- "C#" 
 license:
 nips: 
 ---
