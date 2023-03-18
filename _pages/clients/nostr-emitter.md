@@ -14,7 +14,7 @@ platforms:
 - web
 license: CC0-1.0
 progLang:
-- Javascript 
+- JS
 authorNPub: 
 ---
 

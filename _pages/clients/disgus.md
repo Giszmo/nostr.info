@@ -14,7 +14,7 @@ platforms:
 - web
 license: Unlicense
 progLang: 
-- Javascript
+- JS
 authorNPub:
 ---
 

@@ -8,12 +8,12 @@ tags:
 - social
 - client
 platforms:
-- Android 
+- Android
 - iPhone
 license: MIT
 progLang:
-- Typescript 
-- Javascript 
+- TS
+- JS
 authorNPub: npub1e0usfsrs9gmpjywyd4un0xn22q4u80gtf3tdy5ufuckna0620kuq5w732v
 ---
 

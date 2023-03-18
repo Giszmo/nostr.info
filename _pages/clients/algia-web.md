@@ -12,7 +12,7 @@ platforms:
 - Windows
 license: MIT
 progLang:
-- Python 
+- Python
 authorNPub:  
 ---
 

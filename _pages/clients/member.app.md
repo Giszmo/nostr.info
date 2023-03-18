@@ -14,7 +14,7 @@ platforms:
 - web
 license: AGPL-3.0
 progLang:
-- Javascript
+- JS
 authorNPub: 
 ---
 

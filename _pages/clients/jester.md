@@ -13,7 +13,7 @@ platforms:
 - web
 license: MIT
 progLang:
-- Typescript
+- TS
 authorNPub:
 ---
 

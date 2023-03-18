@@ -14,7 +14,7 @@ platforms:
 license: MIT
 progLang:
 - Rust
-- Typescript
+- TS
 authorNPub: npub1gyggzfjqn0ueedml79ha206d5tjnqy9smjsykzjna005d6k7x74q0uxwy5
 ---
 

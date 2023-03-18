@@ -15,8 +15,8 @@ platforms:
 - web
 license:
 progLang: 
-- Vue 
-- Javascript
+- Vue
+- JS
 authorNPub: npub1duedmhed2nevtejwz4c2hjuu0gz7spqm4s8wnaprta55ln9k3dwssvgpq4 
 ---
 

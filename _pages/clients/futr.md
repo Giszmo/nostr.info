@@ -10,7 +10,7 @@ platforms:
 - Linux
 license: MIT
 progLang:
-- Haskell 
+- Haskell
 authorNPub:
 ---
 

@@ -18,8 +18,8 @@ tags:
 - lightningTips
 license: MIT
 progLang:
-- Vue 
-- Javascript
+- Vue
+- JS
 authorNPub: npub13sx6fp3pxq5rl70x0kyfmunyzaa9pzt5utltjm0p8xqyafndv95q3saapa
 ---
 

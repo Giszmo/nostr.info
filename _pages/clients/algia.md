@@ -10,7 +10,7 @@ tags:
 platforms:
 - Linux
 - macOS
-- Windows  
+- Windows
 license: MIT
 progLang: 
 - Go

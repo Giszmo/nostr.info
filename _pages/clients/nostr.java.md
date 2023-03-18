@@ -10,7 +10,7 @@ tags:
 platforms:
 license:
 progLang:
-- Java 
+- Java
 authorNPub: npub1llfht66qadyxv44q9rkmequztav07r2ufgd6ytl8w3wjs3ffa5yqy398ja 
 ---
 

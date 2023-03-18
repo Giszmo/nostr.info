@@ -11,7 +11,7 @@ platforms:
 - Android
 license: Apache-2.0
 progLang:
-- Typescript
+- TS
 - Java
 - Objective-C++
 - Ocjective-C

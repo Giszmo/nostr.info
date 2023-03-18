@@ -8,13 +8,13 @@ instances:
   url: https://votestr.com/
   comment: Votestr polling demo 
 tags:
-- polling app
+- polling
 platforms:
 - web
 license: MIT
 progLang:
-- Typescript 
-- Javascript 
+- TS
+- JS
 authorNPub:
 ---
 

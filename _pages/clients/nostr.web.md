@@ -14,7 +14,7 @@ platforms:
 - web
 license: MIT
 progLang:
-- Javascript
+- JS
 authorNPub:
 ---
 

@@ -6,13 +6,12 @@ github: ArcadeCity/app
 instances:
 tags:
 - chat
-- wip
 - client
 platforms:
 license: CC0-1.0
 progLang: 
-- Typescript
-- Javascript
+- TS
+- JS
 authorNPub: npub1tlv67m7xvlyplzexuynmfpguvyet0sjffce3y8vu0suuyuwgzauqjk7fdm
 ---
 

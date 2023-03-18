@@ -22,8 +22,8 @@ platforms:
 - iPhone
 license: MIT
 progLang:
-- Javascript 
-- Typescript 
+- JS
+- TS
 authorNPub: npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk
 ---
 

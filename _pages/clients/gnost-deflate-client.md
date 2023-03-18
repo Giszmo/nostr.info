@@ -9,7 +9,7 @@ tags:
 platforms:
 license: GPL-3.0
 progLang:
-- Go 
+- Go
 authorNPub:
 ---
 

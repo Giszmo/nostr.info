@@ -13,7 +13,7 @@ platforms:
 - macOS
 license: MIT
 progLang:
-- Scala 
+- Scala
 authorNPub: npub1u8lnhlw5usp3t9vmpz60ejpyt649z33hu82wc2hpv6m5xdqmuxhs46turz
 ---
 

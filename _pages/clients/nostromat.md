@@ -5,11 +5,11 @@ web: https://nostrom.at/
 github: ekimber/nostromat
 instances:
 tags:
-- wip
+- client
 platforms:
 license:
 progLang:
-- Clojure 
+- Clojure
 authorNPub:  
 ---
 

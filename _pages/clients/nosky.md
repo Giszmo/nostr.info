@@ -11,7 +11,7 @@ platforms:
 - Android
 license: GPL-2.0
 progLang:
-- Kotlin 
+- Kotlin
 authorNPub: 
 ---
 

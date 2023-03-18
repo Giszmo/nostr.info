@@ -11,7 +11,7 @@ platforms:
 - iPhone
 license: GPL-3
 progLang:
-- Swift 
+- Swift
 - C
 authorNPub: npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s
 ---

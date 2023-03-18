@@ -14,8 +14,8 @@ platforms:
 - web
 license: GPL-3.0
 progLang:
-- Typescript 
-- Javascript 
+- TS
+- JS
 authorNPub: npub1v0lxxxxutpvrelsksy8cdhgfux9l6a42hsj2qzquu2zk7vc9qnkszrqj49
 ---
 

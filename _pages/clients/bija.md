@@ -11,8 +11,8 @@ platforms:
 - Linux
 license: MIT
 progLang:
-- Python 
-- Javascript 
+- Python
+- JS
 authorNPub:
 ---
 

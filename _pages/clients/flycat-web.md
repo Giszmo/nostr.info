@@ -15,8 +15,8 @@ platforms:
 - web
 license:
 progLang:
-- Typescript
-- Javascript
+- TS
+- JS
 authorNPub: npub1ghzp7g0peac4lfkeegst3cqz546dk7a5n6twazvrf3nd432yddaqa3qtwq 
 ---
 

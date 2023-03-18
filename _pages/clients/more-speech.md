@@ -8,11 +8,11 @@ tags:
 - chat
 - client
 platforms:
-- Linux 
+- Linux
 license:
 progLang:
 - Clojure
-- Java 
+- Java
 authorNPub: npub19mun7qwdyjf7qs3456u8kyxncjn5u2n7klpu4utgy68k4aenzj6synjnft 
 ---
 

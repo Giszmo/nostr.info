@@ -11,7 +11,7 @@ platforms:
 - web
 license:
 progLang:
-- Typescript
+- TS
 authorNPub:  
 ---
 

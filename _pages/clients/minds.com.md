@@ -11,7 +11,7 @@ platforms:
 - web
 license: MIT 
 progLang: 
-- PHP 
+- PHP
 authorNPub: 
 ---
 

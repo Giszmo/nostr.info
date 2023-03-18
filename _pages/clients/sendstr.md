@@ -15,8 +15,8 @@ platforms:
 - web
 license: MIT
 progLang:
-- Typescript 
-- Javascript 
+- TS
+- TS
 authorNPub:
 ---
 

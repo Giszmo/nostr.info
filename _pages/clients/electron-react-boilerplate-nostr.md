@@ -7,13 +7,12 @@ instances:
 tags:
 - social
 - client
-- wip
 platforms:
 - macOS
 license: MIT
 progLang: 
-- Javascript 
-- Typescript
+- JS
+- TS
 authorNPub: npub1u5njm6g5h5cpw4wy8xugu62e5s7f6fnysv0sj0z3a8rengt2zqhsxrldq3
 ---
 

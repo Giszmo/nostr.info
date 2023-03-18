@@ -8,11 +8,11 @@ tags:
 - social
 - client
 platforms:
-- Linux 
+- Linux
 - Windows
 license: MIT
 progLang: 
-- Rust 
+- Rust
 authorNPub: npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c
 ---
 

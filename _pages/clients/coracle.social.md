@@ -10,7 +10,7 @@ instances:
 tags:
 - social
 - client
-- dm 
+- dm
 - chat
 platforms:
 - Linux
@@ -19,9 +19,9 @@ platforms:
 - web
 license: MPL-2.0
 progLang: 
-- Svelte 
-- Typescript 
-- Javascript
+- Svelte
+- TS
+- JS
 authorNPub: npub154ssd5n79f5tus672a23x9e47stttxa7meg009jxvna3gykmxn7shzd2rh
 ---
 

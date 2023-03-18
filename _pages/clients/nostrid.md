@@ -15,12 +15,12 @@ platforms:
 - macOS
 - Windows
 - Android
-- iPhone 
+- iPhone
 - web
 license: MIT
 progLang:
 - "C#"
-- Javascript 
+- JS
 authorNPub: npub14uc57wfq2zd0g3qh5lpvkq2svvkjl9fruzyxnz9zh95ev2japw7ql2g0sq
 ---
 

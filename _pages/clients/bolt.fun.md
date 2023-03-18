@@ -10,7 +10,7 @@ platforms:
 - web
 license:
 progLang: 
-- Javascript
+- JS
 authorNPub: npub16jmzt0dcsu2l6tqh6p3fzuqlkst8spnhlf43dtd8mrv2ul7we25sray8q8 
 ---
 

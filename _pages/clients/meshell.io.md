@@ -5,7 +5,6 @@ web: https://meshell.io
 github: BEEBSDONE/MeShell_Nodejs
 instances:
 tags:
-- wip
 - blog
 platforms:
 - web
@@ -13,7 +12,7 @@ platforms:
 - Android
 license: 
 progLang:
-- Javascript
+- JS
 authorNPub: 
 ---
 

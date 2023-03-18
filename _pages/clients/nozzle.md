@@ -11,7 +11,7 @@ platforms:
 - Android
 license: MIT
 progLang:
-- Kotlin 
+- Kotlin
 authorNPub: npub1cx5v7vvvdgdq7f76fcszy9wvrnl0ulehkkudzyz4yzrm3yeg2a9quvjyrg
 ---
 

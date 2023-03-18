@@ -14,8 +14,8 @@ platforms:
 - web
 license: MIT
 progLang: 
-- Javascript 
-- Typescript 
+- JS
+- TS
 - Svelte
 authorNPub: npub1chakany8dcz93clv4xgcudcvhnfhdyqutprq2yh72daydevv8zasmuhf02
 ---

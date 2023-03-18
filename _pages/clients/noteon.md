@@ -12,13 +12,12 @@ tags:
 - client
 - chat
 - dm
-- group chat
 platforms:
 - web
 license: MIT
 progLang:
-- Typescript 
-- Javascript 
+- TS
+- JS
 authorNPub: npub19nd6uks59q2qdg9d6u3e4tupgmu9lvdvag2aa0gj3faajcgwlj9s9wh5ml
 ---
 

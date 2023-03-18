@@ -13,7 +13,7 @@ platforms:
 - web
 license: Apache-2.0
 progLang:
-- Typescript 
+- TS
 authorNPub: npub1gcmpunjrue2aq5um7qgnp4p6uxarlxw2z6djehaf0emxjf6gr9us548zdf
 ---
 
