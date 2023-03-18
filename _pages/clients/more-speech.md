@@ -8,8 +8,8 @@ tags:
 - chat
 - client
 platforms:
-- Linux
-license:
+- Linux 
+license: 
 progLang:
 - Clojure
 - Java
