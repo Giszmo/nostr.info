@@ -12,7 +12,10 @@ tags:
 - dm
 platforms:
 - web
-license: 
+license:
+progLang:
+- Javascript
+authorNPub: npub1xfpn52slhcz8rcwc6vg5px6cmrj5zu3twcm0z9nleq6fqgj825ts78h0sd 
 ---
 
 > Encrypted messages over nostr

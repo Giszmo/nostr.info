@@ -13,6 +13,9 @@ tags:
 platforms:
 - web
 license: Unlicense
+progLang: 
+- Javascript
+authorNPub:
 ---
 
 > A commenting system for your blog or website based on Nostr open protocol. It's like Disqus but Nostier...

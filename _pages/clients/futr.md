@@ -9,6 +9,9 @@ tags:
 platforms:
 - Linux
 license: MIT
+progLang:
+- Haskell 
+authorNPub:
 ---
 
 A nostr client desktop app written in haskell.

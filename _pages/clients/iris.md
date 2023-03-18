@@ -21,6 +21,10 @@ platforms:
 - Android
 - iPhone
 license: MIT
+progLang:
+- Javascript 
+- Typescript 
+authorNPub: npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk
 ---
 
 ## App description from Google Play

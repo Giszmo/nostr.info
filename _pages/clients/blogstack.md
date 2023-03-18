@@ -14,6 +14,10 @@ tags:
 platforms:
 - web
 license: GPL-3.0
+progLang:
+- Typescript
+- Javascript
+authorNPub: npub1ygzj9skr9val9yqxkf67yf9jshtyhvvl0x76jp5er09nsc0p3j6qr260k2
 ---
 
 > Decentralized blogs over relay using nostr w/ lightning tips

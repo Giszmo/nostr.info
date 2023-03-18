@@ -12,7 +12,9 @@ tags:
 - audio
 platforms:
 - web
-license: 
+license:
+progLang:
+authorNPub: 
 ---
 
 > Nostr Nests is an audio space for chatting, brainstorming, debating, jamming, micro-conferences and more.

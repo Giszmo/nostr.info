@@ -11,6 +11,10 @@ platforms:
 - Android 
 - iPhone
 license: MIT
+progLang:
+- Typescript 
+- Javascript 
+authorNPub: npub1e0usfsrs9gmpjywyd4un0xn22q4u80gtf3tdy5ufuckna0620kuq5w732v
 ---
 
 > A Nostr client for iOS and Android

@@ -13,6 +13,10 @@ tags:
 platforms:
 - web
 license: GPL-3.0
+progLang:
+- Typescript 
+- Javascript 
+authorNPub: npub1v0lxxxxutpvrelsksy8cdhgfux9l6a42hsj2qzquu2zk7vc9qnkszrqj49
 ---
 
 > Snort is a nostr UI built with React aiming for speed and efficiency.

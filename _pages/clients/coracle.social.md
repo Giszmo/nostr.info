@@ -18,6 +18,11 @@ platforms:
 - Windows
 - web
 license: MPL-2.0
+progLang: 
+- Svelte 
+- Typescript 
+- Javascript
+authorNPub: npub154ssd5n79f5tus672a23x9e47stttxa7meg009jxvna3gykmxn7shzd2rh
 ---
 
 > A beginner-friendly nostr web client.

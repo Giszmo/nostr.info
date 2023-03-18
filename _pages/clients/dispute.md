@@ -18,6 +18,12 @@ platforms:
 - Windows 
 - web
 license: GPL-3.0
+progLang: 
+- Dart
+- C++
+- Swift
+- C
+authorNPub:
 ---
 
 > A cross-platform client for Nostr.

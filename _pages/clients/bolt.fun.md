@@ -8,7 +8,10 @@ tags:
 - social
 platforms:
 - web
-license: 
+license:
+progLang: 
+- Javascript
+authorNPub: npub16jmzt0dcsu2l6tqh6p3fzuqlkst8spnhlf43dtd8mrv2ul7we25sray8q8 
 ---
 
 > A community of builders and designers in Bitcoin & Nostr. 

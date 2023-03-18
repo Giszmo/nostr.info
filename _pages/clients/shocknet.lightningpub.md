@@ -9,7 +9,10 @@ tags:
 - client
 platforms:
 - web
-license: 
+license:
+progLang:
+- Typescript
+authorNPub:  
 ---
 
 > Enable WebApps from your Lightning node.

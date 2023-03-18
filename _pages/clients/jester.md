@@ -12,6 +12,9 @@ tags:
 platforms:
 - web
 license: MIT
+progLang:
+- Typescript
+authorNPub:
 ---
 
 Users can use their nostr public and private keys to play with other nostr users or bots using a nostr relay. 

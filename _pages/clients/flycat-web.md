@@ -13,7 +13,11 @@ tags:
 - blog
 platforms:
 - web
-license: 
+license:
+progLang:
+- Typescript
+- Javascript
+authorNPub: npub1ghzp7g0peac4lfkeegst3cqz546dk7a5n6twazvrf3nd432yddaqa3qtwq 
 ---
 
 > Twitter-like interface with support for blog post creation

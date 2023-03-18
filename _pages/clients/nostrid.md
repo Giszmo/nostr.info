@@ -18,6 +18,10 @@ platforms:
 - iPhone 
 - web
 license: MIT
+progLang:
+- "C#"
+- Javascript 
+authorNPub: npub14uc57wfq2zd0g3qh5lpvkq2svvkjl9fruzyxnz9zh95ev2japw7ql2g0sq
 ---
 
 > Nostrid is a multi-platform, open-source Nostr client. It is written in .NET and runs in Windows, MacOS, Linux, Android and iOS.

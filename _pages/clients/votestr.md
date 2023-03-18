@@ -12,6 +12,10 @@ tags:
 platforms:
 - web
 license: MIT
+progLang:
+- Typescript 
+- Javascript 
+authorNPub:
 ---
 
 > Vote in polls using nostr and blind signatures

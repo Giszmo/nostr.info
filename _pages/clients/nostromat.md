@@ -7,7 +7,10 @@ instances:
 tags:
 - wip
 platforms:
-license: 
+license:
+progLang:
+- Clojure 
+authorNPub:  
 ---
 
 This seems to be a work-in-progress.

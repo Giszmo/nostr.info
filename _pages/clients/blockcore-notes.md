@@ -14,6 +14,9 @@ tags:
 platforms:
 - web
 license: MIT
+progLang:
+- Typescript
+authorNPub: npub1zl3g38a6qypp6py2z07shggg45cu8qex992xpss7d8zrl28mu52s4cjajh
 ---
 
 > Notes app for decentralized infrastructures (Nostr and Web5)

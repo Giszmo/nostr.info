@@ -10,9 +10,14 @@ instances:
 tags:
 - social
 - client
+- dm
 platforms:
 - web
-license: 
+license:
+progLang: 
+- Vue 
+- Javascript
+authorNPub: npub1duedmhed2nevtejwz4c2hjuu0gz7spqm4s8wnaprta55ln9k3dwssvgpq4 
 ---
 
 > A twitter-style Nostr web client

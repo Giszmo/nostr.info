@@ -10,6 +10,9 @@ tags:
 platforms:
 - iPhone
 license: GPL-3.0
+progLang:
+- Swift
+authorNPub: 
 ---
 
 > An offline first nostr contact & profile manager for iOS!

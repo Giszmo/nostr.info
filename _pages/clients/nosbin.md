@@ -13,6 +13,11 @@ tags:
 platforms:
 - web
 license: MIT
+progLang: 
+- Javascript 
+- Typescript 
+- Svelte
+authorNPub: npub1chakany8dcz93clv4xgcudcvhnfhdyqutprq2yh72daydevv8zasmuhf02
 ---
 
 A decentralized pasting platform built on Nostr.
