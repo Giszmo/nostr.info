@@ -22,6 +22,8 @@
 .name {
   position: relative;
   width: 50%;
+  word-break: break-word;
+  font-weight: bold;
 }
 
 .details {

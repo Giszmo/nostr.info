@@ -5,12 +5,10 @@ permalink: /relayr/
 ---
 
 <ol>
-  <li><label for="relaySelect">Pick a relay </label><select name="relaySelect" id="relaySelect">
-    <option value="wss://relay.nostr.info" selected>relay.nostr.info</option>
-    <option value="wss://nostr-pub.wellorder.net">nostr-pub.wellorder.net</option>
-    <option value="wss://relay.damus.io">relay.damus.io</option>
-    <option value="wss://nostr-relay.wlvs.space">nostr-relay.wlvs.space</option>
-    <option value="wss://nostr-relay.untethr.me">nostr-relay.untethr.me</option>
+  <li><label for="relaySelect">Pick a relay </label><select name="relaySelect" id="relaySelect"> 
+    {% for r in site.data.relays.wss %}
+      <option value="wss://{{ r }}">{{ r }}</option>
+    {% endfor %}
   </select> or bring your own: <input id="relay"/></li>
   <li>Send <select id="querySelect" onchange="input.value=querySelect.value">
     <option value='["REQ","cn",
