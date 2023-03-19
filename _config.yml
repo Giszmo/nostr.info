@@ -36,6 +36,7 @@ include:
   - _pages
 
 header_pages:
+  - _pages/resources.md
   - _pages/relays.md
   - _pages/relayr.html
 

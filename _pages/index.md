@@ -36,5 +36,3 @@ The current state might be more a playground but features to come are:
   - Split by kind/size
   - Active pubkeys per hour/day/week
   - Follows graphs - and how they change over time
-
-{% include nostrLinks.html %}
