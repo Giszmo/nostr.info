@@ -8,7 +8,7 @@
 }
 
 .result {
-  width: 15em;
+  width: 10em;
   min-height: 3em;
   background: #DDD;
   margin: 1em;
@@ -21,7 +21,7 @@
 
 .name {
   position: relative;
-  width: 100%;
+  width: 50%;
 }
 
 .details {
@@ -36,6 +36,14 @@
   right: 1em;
 }
 
+.dev {
+  background: #aac;
+  border-left: 1px solid blue;
+  border-radius: 0 5px 5px 0;
+  padding: 0.2em;
+  margin: 0.3em 0 0.3em 0;
+}
+
 .tags {
   display: flex;
   flex-direction: row;
@@ -43,6 +51,7 @@
   align-items: start;
   justify-content: start;
   position: relative;
+  width: 80%
 }
 
 .tag {
@@ -76,4 +85,14 @@
 
 .nip {
   border: solid orange 1px;
+}
+
+.avatar {
+  height: 1em;
+  border-radius: 50%;
+  margin-right: 0.2em;
+}
+
+.instances {
+  overflow-x: clip;
 }

@@ -4,4 +4,4 @@ title: Resources
 permalink: /resources/
 ---
 
-{% include nostrLinks.html %}
+{% include resources.html %}

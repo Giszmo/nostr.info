@@ -16,6 +16,7 @@ window.resources = [
     "permalink": "{{ p.permalink }}",
     "web": "{{ p.web }}",
     "github": "{{ p.github }}",
+    "authorNPub": "{{ p.authorNPub }}",
     "instances": {{ p.instances | jsonify }},
     "tags": {{ p.tags | jsonify }},
     "platforms": {{ p.platforms | jsonify }},

@@ -13,15 +13,21 @@
       <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }} {{ p.nips | join: " " }}">
         <div class="name"><a href="{{ url }}">{{ p.title }}</a></div>
         <div class="details"></div>
+        <div class="instances">{% if p.instances %}Instances:<ul>{%- for i in p.instances -%}
+          <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
+          {%- endfor -%}</ul>{%- endif -%}</div>
+        <div class="dev">
+          {% if p.license %}License: {{ p.license }}<br>{%- endif -%}
+          {% if p.progLang %}Implemented with {{ p.progLang | join: ", " }}{%- endif -%}
+          {% if p.authorNPub %} by <a href="https://snort.social/p/{{ p.authorNPub }}">
+            <img class="avatar" src="/images/nostrich.webp"></a>
+          {%- endif -%}
+        </div>
         <div class="tags">
           {%- for t in p.platforms -%}{% include tag.html tag=t type="platform" %}{%- endfor -%}
           {%- for t in p.tags -%}{% include tag.html tag=t type="tag" %}{%- endfor -%}
           {%- for t in p.nips -%}{% include tag.html tag=t type="nip" %}{%- endfor -%}
         </div>
-        <div class="instances"><ul>{%- for i in p.instances -%}
-          <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
-          {%- endfor -%}</ul></div>
-        <div class="progLang">{{ p.progLang | join: ", " }}</div>
         <div class="gh">{%- if p.github -%}<img src="https://img.shields.io/github/stars/{{ p.github }}.svg?style=social" alt="stars">{%- endif -%}</div>
         <div class="details">{%- if p.content.size > 20 -%}<a href="{{ p.permalink }}">🔍</a>{%- endif -%}</div>
       </div>
@@ -30,4 +36,4 @@
 </div>
 
 <script src="/js/resources.js"></script>
-<link rel="stylesheet" href="{{ base_path }}/assets/css/nostrLinks.css" />
+<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css" />
