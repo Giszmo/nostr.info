@@ -10,7 +10,7 @@ instances:
 tags:
 - social
 - client
-- dm 
+- dm
 - chat
 platforms:
 - Linux
