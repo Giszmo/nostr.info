@@ -34,17 +34,33 @@ plugins:
   - jekyll-feed
 include:
   - _pages
+exclude:
+  - _nostrResources/LICENSE
+  - _nostrResources/Readme.md
 
 header_pages:
   - _pages/resources.md
   - _pages/relays.md
   - _pages/relayr.html
 
+collections:
+  nostrResources:
+    output: true
+    directory: _nostrResources/data
+    permalink: /res/:title/
+
 # Defaults
 defaults:
   # _pages
   - scope:
       type: pages
+      path: ""
+    values:
+      layout: page
+      author_profile: true
+  # _nostrResources
+  - scope:
+      type: nostrResources
       path: ""
     values:
       layout: page

@@ -5,7 +5,7 @@ permalink: /js/resources.js
 
 window.resources = [
 {% assign ps = "" | split: "" %}
-{%- for p in site.pages -%}
+{%- for p in site.nostrResources -%}
   {% if p.tags %}
     {% assign ps = ps | push: p %}
   {% endif %}
@@ -26,9 +26,9 @@ window.resources = [
 {%- endfor -%}
 ]
 window.activeTags = ["client"]
-{% assign p = site.pages | map: "platforms" %}
-{% assign t = site.pages | map: "tags" %}
-{% assign n = site.pages | map: "nips" %}
+{% assign p = site.nostrResources | map: "platforms" %}
+{% assign t = site.nostrResources | map: "tags" %}
+{% assign n = site.nostrResources | map: "nips" %}
 window.allTags = {{ p | concat: t | concat: n | compact | uniq | jsonify }}
 
 window.addEventListener("load", update)

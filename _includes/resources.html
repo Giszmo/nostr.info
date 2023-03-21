@@ -3,13 +3,9 @@
 <div id="toggles" class="tags"></div>
 
 <div id="results">
-  {%- for p in site.pages -%}
+  {%- for p in site.nostrResources -%}
     {%- if p.tags -%}
-      {%- if p.github -%}
-        {%- assign url = p.github | prepend: "https://github.com/" -%}
-      {%- else -%}
-        {%- assign url = p.web -%}
-      {%- endif -%}
+      {%- assign url = p.git | default: p.web -%}
       <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }} {{ p.nips | join: " " }}">
         <div class="name"><a href="{{ url }}">{{ p.title }}</a></div>
         <div class="details"></div>
@@ -28,8 +24,8 @@
           {%- for t in p.tags -%}{% include tag.html tag=t type="tag" %}{%- endfor -%}
           {%- for t in p.nips -%}{% include tag.html tag=t type="nip" %}{%- endfor -%}
         </div>
-        <div class="gh">{%- if p.github -%}<img src="https://img.shields.io/github/stars/{{ p.github }}.svg?style=social" alt="stars">{%- endif -%}</div>
-        <div class="details">{%- if p.content.size > 20 -%}<a href="{{ p.permalink }}">🔍</a>{%- endif -%}</div>
+        <div class="gh">{%- if p.git contains 'https://github.com/' -%}{%- assign repo = p.git | remove: "https://github.com/" -%}<img src="https://img.shields.io/github/stars/{{ repo }}.svg?style=social" alt="stars">{%- endif -%}</div>
+        <div class="details">{%- if p.content.size > 20 -%}<a href="{{ p.url }}">🔍</a>{%- endif -%}</div>
       </div>
     {%- endif -%}
   {%- endfor -%}
