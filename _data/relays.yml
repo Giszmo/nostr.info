@@ -1,4 +1,5 @@
 wss:
+  - relayable.org
   - nostr.crypticthreadz.com
   - lightningrelay.com
   - nostr.wine
