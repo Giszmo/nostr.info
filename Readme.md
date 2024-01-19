@@ -8,6 +8,8 @@ If you see issues, please [report them](https://github.com/Giszmo/nostr.info/iss
 
 To run this project locally for development:
 
-* install node
+* install [node](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs)
+* run `bundle install`
+* run `gem install bundler`
 * run `npm install` to get the dependencies
 * run `bundle exec jekyll serve`
