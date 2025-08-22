@@ -1,0 +1,221 @@
+---
+permalink: /geohash
+layout: page
+title: Nostr Geohash Heatmap
+---
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+<style>
+  #map {
+    width: 100%;
+    height: 80vh;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  .controls {
+    margin: 10px 0 15px 0;
+  }
+  .controls .stat {
+    display: inline-block;
+    margin-right: 15px;
+    font-family: monospace;
+  }
+  .legend {
+    font-size: 12px;
+    color: #555;
+    margin-top: 6px;
+  }
+
+  /* Cell count labels (centered, readable over colored rectangles) */
+  .leaflet-marker-icon.cell-label {
+    background: transparent;
+    border: none;
+    transform: translate(-50%, -50%);
+  }
+  .cell-label {
+    pointer-events: none;
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 12px;
+    color: #111;
+    text-shadow:
+      -1px -1px 0 rgba(255,255,255,0.9),
+       1px -1px 0 rgba(255,255,255,0.9),
+      -1px  1px 0 rgba(255,255,255,0.9),
+       1px  1px 0 rgba(255,255,255,0.9);
+  }
+
+  /* Fullscreen styles */
+  .fullscreen-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: white;
+    display: none;
+  }
+  .fullscreen-container.active {
+    display: block;
+  }
+  .fullscreen-container #map {
+    height: calc(100vh - 80px) !important;
+    width: 100% !important;
+  }
+  .fullscreen-container .controls {
+    position: relative;
+    z-index: 10000;
+    background: rgba(255,255,255,0.95);
+    border-bottom: 1px solid #ddd;
+    padding: 10px 15px;
+  }
+  
+  .fullscreen-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 15px;
+    transition: background-color 0.2s;
+  }
+  .fullscreen-btn:hover {
+    background: #0056b3;
+  }
+  .fullscreen-btn:active {
+    background: #004494;
+  }
+</style>
+
+<div class="controls">
+  <label>
+    Min hash length:
+    <select id="minHashLength" style="width:60px">
+      <option value="1">1</option>
+      <option value="2" selected>2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+      <option value="8">8</option>
+      <option value="9">9</option>
+      <option value="10">10</option>
+      <option value="11">11</option>
+      <option value="12">12</option>
+    </select>
+  </label>
+  <label style="margin-left: 12px;">
+    Max hash length:
+    <select id="maxHashLength" style="width:60px">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+      <option value="7">7</option>
+      <option value="8" selected>8</option>
+      <option value="9">9</option>
+      <option value="10">10</option>
+      <option value="11">11</option>
+      <option value="12">12</option>
+    </select>
+  </label>
+  <div class="stat" style="margin-left: 12px;">Time covered: <span id="timeCoveredLabel">0 min</span></div>
+  <div class="stat">Relays: <span id="relayCount">0</span></div>
+  <div class="stat">Connected: <span id="connectedCount">0</span></div>
+  <div class="stat">Events: <span id="eventCount">0</span></div>
+  <button id="fullscreenBtn" class="fullscreen-btn">🔍 Fullscreen</button>
+</div>
+
+<div id="map"></div>
+
+<!-- Fullscreen container -->
+<div id="fullscreenContainer" class="fullscreen-container">
+  <div class="controls">
+    <label>
+      Min hash length:
+      <select id="minHashLengthFS" style="width:60px">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+      </select>
+    </label>
+    <label style="margin-left: 12px;">
+      Max hash length:
+      <select id="maxHashLengthFS" style="width:60px">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8" selected>8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+      </select>
+    </label>
+    <div class="stat" style="margin-left: 12px;">Time covered: <span id="timeCoveredLabelFS">0 min</span></div>
+    <div class="stat">Relays: <span id="relayCountFS">0</span></div>
+    <div class="stat">Connected: <span id="connectedCountFS">0</span></div>
+    <div class="stat">Events: <span id="eventCountFS">0</span></div>
+    <button id="exitFullscreenBtn" class="fullscreen-btn" style="background: #dc3545;">✕ Exit Fullscreen</button>
+  </div>
+</div>
+<div class="legend">
+  Live Nostr geohash activity (kind 20000) aggregated into colored geohash cells. Each geohash is rendered at its exact precision with color coding by length: blue for longest hashes, red for shortest. Controls allow filtering by minimum and maximum hash lengths. No GPS coordinates are used; precision depends on the sender's chosen geohash length. Auto-reconnects when relays disconnect.
+</div>
+
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+
+<!-- Inject relay list and load heatmap runtime -->
+<script id="relays-data" type="application/json">
+{{ site.data.relays.wss | jsonify }}
+</script>
+<script>
+  (function() {
+    const el = document.getElementById('relays-data');
+    let raw = '';
+    if (el && typeof el.textContent === 'string') {
+      raw = el.textContent.trim();
+    }
+    // Only parse if Jekyll rendered valid JSON; avoid parse errors when served statically
+    if (raw.startsWith('[')) {
+      try {
+        window.RELAYS = JSON.parse(raw).map(function(host){ return 'wss://' + host; });
+      } catch (e) {
+        window.RELAYS = [];
+        console.error('Failed to parse relay list:', e);
+      }
+    } else {
+      // In static-dev (no Jekyll), leave RELAYS empty to trigger fallback in /assets/js/heatmap.js
+      window.RELAYS = [];
+    }
+  })();
+</script>
+<script src="/assets/js/heatmap.js"></script>
