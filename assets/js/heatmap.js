@@ -39,10 +39,10 @@
   let renderTimer = null;
   let running = false;
   let totalEvents = 0;
-  let startTime = Date.now(); // Track when collection started
   let reconnectTimers = new Map(); // relay URL -> timeout ID
   let lastRender = 0;
   let relayFailureTypes = new Map(); // relay URL -> failure type (permanent/temporary)
+  let currentPopup = null; // Track current persistent popup
 
   function init() {
     // Get DOM elements
@@ -73,6 +73,10 @@
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
+
+    // Add global click handler to close persistent popup
+    map.on('click', closePersistentPopup);
+    map.on('move', closePersistentPopup);
 
     // Create layer groups for all possible hash lengths (1-12)
     for (let len = 1; len <= 12; len++) {
@@ -362,11 +366,15 @@
       ];
       
       // Create rectangle for this world copy
-      L.rectangle(offsetBounds, options).addTo(layer).bindPopup(`
-        <strong>Geohash:</strong> ${geohash}<br>
-        <strong>Length:</strong> ${length}<br>
-        <strong>Events:</strong> ${count}
-      `);
+      const rect = L.rectangle(offsetBounds, options).addTo(layer);
+      
+      // Add click handler for persistent popup
+      rect.on('click', (e) => {
+        console.log('Rectangle clicked:', geohash, length, count); // Debug log
+        e.originalEvent?.stopPropagation(); // Prevent map click
+        L.DomEvent.stopPropagation(e); // Also stop Leaflet event propagation
+        showPersistentPopup(e.latlng, geohash, length, count);
+      });
 
       // Add label if the cell is large enough on screen (render for all world copies)
       const center = bboxCenter(offsetBounds);
@@ -502,8 +510,9 @@
 
           const norm = gh.toLowerCase().trim();
           const len = norm.length;
+          const author = ev.pubkey || 'unknown';
 
-          events.push({ gh: norm, len, ts: tsMs });
+          events.push({ gh: norm, len, ts: tsMs, author });
           totalEvents++;
           eventCountEl.textContent = totalEvents.toString();
           if (eventCountElFS) eventCountElFS.textContent = totalEvents.toString();
@@ -709,6 +718,29 @@
       }
     }
     return null;
+  }
+
+  function showPersistentPopup(latlng, geohash) {
+    // Close any existing popup
+    closePersistentPopup();
+    
+    // Create new persistent popup showing only geohash
+    currentPopup = L.popup({
+      closeButton: false,
+      autoClose: false,
+      closeOnClick: false,
+      closeOnEscapeKey: true
+    })
+    .setLatLng(latlng)
+    .setContent(`<div style="font-family: monospace; font-size: 14px; font-weight: bold;">${geohash}</div>`)
+    .openOn(map);
+  }
+
+  function closePersistentPopup() {
+    if (currentPopup) {
+      map.closePopup(currentPopup);
+      currentPopup = null;
+    }
   }
 
   // Initialize when DOM is ready
