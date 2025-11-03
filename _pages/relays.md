@@ -5,58 +5,97 @@ permalink: /relays/
 ---
 
 <link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/css/relays.css">
+<link rel="stylesheet" href="/assets/css/relays-grid.css">
 <script src="/js/relays.js"></script>
 
-<select name="tab" id="tab" onchange="setDirty()">
-  <option value="relays">Show Relays</option>
-  <option value="events">Show Events</option>
-</select>
-<br>
+<div class="relays-container">
 
-<div id="relay-filters">
-  <label for="relay-filter">Filter by Relay performance:</label>
-  <select name="relay-filter" id="relay-filter" onchange="setDirty()">
-    <option value="sentConnected">Sent us many without dropping</option>
-    <option value="sentMany">Sent us many events</option>
-    <option value="sent">Sent us events</option>
-    <option value="didConnect" selected>Accepted WebSocket connection</option>
-    <option value="all">All</option>
-  </select>
-  <br><input id="connectNewRelays" type="button" onclick="connectRelays()" value="Connect new relays!">
-</div>
-<div id="event-filters">
-  <label for="kind-filter">Filter by Kind:</label>
-  <select name="kind-filter" id="kind-filter" onchange="setDirty()">
-    <option value="all">kind-*: All kinds</option>
-    <option value="unknown">kind-?: Stuff we don't handle yet</option>
-    <option value="0">kind-0: Metadata</option>
-    <option value="1">kind-1: Public Post</option>
-    <option value="2">kind-2: Relay Recommendation</option>
-    <option value="3">kind-3: Follows List</option>
-    <option value="4">kind-4: DM</option>
-    <option value="5">kind-5: Deletions</option>
-    <option value="6">kind-6: Quoted Boost</option>
-    <option value="7">kind-7: Reactions</option>
-    <option value="30">kind-30: Chess</option>
-    <option value="40">kind-40: Channel created</option>
-    <option value="41">kind-41: Channel metadata update</option>
-    <option value="42">kind-42: Channel message</option>
-    <option value="43">kind-43: Hide message</option>
-    <option value="44">kind-44: Mute user</option>
-    <option value="60">kind-60: Ride Sharing</option>
-  </select>
-  <br>
-  <label for="pubkey-filter">Filter by Pubkey:</label>
-  <input type="text" name="pubkey-filter" id="pubkey-filter" onchange="setDirty()">
-  <label for="degree-filter">... and follows of degree:</label>
-  <select name="degree-filter" id="degree-filter" disabled onchange="setDirty()">
-    <option value="0">Only the pubkey</option>
-    <option value="1">Follows of the pubkey</option>
-    <option value="2">Follows² of the pubkey</option>
-    <option value="3">Follows³ of the pubkey</option>
-    <option value="4">Follows⁴ of the pubkey</option>
-    <option value="5">Follows⁵ of the pubkey</option>
-  </select>
-</div>
+  <div class="controls-container">
+    <select name="tab" id="tab" class="tab-select" onchange="setDirty()">
+      <option value="relays">📡 Show Relays</option>
+      <option value="events">📝 Show Events</option>
+    </select>
+
+    <div id="relay-filters">
+      <button id="connectNewRelays" class="connect-button" onclick="connectRelays()">
+        {% fa_svg fas.fa-arrows-rotate %} Connect New Relays
+      </button>
+      <div class="filters-row" style="margin-top:0.75rem">
+        <div class="filter-item">
+          <label for="nip11-nips">{% fa_svg fas.fa-hashtag %} Supported NIPs</label>
+          <select id="nip11-nips" class="filter-select" onchange="setDirty()">
+            <option value="all" selected>Any NIP</option>
+            <!-- options populated dynamically by JS -->
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label for="relay-sort">{% fa_svg fas.fa-sort %} Sort</label>
+          <select id="relay-sort" class="filter-select" onchange="setDirty()">
+            <option value="default" selected>Default</option>
+            <option value="latency">Avg Latency</option>
+            <option value="activeUsers">Active Users</option>
+            <option value="payment_required">Payment Required</option>
+            <option value="auth_required">Auth Required</option>
+            <option value="max_limit">Max Limit</option>
+            <option value="max_subscriptions">Max Subscriptions</option>
+            <option value="created_at_lower_limit">Created At Lower Limit</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="event-filters">
+      <div class="filters-row">
+        <div class="filter-item">
+          <label for="kind-filter">{% fa_svg fas.fa-shapes %} Event Type</label>
+          <select name="kind-filter" id="kind-filter" class="filter-select" onchange="setDirty()">
+            <option value="all">{% fa_svg fas.fa-list %} All Types</option>
+            <option value="unknown">{% fa_svg fas.fa-circle-question %} Unhandled</option>
+            <option value="0">{% fa_svg fas.fa-user %} Metadata</option>
+            <option value="1">{% fa_svg fas.fa-comment %} Public Post</option>
+            <option value="2">{% fa_svg fas.fa-tower-broadcast %} Relay Rec</option>
+            <option value="3">{% fa_svg fas.fa-users %} Follows</option>
+            <option value="4">{% fa_svg fas.fa-envelope %} DM</option>
+            <option value="5">{% fa_svg fas.fa-trash %} Deletions</option>
+            <option value="6">{% fa_svg fas.fa-retweet %} Boost</option>
+            <option value="7">{% fa_svg fas.fa-heart %} Reactions</option>
+            <option value="30">{% fa_svg fas.fa-chess %} Chess</option>
+            <option value="40">{% fa_svg fas.fa-bullhorn %} Channel Create</option>
+            <option value="41">{% fa_svg fas.fa-pen %} Channel Update</option>
+            <option value="42">{% fa_svg fas.fa-comments %} Channel Msg</option>
+            <option value="43">{% fa_svg fas.fa-eye-slash %} Hide</option>
+            <option value="44">{% fa_svg fas.fa-volume-xmark %} Mute</option>
+            <option value="60">{% fa_svg fas.fa-car %} Ride Share</option>
+          </select>
+        </div>
+
+        <div class="filter-item filter-item-wide">
+          <label for="pubkey-filter">{% fa_svg fas.fa-key %} Public Key</label>
+          <input type="text" 
+                 name="pubkey-filter" 
+                 id="pubkey-filter" 
+                 class="filter-input" 
+                 placeholder="Enter public key (hex or npub)..." 
+                 onchange="setDirty()">
+        </div>
+
+        <div class="filter-item">
+          <label for="degree-filter">{% fa_svg fas.fa-diagram-project %} Depth</label>
+          <select name="degree-filter" 
+                  id="degree-filter" 
+                  class="filter-select" 
+                  disabled 
+                  onchange="setDirty()">
+            <option value="0">{% fa_svg fas.fa-bullseye %} Direct</option>
+            <option value="1">{% fa_svg fas.fa-user-group %} 1st Degree</option>
+            <option value="2">{% fa_svg fas.fa-share-nodes %} 2nd Degree</option>
+            <option value="3">{% fa_svg fas.fa-sitemap %} 3rd Degree</option>
+            <option value="4">{% fa_svg fas.fa-network-wired %} 4th Degree</option>
+            <option value="5">{% fa_svg fas.fa-globe %} 5th Degree</option>
+          </select>
+        </div>
+      </div>
+    </div>
 <br>
 <div id="output"></div>

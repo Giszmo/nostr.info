@@ -1,0 +1,250 @@
+/* Professional Landing Page Styles */
+
+:root {
+  --brand-bg: #ffffff;
+  --brand-accent: #1db954;
+  --text-primary: #0b1226;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --border-light: rgba(11, 18, 38, 0.06);
+  --bg-light: #f9fafb;
+  --success: #10b981;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Hero Section */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.page-heading {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+  letter-spacing: -0.5px;
+}
+
+.hero-content {
+  padding: 2rem 0;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+/* Improve image styling in hero content */
+.hero-content img {
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+}
+
+/* Headings within hero content */
+.hero-content h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 2rem 0 1rem 0;
+  border-left: 4px solid var(--brand-accent);
+  padding-left: 1rem;
+}
+
+.hero-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 1.5rem 0 0.75rem 0;
+}
+
+.hero-content p {
+  margin: 0.75rem 0;
+  color: var(--text-secondary);
+}
+
+.hero-content ul,
+.hero-content ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.hero-content li {
+  margin: 0.5rem 0;
+  color: var(--text-secondary);
+}
+
+.hero-content a {
+  color: var(--brand-accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 150ms ease, text-decoration 150ms ease;
+}
+
+.hero-content a:hover {
+  color: #1aa34a;
+  text-decoration: underline;
+}
+
+/* Blog Section */
+.blog-section {
+  margin-top: 3rem;
+  padding-top: 3rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.blog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.post-list-heading {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.rss-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-light);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--brand-accent);
+  transition: all 150ms ease;
+  font-size: 1.25rem;
+}
+
+.rss-link:hover {
+  background: var(--brand-accent);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.rss-icon {
+  display: inline-flex;
+}
+
+/* Post List */
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.post-item {
+  padding: 1.5rem;
+  background: var(--bg-light);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  transition: all 200ms ease;
+}
+
+.post-item:hover {
+  border-color: var(--brand-accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  background: #fafbfc;
+}
+
+.post-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.post-item h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.post-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.post-link:hover {
+  color: var(--brand-accent);
+}
+
+.post-meta {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.post-excerpt {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .page-heading {
+    font-size: 2rem;
+  }
+
+  .hero-content h2 {
+    font-size: 1.5rem;
+    border-left-width: 3px;
+    padding-left: 0.75rem;
+  }
+
+  .hero-content h3 {
+    font-size: 1.125rem;
+  }
+
+  .blog-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .post-item {
+    padding: 1.25rem;
+  }
+
+  .post-item h3 {
+    font-size: 1.125rem;
+  }
+
+  .post-list {
+    gap: 1rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .blog-section {
+    page-break-before: always;
+  }
+
+  .post-item {
+    page-break-inside: avoid;
+    border: none;
+    box-shadow: none;
+    background: white;
+  }
+}

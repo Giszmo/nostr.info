@@ -22,13 +22,16 @@
       </div>
 
       <div class="footer-col footer-col-2">
-        {%- include social.html -%}
+        <nav class="footer-social" aria-label="Social links">
+          {%- include social.html -%}
+        </nav>
       </div>
 
       <div class="footer-col footer-col-3">
         <p>{{- site.description | escape -}}</p>
       </div>
     </div>
+    <p class="site-copy">&copy; {{ site.time | date: "%Y" }} {{ site.title | escape }}. All rights reserved.</p>
 
   </div>
 

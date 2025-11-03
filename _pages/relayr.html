@@ -3,34 +3,77 @@ layout: page
 title: Query
 permalink: /relayr/
 ---
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/css/relayr.css">
 
-<ol>
-  <li><label for="relaySelect">Pick a relay </label><select name="relaySelect" id="relaySelect"> 
-    {% for r in site.data.relays.wss %}
-      <option value="wss://{{ r }}">{{ r }}</option>
-    {% endfor %}
-  </select> or bring your own: <input id="relay"/></li>
-  <li>Send <select id="querySelect" onchange="input.value=querySelect.value">
-    <option value='["REQ","cn",
+<div class="relayr-container">
+  <div class="relayr-header">
+    <h1>Query a Relay</h1>
+    <div id="connectionState" class="state">Loading ...</div>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <div>
+        <label for="relaySelect">Pick a relay</label>
+        <select name="relaySelect" id="relaySelect" class="select">
+          {% for r in site.data.relays.wss %}
+            <option value="wss://{{ r }}">{{ r }}</option>
+          {% endfor %}
+        </select>
+        <div style="margin-top:0.5rem;">or bring your own:</div>
+        <input id="relay" class="text-input" placeholder="wss://relay.example.org" />
+      </div>
+
+      <div>
+        <label for="querySelect">Presets</label>
+        <select id="querySelect" class="select" onchange="input.value=querySelect.value">
+          <option value='["REQ","cn",
     {"limit":2,"kinds":[0]},
     {"limit":2,"kinds":[1]},
     {"limit":2,"kinds":[2]}]'>queries</option>
-    <option value='["REQ","cn",{"authors":["46fcbe3065eaf1ae7811465924e48923363ff3f526bd6f73d7c184b16bd8ce4d"],"kinds":[4],"limit":1000} ]'>All kind 4 events from pubkey</option>
-    <option value='["REQ","cn",{"#p":["46fcbe3065eaf1ae7811465924e48923363ff3f526bd6f73d7c184b16bd8ce4d"],"kinds":[4],"limit":1000} ]'>All kind 4 events to pubkey</option>
-  </select></li>
-  <li>... or send <a onclick='input.value=JSON.stringify(["EVENT",{"id":"4d84fae57fa93c836f161e75e404f6e489fb6c9737cc18cc0f757b7f3cacbaa6","pubkey":"b021c176157909a4515e3a182d92c17c28c62c9304974d944e49da562888a4b0","created_at":1642760731,"kind":2,"tags":[],"content":"wss://rsslay.fiatjaf.com","sig":"bdc8f2a7a731328bb002dae805ff1b21b1a175e48693e4d2c8fbc97f50fff506cd0f0dda8f6792b3d0ded88219211ed3161a36e86827c06ceb7becdba2008977"}])'>events</a></li>
-  <li>See what the relay replies: <span id="connectionState">Loading ...</span></li>
-</ol>
-<textarea id="input" placeholder="Queries or events" style="min-height: 6em;"></textarea>
-<p><button type="button" id="send" onClick="sendInput()">Send</button></p>
-<textarea id="output" wrap="off" style="min-height: 20em;"></textarea>
+          <option value='["REQ","cn",{"authors":["46fcbe3065eaf1ae7811465924e48923363ff3f526bd6f73d7c184b16bd8ce4d"],"kinds":[4],"limit":1000} ]'>All kind 4 events from pubkey</option>
+          <option value='["REQ","cn",{"#p":["46fcbe3065eaf1ae7811465924e48923363ff3f526bd6f73d7c184b16bd8ce4d"],"kinds":[4],"limit":1000} ]'>All kind 4 events to pubkey</option>
+        </select>
+
+        <div style="margin-top:0.75rem;">
+          <label for="input">Query / Event</label>
+          <textarea id="input" class="textarea" placeholder="Queries or events" style="min-height: 6em;"></textarea>
+        </div>
+
+        <div class="toolbar" style="margin-top:0.75rem;">
+          <button type="button" id="send" class="btn" onClick="sendInput()">Send</button>
+          <button type="button" id="clearOutput" class="btn secondary" onclick="(function(){window.received=[]; if (outputBox) outputBox.textContent='';})()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem;" class="grid-2">
+      <div>
+        <div style="font-weight:600;margin-bottom:0.5rem;">Responses</div>
+        <div id="outputBox" class="output-box" aria-live="polite"></div>
+      </div>
+      <div>
+        <div style="font-weight:600;margin-bottom:0.5rem;">Quick Info</div>
+        <div class="card" style="padding:0.75rem;">
+          <div><strong>Connection:</strong> <span id="connSummary">—</span></div>
+          <div style="margin-top:0.5rem;"><strong>Last RID:</strong> <span id="lastRid">—</span></div>
+          <div style="margin-top:0.5rem;color:#666;font-size:0.9rem;">Note: connecting to relays exposes your client IP to the relay.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const querySelect = document.getElementById("querySelect")
 const relaySelect = document.getElementById("relaySelect")
 const relay = document.getElementById("relay")
 const input = document.getElementById("input")
-const output = document.getElementById("output")
+const outputBox = document.getElementById("outputBox")
 const connectionState = document.getElementById("connectionState")
+const connSummary = document.getElementById("connSummary")
+const lastRid = document.getElementById("lastRid")
 var ws
 
 window.received = []
@@ -46,9 +89,21 @@ relaySelect.onchange = () => {
 relay.onchange = setupWebSocket
 
 function sendInput() {
-  output.value = ""
+  // clear displayed responses and buffer
+  if (outputBox) outputBox.textContent = ''
   window.received = []
-  ws.send(input.value)
+  // ensure websocket is open
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    connectionState.className = 'state error'
+    connectionState.innerText = 'Socket not open. Connect first.'
+    return
+  }
+  try {
+    ws.send(input.value)
+  } catch (e) {
+    connectionState.className = 'state error'
+    connectionState.innerText = `Send error: ${e}`
+  }
 }
 
 function setupWebSocket() {
@@ -57,26 +112,36 @@ function setupWebSocket() {
     ws.close()
   }
   getNip11()
-  connectionState.innerHTML = `<span class="warning">Connecting to ${relay.value}</span>`
+  connectionState.className = 'state connecting'
+  connectionState.innerText = `Connecting to ${relay.value}`
+  connSummary.innerText = 'Connecting'
   ws = new WebSocket(relay.value);
   ws.onmessage = msg => {
     if (msg.data.startsWith('["RID",')) {
       const rid = JSON.parse(msg.data)[1]
       console.log(rid)
+      lastRid.innerText = rid
     } else {
       window.received.push(msg.data)
+      if (window.received.length > 1000) window.received.shift()
     }
   }
   ws.onclose = () => {
-    connectionState.innerHTML = `<span class="error">Disconnected</span>`
+    connectionState.className = 'state error'
+    connectionState.innerText = 'Disconnected'
+    connSummary.innerText = 'Disconnected'
   }
   ws.onopen = () => {
-    connectionState.innerHTML = `<span class="info">Connected to ${ws.url}</span>`
+    connectionState.className = 'state connected'
+    connectionState.innerText = `Connected to ${ws.url}`
+    connSummary.innerText = ws.url
     ws.send('["RID"]')
     sendInput()
   }
   ws.onerror = (e) => {
-    connectionState.innerHTML = `<span class="error">Error (${ws.url}): ${e}</span>`
+    connectionState.className = 'state error'
+    connectionState.innerText = `Error (${ws.url}): ${e}`
+    connSummary.innerText = 'Error'
   }
 }
 
@@ -94,57 +159,12 @@ function getNip11() {
 
 setInterval(() => {
   const l = window.received.length
-  var msgs = ""
-  for (var i=10; i>0; i--) {
-    if (l >= i) {
-      msgs += window.received[l-i] + "\n"
-    }
+  let msgs = ""
+  for (let i = Math.min(10, l); i > 0; i--) {
+    msgs += window.received[l - i] + "\n"
   }
-  output.value = `Received ${l} events. Last ones received (probably oldest):
-${msgs}`
-  }, 500)
+  const status = `Received ${l} events. Last ones received (probably oldest):\n${msgs}`
+  if (outputBox) outputBox.textContent = status
+}, 500)
 </script>
-<style>
-  * {
-    box-sizing: border-box;
-    font-family: Georgia, serif;
-    color: rgba(0, 0, 0, 0.75);
-  }
-
-  html {
-    background: #f5f5f5;
-  }
-
-  body {
-    margin: 0 auto;
-  }
-
-  h1 {
-    font-size: 24px;
-    font-weight: 400;
-    margin: 30px 0;
-    text-align: center;
-  }
-
-  textarea {
-    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.2);
-    width: 100%;
-    border: 0;
-    outline: 0;
-    padding: 20px;
-    font-size: 18px;
-    resize: none;
-  }
-
-  .error {
-    background-color: lightcoral;
-  }
-
-  .warning {
-    background-color: lightgray;
-  }
-
-  .info {
-    background-color: lightgreen;
-  }
-</style>
+<!-- styling moved to assets/css/relayr.css -->

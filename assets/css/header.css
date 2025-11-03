@@ -1,0 +1,138 @@
+:root {
+  /* Light / green theme */
+  --brand-bg: #ffffff; /* white header */
+  --brand-accent: #1db954; /* bright green accent (keep) */
+  --text-on-brand: #0b1226; /* dark text for contrast */
+  --muted: #6b7280; /* subtle muted color */
+}
+
+/* Header layout overrides */
+.site-header{
+  background: var(--brand-bg);
+  border-bottom: 1px solid rgba(11,18,38,0.06);
+  color: var(--text-on-brand);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+.site-header .wrapper{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:1rem;
+  padding:0.6rem 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.site-title{
+  color:var(--text-on-brand);
+  font-weight:700;
+  text-decoration:none;
+  font-size:1.125rem;
+}
+
+/* Size and align the inline SVG icon in the title */
+.site-title .icon{
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  margin-right: 0.35rem;
+}
+
+.site-nav{
+  display:flex;
+  align-items:center;
+  flex: 1;
+  justify-content: center;
+}
+
+.header-search {
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 200px;
+  padding: 0.5rem 0.8rem;
+  padding-right: 2.5rem;
+  border: 1px solid rgba(11,18,38,0.06);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat right 0.5rem center;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 3px rgba(29,185,84,0.1);
+}
+
+/* Menu trigger */
+.nav-trigger{ display:none; }
+.menu-icon{ display:inline-block; width:28px; height:24px; cursor:pointer; transition:transform .2s ease; }
+
+/* Hamburger lines animation using SVG path transform */
+.nav-trigger + label .menu-icon svg{ transition: transform 180ms ease; }
+.nav-trigger:checked + label .menu-icon svg{ transform: rotate(90deg) scale(1.05); }
+
+/* Focus/keyboard accessibility */
+label[for="nav-trigger"]:focus,
+label[for="nav-trigger"]:focus-visible{
+  outline: 3px solid rgba(29,185,84,0.14);
+  outline-offset: 3px;
+  border-radius:6px;
+}
+
+/* header link contrast */
+.site-nav .page-link{ color: var(--text-on-brand); text-decoration:none; padding:0.15rem 0.35rem; border-radius:4px; }
+.site-nav .page-link:focus, .site-nav .page-link:focus-visible{ box-shadow: 0 0 0 3px rgba(29,185,84,0.10); }
+
+/* mobile menu panel */
+.trigger{
+  display:flex;
+  gap:0.75rem;
+}
+
+@media (max-width: 720px){
+  .site-header .wrapper { padding: 0.6rem 0.75rem; }
+  .trigger{
+    position: absolute;
+    right: 1rem;
+    top: 56px;
+    background: var(--brand-bg);
+    padding:0.5rem;
+    border-radius:8px;
+    border: 1px solid rgba(11,18,38,0.06);
+    box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+    transform-origin: top right;
+    opacity:0;
+    pointer-events:none;
+    transform: scale(.98) translateY(-6px);
+    transition: opacity 180ms ease, transform 180ms ease;
+    flex-direction: column;
+    min-width: 180px;
+    color: var(--text-on-brand);
+  }
+  .nav-trigger:checked ~ .trigger,
+  .nav-trigger:checked + label + .trigger{
+    opacity:1;
+    pointer-events:auto;
+    transform: scale(1) translateY(0);
+  }
+  .trigger .page-link{ color: var(--text-on-brand); display:block; padding:0.25rem 0; }
+  .header-search { display: none; }
+}
+
+/* Desktop: subtle hover accent */
+.trigger .page-link:hover{ color: var(--brand-accent); }
+
+/* Make menu-icon lines a bit brighter */
+.menu-icon path{ fill: var(--text-on-brand); }
+.menu-icon:hover path{ fill: var(--brand-accent); }
+
+/* Home page content improvements (typography, responsive images, spacing) */
+/* Home page styles moved to main.css to centralize presentation rules */
+
+

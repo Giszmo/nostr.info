@@ -1,35 +1,149 @@
-<h2>Projects</h2>
+<div class="resources-container">
+  <div class="resources-header">
+    <!-- Title is provided by the page layout ({{ page.title }}) to avoid duplication -->
+    <p class="subtitle">Discover projects, clients, and tools in the Nostr ecosystem</p>
+  </div>
 
-<div id="toggles" class="tags"></div>
+  <div class="resources-layout">
 
-<div id="results">
-  {%- for p in site.nostrResources -%}
-    {%- if p.tags -%}
-      {%- assign url = p.git | default: p.web -%}
-      <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }} {{ p.nips | join: " " }}">
-        <div class="name"><a href="{{ url }}">{{ p.title }}</a></div>
-        <div class="details"></div>
-        <div class="instances">{% if p.instances %}Instances:<ul>{%- for i in p.instances -%}
-          <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
-          {%- endfor -%}</ul>{%- endif -%}</div>
-        <div class="dev">
-          {% if p.license %}License: {{ p.license }}<br>{%- endif -%}
-          {% if p.progLang %}Implemented with {{ p.progLang | join: ", " }}{%- endif -%}
-          {% if p.authorNPub %} by <a href="https://snort.social/p/{{ p.authorNPub }}">
-            <img class="avatar" src="/images/nostrich.webp"></a>
-          {%- endif -%}
+  <!-- Main Content Area -->
+  <div class="content-area">
+    <!-- Mobile Filter Toggle -->
+    <button class="mobile-filter-toggle" id="mobile-filter-toggle">
+      <span class="filter-icon">{% fa_svg fas.fa-filter %}</span> Filters
+      <span class="filter-count" id="mobile-filter-count" style="display:none;"></span>
+    </button>
+
+    <!-- Filters Sidebar -->
+    <aside class="filters-sidebar" id="filters-sidebar">
+      <div class="filter-section">
+        <h3>{% fa_svg fas.fa-magnifying-glass %} Search</h3>
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search projects..." class="search-input">
         </div>
+      </div>
+
+      <div class="filter-section">
+        <h3>{% fa_svg fas.fa-tags %} Categories</h3>
+        <div id="category-filters" class="filter-group"></div>
+      </div>
+
+      <div class="filter-section">
+        <h3>{% fa_svg fas.fa-laptop %} Platforms</h3>
+        <div id="platform-filters" class="filter-group"></div>
+      </div>
+
+      <div class="filter-section">
+        <h3>{% fa_svg fas.fa-link %} NIPs</h3>
+        <div id="nip-filters" class="filter-group"></div>
+      </div>
+
+      <div class="filter-section">
+        <h3>{% fa_svg fas.fa-diagram-project %} Architecture</h3>
+        <div id="arch-filters" class="filter-group"></div>
+      </div>
+
+      <!-- Active Filters Summary -->
+      <div class="active-filters" id="active-filters" style="display: none;">
+        <h4>Active Filters:</h4>
+        <div id="active-filter-tags"></div>
+        <button class="clear-filters" onclick="clearAllFilters()">Clear All</button>
+      </div>
+    </aside>
+
+    <!-- Project Grid -->
+    <main class="projects-grid">
+      <div class="results-header">
+        <div class="results-count" id="results-count">Loading resources...</div>
+        <div class="view-toggles">
+          <button class="view-btn active" data-view="grid">⊞ Grid</button>
+          <button class="view-btn" data-view="list">☰ List</button>
+        </div>
+      </div>
+      
+      <div id="results" class="results-container grid-view">
+        {%- for p in site.nostrResources -%}
+          {%- if p.tags -%}
+            {%- assign url = p.git | default: p.web -%}
+            <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }} {{ p.nips | join: " " }}">
+        <div class="card-header">
+          <div class="name">
+            <a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ p.title }}</a>
+          </div>
+          <div class="card-actions">
+            {%- if p.git contains 'https://github.com/' -%}
+              {%- assign repo = p.git | remove: "https://github.com/" -%}
+              <a href="{{ p.git }}" target="_blank" rel="noopener noreferrer" class="github-link" title="View on GitHub">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+              </a>
+            {%- endif -%}
+            {%- if p.web -%}
+              <a href="{{ p.web }}" target="_blank" rel="noopener noreferrer" class="web-link" title="Visit Website">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5V1.077zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4H4.09zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.958 6.958 0 0 0-.656 2.5h2.49zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5H4.847zM8.5 5v2.5h2.99a12.495 12.495 0 0 0-.337-2.5H8.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5H4.51zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5H8.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12H5.145zm.182 2.472a6.696 6.696 0 0 1-.597-.933A9.268 9.268 0 0 1 4.09 12H2.255a7.024 7.024 0 0 0 3.072 2.472zM3.82 11a13.652 13.652 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5H3.82zm6.853 3.472A7.024 7.024 0 0 0 13.745 12H11.91a9.27 9.27 0 0 1-.64 1.539 6.688 6.688 0 0 1-.597.933zM8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068H8.5zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.65 13.65 0 0 1-.312 2.5zm2.802-3.5a6.959 6.959 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5h2.49zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.024 7.024 0 0 0-3.072-2.472c.218.284.418.598.597.933zM10.855 4a7.966 7.966 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4h2.355z"/>
+                </svg>
+              </a>
+            {%- endif -%}
+            {%- if p.content.size > 20 -%}
+              <a href="{{ p.url }}" class="details-link" title="View Details">{% fa_svg fas.fa-magnifying-glass %}</a>
+            {%- endif -%}
+          </div>
+        </div>
+
+        {% if p.instances %}
+        <div class="instances">
+          <strong>Instances:</strong>
+          <ul>
+            {%- for i in p.instances -%}
+            <li>
+              <a href="{{ i.url | default: i }}" target="_blank" rel="noopener noreferrer">
+                {{ i.name | default: i }}
+              </a>
+              {%- if i.comment -%}: {{ i.comment }}{%- endif -%}
+            </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+        {% endif %}
+
+        <div class="dev">
+          {% if p.license %}<span class="license">{% fa_svg fas.fa-file-lines %} {{ p.license }}</span>{% endif %}
+          {% if p.progLang %}<span class="prog-lang">{% fa_svg fas.fa-code %} {{ p.progLang | join: ", " }}</span>{% endif %}
+          {% if p.authorNPub %}
+            <span class="author">
+              {% fa_svg fas.fa-user %} by <a href="https://snort.social/p/{{ p.authorNPub }}" target="_blank" rel="noopener noreferrer">
+                <img class="avatar" src="/images/nostrich.webp" alt="Author avatar">
+                Author
+              </a>
+            </span>
+          {% endif %}
+        </div>
+
         <div class="tags">
           {%- for t in p.platforms -%}{% include tag.html tag=t type="platform" %}{%- endfor -%}
           {%- for t in p.tags -%}{% include tag.html tag=t type="tag" %}{%- endfor -%}
           {%- for t in p.nips -%}{% include tag.html tag=t type="nip" %}{%- endfor -%}
         </div>
-        <div class="gh">{%- if p.git contains 'https://github.com/' -%}{%- assign repo = p.git | remove: "https://github.com/" -%}<img src="https://img.shields.io/github/stars/{{ repo }}.svg?style=social" alt="stars">{%- endif -%}</div>
-        <div class="details">{%- if p.content.size > 20 -%}<a href="{{ p.url }}">🔍</a>{%- endif -%}</div>
+
+        {%- if p.git contains 'https://github.com/' -%}
+          {%- assign repo = p.git | remove: "https://github.com/" -%}
+          <div class="github-stats">
+            <img src="https://img.shields.io/github/stars/{{ repo }}.svg?style=social&label=Stars" alt="GitHub stars">
+            <img src="https://img.shields.io/github/forks/{{ repo }}.svg?style=social&label=Forks" alt="GitHub forks">
+          </div>
+            {%- endif -%}
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
       </div>
-    {%- endif -%}
-  {%- endfor -%}
+    </main>
+  </div>
+  </div>
+
+  <!-- Fallback for old toggle system -->
+  <div id="toggles" class="tags" style="display: none;"></div>
 </div>
 
 <script src="/js/resources.js"></script>
-<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css" />

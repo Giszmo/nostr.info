@@ -1,0 +1,146 @@
+.relayr-container {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.relayr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.relayr-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: #2c3e50;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.controls label { display:block; font-weight: 600; color: #333 }
+
+.select, .text-input, .textarea {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  background: #fff;
+  transition: box-shadow .12s ease, border-color .12s ease;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.select:focus, .text-input:focus, .textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 4px rgba(52,152,219,0.08);
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn.secondary {
+  background: #6c757d;
+}
+
+.state {
+  padding: 0.4rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.state.connecting { background: #fff3cd; color: #856404 }
+.state.connected { background: #d4edda; color: #155724 }
+.state.error { background: #f8d7da; color: #721c24 }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.output-box {
+  height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  font-family: Menlo, Monaco, monospace;
+}
+
+/* prevent long URLs or tokens from overflowing */
+.output-box, .text-input, .select, .textarea, .card {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* make the static right column flexible on narrower screens */
+@media (max-width: 980px) {
+  .grid-2 { grid-template-columns: 1fr 260px }
+}
+
+@media (max-width: 860px) {
+  .grid-2 { grid-template-columns: 1fr }
+  .controls { grid-template-columns: 1fr }
+  .relayr-header { flex-direction: column; align-items: flex-start; gap: 0.5rem }
+  .relayr-container { padding: 0.75rem }
+  .card { padding: 0.75rem }
+  .state { font-size: 0.8rem }
+}
+
+@media (max-width: 420px) {
+  .select, .text-input, .textarea { font-size: 0.9rem; padding: 0.5rem }
+  .btn { padding: 0.5rem 0.75rem; font-size: 0.95rem }
+  .output-box { height: 220px }
+}
+
+/* ensure very long tokens/URLs don't overflow or cause horizontal scroll */
+code, pre, .output-box, .text-input, .select, .textarea {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* small tweak: make buttons wrap instead of overflow */
+.toolbar { flex-wrap: wrap }
+.toolbar .btn { min-width: 0 }
+
+@media (max-width: 780px) {
+  .controls { grid-template-columns: 1fr }
+  .grid-2 { grid-template-columns: 1fr }
+  .output-box { height: 260px }
+}

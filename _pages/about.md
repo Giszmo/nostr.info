@@ -1,7 +1,10 @@
 ---
-permalink: /
+permalink: /about/
 layout: home
+title: Blogs
 ---
+
+<link rel="stylesheet" href="/assets/css/main.css">
 
 <img src="/images/nostr.png" style="float:left;margin:0 .5em .5em 0;height:5em">
 ## What is nostr?
