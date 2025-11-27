@@ -74,6 +74,8 @@ export const ActivityCharts = ({ analytics, timeRange }) => {
     const shouldUseLegacy = window.nostrStats && typeof window.nostrStats.getAllEvents === 'function';
     setUseLegacyData(shouldUseLegacy);
     
+    console.log('[ActivityCharts] Initialized, using legacy data:', shouldUseLegacy);
+    
     // Initial load - use legacy events if available
     let data;
     if (shouldUseLegacy) {
@@ -87,7 +89,18 @@ export const ActivityCharts = ({ analytics, timeRange }) => {
     
     // Listen for analytics updates
     const handleUpdate = (type, data) => {
+      console.log('[ActivityCharts] Update event:', type);
       if (type === 'event' || type === 'eventBatch') {
+        let updatedData;
+        if (shouldUseLegacy) {
+          const legacyEvents = window.nostrStats.getAllEvents();
+          updatedData = calculateActivityFromEvents(legacyEvents, timeRange);
+        } else {
+          updatedData = analytics.getActivityData(timeRange);
+        }
+        setActivityData(updatedData);
+      } else if (type === 'backend-update') {
+        // When backend updates, refresh activity data
         let updatedData;
         if (shouldUseLegacy) {
           const legacyEvents = window.nostrStats.getAllEvents();
@@ -101,8 +114,24 @@ export const ActivityCharts = ({ analytics, timeRange }) => {
     
     analytics.addListener(handleUpdate);
     
+    // Listen for backend updates
+    const handleBackendUpdate = () => {
+      console.log('[ActivityCharts] Backend update received');
+      let updatedData;
+      if (shouldUseLegacy) {
+        const legacyEvents = window.nostrStats.getAllEvents();
+        updatedData = calculateActivityFromEvents(legacyEvents, timeRange);
+      } else {
+        updatedData = analytics.getActivityData(timeRange);
+      }
+      setActivityData(updatedData);
+    };
+    
+    window.addEventListener('backend-stats-updated', handleBackendUpdate, { passive: true });
+    
     return () => {
       analytics.removeListener(handleUpdate);
+      window.removeEventListener('backend-stats-updated', handleBackendUpdate);
     };
   }, [analytics, timeRange]);
   

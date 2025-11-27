@@ -3,6 +3,7 @@
 
 -- Enable extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pg_trgm; 
 
 -- Relays table
 CREATE TABLE IF NOT EXISTS relays (

@@ -3,86 +3,95 @@ import React, { useState, useEffect } from 'react';
 const formatNumber = (num) => num.toLocaleString();
 const formatDate = (timestamp) => new Date(timestamp * 1000).toLocaleDateString();
 
-// Helper to calculate client stats from raw events
-const calculateClientStatsFromEvents = (events, limit = 20) => {
-  const clientMap = new Map();
-  
-  events.forEach(event => {
-    const clientTag = event.tags?.find(tag => tag[0] === 'client');
-    const clientName = clientTag ? clientTag[1] : 'Unknown';
-    
-    if (!clientMap.has(clientName)) {
-      clientMap.set(clientName, {
-        name: clientName,
-        count: 0,
-        lastSeen: 0,
-        kinds: {}
-      });
-    }
-    
-    const client = clientMap.get(clientName);
-    client.count++;
-    client.lastSeen = Math.max(client.lastSeen, event.created_at);
-    client.kinds[event.kind] = (client.kinds[event.kind] || 0) + 1;
-  });
-  
-  return Array.from(clientMap.values())
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
-};
-
 export const ClientStats = ({ analytics }) => {
   const [clientData, setClientData] = useState([]);
-  const [useLegacyData, setUseLegacyData] = useState(false);
+  const [backendVersion, setBackendVersion] = useState(0);
+  
+  // Fetch client stats from backend API
+  const fetchClientStats = async () => {
+    try {
+      const API_BASE_URL = 'http://localhost:3000/api/v1';
+      const response = await fetch(`${API_BASE_URL}/stats/clients?range=24h`);
+      
+      if (!response.ok) {
+        console.warn('[ClientStats] Backend API error:', response.status);
+        return null;
+      }
+      
+      const data = await response.json();
+      console.log('[ClientStats] Fetched from backend API:', data.clients?.length || 0, 'clients');
+      
+      // Transform backend data format to component format
+      if (data.clients && Array.isArray(data.clients)) {
+        // Backend returns { name, count, event_count, last_seen, kinds }
+        const formatted = data.clients.map(client => ({
+          name: client.name || client.client_name || 'Unknown',
+          count: client.count || client.event_count || 0,
+          lastSeen: client.last_seen || Math.floor(Date.now() / 1000),
+          kinds: client.kinds || {}
+        })).slice(0, 20);
+        
+        return formatted;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[ClientStats] Error fetching from backend:', error);
+      return null;
+    }
+  };
   
   useEffect(() => {
-    // Check if we should use legacy stats for consistency
-    const shouldUseLegacy = window.nostrStats && typeof window.nostrStats.getAllEvents === 'function';
-    setUseLegacyData(shouldUseLegacy);
+    console.log('[ClientStats] Initializing - using backend API for client stats');
     
-    // Initial load
-    let data;
-    if (shouldUseLegacy) {
-      const legacyEvents = window.nostrStats.getAllEvents();
-      data = calculateClientStatsFromEvents(legacyEvents, 20);
-    } else {
-      data = analytics.getClientStats(20);
-    }
-    setClientData(data);
-    
-    // Listen for analytics updates
-    const handleUpdate = (type, data) => {
-      if (type === 'event' || type === 'eventBatch') {
-        let updatedData;
-        if (shouldUseLegacy) {
-          const legacyEvents = window.nostrStats.getAllEvents();
-          updatedData = calculateClientStatsFromEvents(legacyEvents, 20);
-        } else {
-          updatedData = analytics.getClientStats(20);
-        }
-        setClientData(updatedData);
+    // Initial fetch
+    fetchClientStats().then(data => {
+      if (data) {
+        setClientData(data);
       }
+    });
+    
+    // Listen for backend updates and refetch
+    const handleBackendUpdate = (event) => {
+      console.log('[ClientStats] Backend update event received');
+      fetchClientStats().then(data => {
+        if (data) {
+          setClientData(data);
+        }
+      });
     };
     
-    analytics.addListener(handleUpdate);
+    window.addEventListener('backend-stats-updated', handleBackendUpdate, { passive: true });
     
-    // Fallback: also check every 2 seconds for updates
-    const interval = setInterval(() => {
-      let updatedData;
-      if (shouldUseLegacy) {
-        const legacyEvents = window.nostrStats.getAllEvents();
-        updatedData = calculateClientStatsFromEvents(legacyEvents, 20);
-      } else {
-        updatedData = analytics.getClientStats(20);
+    // Also listen to backend version updates from window
+    const versionCheckInterval = setInterval(() => {
+      if (window.backendStatsVersion && window.backendStatsVersion !== backendVersion) {
+        console.log('[ClientStats] Backend version changed:', backendVersion, '->', window.backendStatsVersion);
+        setBackendVersion(window.backendStatsVersion);
+        
+        fetchClientStats().then(data => {
+          if (data) {
+            setClientData(data);
+          }
+        });
       }
-      setClientData(updatedData);
-    }, 2000);
+    }, 1000);
+    
+    // Poll for updates every 60 seconds (match backend poll interval)
+    const pollInterval = setInterval(() => {
+      fetchClientStats().then(data => {
+        if (data) {
+          setClientData(data);
+        }
+      });
+    }, 60000);
     
     return () => {
-      analytics.removeListener(handleUpdate);
-      clearInterval(interval);
+      window.removeEventListener('backend-stats-updated', handleBackendUpdate);
+      clearInterval(versionCheckInterval);
+      clearInterval(pollInterval);
     };
-  }, [analytics]);
+  }, [backendVersion]);
   
   if (clientData.length === 0) {
     return (
@@ -113,7 +122,6 @@ export const ClientStats = ({ analytics }) => {
             {clientData.map((client) => {
               const kindsEntries = Object.entries(client.kinds || {}).sort((a, b) => b[1] - a[1]);
               let kindsStr;
-              
               if (kindsEntries.length === 0) {
                 kindsStr = 'N/A';
               } else if (kindsEntries.length <= 3) {

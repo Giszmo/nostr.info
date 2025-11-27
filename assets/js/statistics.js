@@ -4,9 +4,46 @@ layout: none
 ---
 
 // Statistics tracking and visualization for Nostr network
+// Uses backend API for data consistency and scalability
+const API_BASE_URL = 'http://localhost:3000/api/v1'; // Backend API endpoint
+const API_POLL_INTERVAL = 60000; // Poll backend every 60 seconds
 const LIMIT = 100; // Events to request from each relay
 const UPDATE_INTERVAL = 5000; // Update stats every 5 seconds
-const CHART_UPDATE_INTERVAL = 10000; // Update charts every 10 seconds
+const CHART_UPDATE_INTERVAL = 30000; // Update charts every 30 seconds (reduced from 10s to avoid rate limiting)
+
+// API Response caching to avoid rate limiting
+const apiCache = {
+  eventDistribution: { data: null, timestamp: 0 },
+  topRelays: { data: null, timestamp: 0 },
+  topClients: { data: null, timestamp: 0 }
+};
+const CACHE_TTL = 60000; // 60 second cache for API responses
+
+// Helper function to get cached API data or fetch fresh
+async function getCachedApiData(endpoint, cacheKey) {
+  const now = Date.now();
+  const cached = apiCache[cacheKey];
+  
+  // Return cached data if still fresh
+  if (cached && cached.data && (now - cached.timestamp) < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  try {
+    const response = await fetch(endpoint);
+    if (!response.ok) {
+      console.warn(`[API Cache] Error fetching ${endpoint}:`, response.status);
+      return cached?.data || null; // Return stale cache if available
+    }
+    
+    const data = await response.json();
+    apiCache[cacheKey] = { data, timestamp: now };
+    return data;
+  } catch (err) {
+    console.error(`[API Cache] Error fetching ${endpoint}:`, err);
+    return cached?.data || null; // Return stale cache if available
+  }
+}
 
 // Normalize relay URLs to avoid duplicates
 function normalizeRelayUrl(url) {
@@ -422,15 +459,161 @@ function setupStatisticsTabs() {
   });
 }
 
+// Backend API Integration - PRIMARY DATA SOURCE FOR STATISTICS
+// ALL statistics shown in the UI come from backend API (/api/v1/stats/overview)
+// DO NOT calculate metrics from local relay connections
+let backendStatsCache = null;
+let lastBackendUpdate = 0;
+
+// Expose to window so React components can access it
+window.backendStatsCache = backendStatsCache;
+
+// Fetch statistics from backend API
+// This is the AUTHORITATIVE source for all display metrics
+async function fetchBackendStats() {
+  try {
+    const url = `${API_BASE_URL}/stats/overview?range=24h`;
+    console.log(`[Backend] Fetching from: ${url}`);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.warn(`[Backend] API returned HTTP ${response.status}: ${response.statusText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log('[Backend] ✅ Stats received successfully:', {
+      total_relays: data.total_relays,
+      active_relays: data.active_relays,
+      total_events: data.total_events,
+      unique_authors: data.unique_authors,
+      avg_latency_ms: data.avg_latency_ms,
+      updated_at: data.updated_at
+    });
+    
+    backendStatsCache = data;
+    lastBackendUpdate = Date.now();
+    
+    // CRITICAL: Update window reference so React components can access it
+    window.backendStatsCache = backendStatsCache;
+    console.log('[Backend] Updated window.backendStatsCache:', window.backendStatsCache);
+    
+    // Update UI with backend data
+    updateAnalyticsFromBackend(data);
+    
+    return data;
+  } catch (error) {
+    console.error('[Backend] ❌ Error fetching stats:', error.message);
+    console.error('[Backend] Stack:', error.stack);
+    return null;
+  }
+}
+
+// Update analytics with backend data
+function updateAnalyticsFromBackend(backendData) {
+  if (!backendData) return;
+  
+  console.log('[Backend Update] Updating UI with backend data');
+  
+  // Update connection status banner with backend data
+  const statusEl = document.getElementById('connection-status');
+  if (statusEl) {
+    const totalRelays = backendData.total_relays || 0;
+    const activeRelays = backendData.active_relays || 0;
+    const totalEvents = backendData.total_events || 0;
+    const uniqueAuthors = backendData.unique_authors || 0;
+    
+    const textEl = statusEl.querySelector('.events-progress-text');
+    if (textEl) {
+      textEl.textContent = `${activeRelays}/${totalRelays} relays online · ${totalEvents.toLocaleString()} events · ${uniqueAuthors.toLocaleString()} authors`;
+    }
+    
+    const indicator = statusEl.querySelector('.events-progress-indicator');
+    if (indicator && activeRelays > 0) {
+      indicator.classList.add('is-ready');
+    }
+  }
+  
+  // Update all charts with backend data
+  console.log('[Backend Update] Updating charts with backend data');
+  updateKindsChart();
+  updateKindsBarChart();
+  updateTopRelays();
+  
+  // Sync with analytics system if available
+  if (window.analytics) {
+    console.log('[Backend Update] Notifying analytics system');
+    window.analytics.notifyListeners('backend-update', {
+      totalRelays: backendData.total_relays,
+      activeRelays: backendData.active_relays,
+      totalEvents: backendData.total_events,
+      uniqueAuthors: backendData.unique_authors,
+      avgLatency: backendData.avg_latency_ms
+    });
+  }
+  
+  // Dispatch global event for React components to listen to
+  console.log('[Backend Update] Dispatching global backend-stats-updated event');
+  window.dispatchEvent(new CustomEvent('backend-stats-updated', {
+    detail: backendData,
+    bubbles: true,
+    composed: true
+  }));
+  
+  // Force React update by updating timestamp
+  window.backendStatsUpdatedAt = Date.now();
+  
+  // Also dispatch a version-increment counter to force React re-renders
+  window.backendStatsVersion = (window.backendStatsVersion || 0) + 1;
+  console.log('[Backend Update] Backend stats version:', window.backendStatsVersion);
+}
+
 // Initialize on page load
 window.addEventListener('load', () => {
+  console.log('=== NOSTR.INFO STATISTICS PAGE INITIALIZATION ===');
+  console.log('Backend API URL:', API_BASE_URL);
+  
   setupStatisticsTabs();
   initializeStatistics();
   setupCharts();
-  connectToRelays();
+  
+  // PRIMARY: Fetch from backend API for statistics
+  console.log('[Initialization] Attempting to fetch statistics from backend API...');
+  fetchBackendStats()
+    .then(data => {
+      if (data) {
+        console.log('[Initialization] ✅ SUCCESS - Backend API available, using backend data exclusively');
+        console.log('[Initialization] Data:', data);
+        // Backend provides authoritative statistics data
+        startBackendPolling();
+        console.log('[Initialization] Backend polling started (60s interval)');
+        // DO NOT connect to relays for statistics - backend is authoritative
+      } else {
+        console.warn('[Initialization] ⚠️ FALLBACK - Backend API unavailable, falling back to relay connections');
+        console.warn('[Initialization] This should only happen if backend is not running');
+        // Fallback ONLY if backend is down
+        connectToRelays();
+        startRelayDiscovery();
+      }
+    })
+    .catch(error => {
+      console.error('[Initialization] ❌ EXCEPTION - Failed to initialize:', error);
+      console.warn('[Initialization] Falling back to relay connections');
+      connectToRelays();
+      startRelayDiscovery();
+    });
+  
   startPeriodicUpdates();
-  startRelayDiscovery();
+  console.log('[Initialization] Periodic UI updates started');
 });
+
+// Poll backend API for updated statistics
+function startBackendPolling() {
+  setInterval(() => {
+    fetchBackendStats();
+  }, API_POLL_INTERVAL);
+}
 
 function initializeStatistics() {
   // Load relay list from Jekyll data
@@ -448,7 +631,7 @@ function initializeStatistics() {
     discoveredRelays.set(relay.url, relay);
   });
   
-  console.log(`Initialized with ${relays.length} curated relays`);
+  console.log(`[Initialization] Initialized with ${relays.length} curated relays`);
 }
 
 function createRelayObject(url) {
@@ -969,11 +1152,23 @@ function startPeriodicUpdates() {
 function updateStatistics() {
   updateNetworkOverview();
   updateNetworkAnalytics();
-  updateTopRelays();
+  // Note: updateTopRelays moved to updateCharts() to avoid rate limiting
   updateKindsTable();
 }
 
 function updateNetworkOverview() {
+  // Use backend data if available for accuracy
+  if (backendStatsCache) {
+    const backendData = backendStatsCache;
+    setElementText('stat-total-relays', backendData.total_relays || 0);
+    setElementText('stat-connected-relays', backendData.active_relays || 0);
+    setElementText('stat-active-relays', backendData.active_relays || 0);
+    setElementText('stat-total-events', (backendData.total_events || 0).toLocaleString());
+    setElementText('stat-avg-response', (backendData.avg_latency_ms || 0).toFixed(0) + 'ms');
+    return; // Use backend data exclusively
+  }
+  
+  // Fallback: Use local relay connections data
   const now = Date.now();
   const cutoffTime = now - timeRangeMs;
   
@@ -1059,60 +1254,72 @@ function updateNetworkAnalytics() {
 }
 
 function updateTopRelays() {
-  const topRelays = [...relays]
-    .filter(r => r.events > 0)
-    .sort((a, b) => b.events - a.events)
-    .slice(0, 20); // Show top 20 relays
-
   const tbody = document.getElementById('top-relays-tbody');
   if (!tbody) return;
 
-  if (topRelays.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem"><span class="loading">No relay activity yet. Waiting for events...</span></td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = topRelays.map((relay, index) => {
-    const avgLatency = relay.latencies.length > 0
-      ? (relay.latencies.reduce((sum, l) => sum + l, 0) / relay.latencies.length).toFixed(0)
-      : '-';
-    
-    const status = relay.connected
-      ? `<span class="status-badge online">{% fa_svg fas.fa-circle-check %}</span>`
-      : `<span class="status-badge offline">{% fa_svg fas.fa-circle-xmark %}</span>`;
-
-    // Get top 3 event kinds for this relay
-    let topKindsStr = 'N/A';
-    if (relay.eventsByKind && Object.keys(relay.eventsByKind).length > 0) {
-      const sortedKinds = Object.entries(relay.eventsByKind)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3);
-      
-      if (sortedKinds.length > 0) {
-        topKindsStr = sortedKinds.map(([kind, count]) => {
-          const kindInfo = getKindInfo(Number(kind));
-          return `<span class="relay-kind-label" title="${kindInfo.label}: ${count} events">${kind}</span>`;
-        }).join(', ');
-        
-        const remainingKinds = Object.keys(relay.eventsByKind).length - 3;
-        if (remainingKinds > 0) {
-          topKindsStr += ` <span class="relay-kind-count">+${remainingKinds} more</span>`;
-        }
+  // Fetch top relays from backend API with caching
+  getCachedApiData(`${API_BASE_URL}/stats/top-relays?range=24h`, 'topRelays')
+    .then(data => {
+      if (!data || !data.top_relays) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem"><span class="loading">No relay activity yet</span></td></tr>';
+        return;
       }
-    }
 
-    return `
-      <tr>
-        <td class="text-center">#${index + 1}</td>
-        <td><code>${relay.url}</code></td>
-        <td class="text-center">${status}</td>
-        <td class="text-right">${relay.events.toLocaleString()}</td>
-        <td class="text-right">${relay.activeUsers.size.toLocaleString()}</td>
-        <td class="text-right">${avgLatency}${avgLatency !== '-' ? 'ms' : ''}</td>
-        <td>${topKindsStr}</td>
-      </tr>
-    `;
-  }).join('');
+      const topRelays = data.top_relays.slice(0, 20); // Top 20 from backend
+
+      if (topRelays.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem"><span class="loading">No relay activity yet</span></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = topRelays.map((relay, index) => {
+        // Status from backend: 'active' or 'offline'
+        const status = relay.status === 'active'
+          ? `<span class="status-badge online">✓</span>`
+          : `<span class="status-badge offline">✗</span>`;
+
+        // Latency from backend
+        const avgLatency = relay.avg_latency_ms !== undefined && relay.avg_latency_ms !== null
+          ? relay.avg_latency_ms.toFixed(0)
+          : '-';
+
+        // Top 3 event kinds
+        let topKindsStr = 'N/A';
+        if (relay.top_kinds && Object.keys(relay.top_kinds).length > 0) {
+          const sortedKinds = Object.entries(relay.top_kinds)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+          
+          if (sortedKinds.length > 0) {
+            topKindsStr = sortedKinds.map(([kind, count]) => {
+              const kindInfo = getKindInfo(Number(kind));
+              return `<span class="relay-kind-label" title="${kindInfo.label}: ${count} events">${kind}</span>`;
+            }).join(', ');
+            
+            const remainingKinds = Object.keys(relay.top_kinds).length - 3;
+            if (remainingKinds > 0) {
+              topKindsStr += ` <span class="relay-kind-count">+${remainingKinds}</span>`;
+            }
+          }
+        }
+
+        return `
+          <tr>
+            <td class="text-center">#${index + 1}</td>
+            <td><code>${relay.url}</code></td>
+            <td class="text-center">${status}</td>
+            <td class="text-right">${(relay.event_count || 0).toLocaleString()}</td>
+            <td class="text-right">${(relay.active_users || 0).toLocaleString()}</td>
+            <td class="text-right">${avgLatency}${avgLatency !== '-' ? 'ms' : ''}</td>
+            <td>${topKindsStr}</td>
+          </tr>
+        `;
+      }).join('');
+    })
+    .catch(err => {
+      console.error('[Top Relays] Error:', err);
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem"><span class="loading">Error loading relay data</span></td></tr>';
+    });
 }
 
 function calculateEventsPerMinute(relay) {
@@ -1320,6 +1527,7 @@ function initializeCharts() {
 function updateCharts() {
   updateKindsChart();
   updateKindsBarChart();
+  updateTopRelays();
 }
 
 // Attempt to extract client info from an event
@@ -1346,37 +1554,82 @@ function extractClientFromEvent(event) {
 function updateKindsChart() {
   if (!eventKindsChart) return;
   
-  const sortedKinds = Object.entries(eventKindCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10); // Top 10 for pie chart
-  
-  if (sortedKinds.length === 0) return;
-  
-  const labels = sortedKinds.map(([kind, _]) => getKindInfo(parseInt(kind)).label);
-  const data = sortedKinds.map(([_, count]) => count);
-  
-  eventKindsChart.data.labels = labels;
-  eventKindsChart.data.datasets[0].data = data;
-  eventKindsChart.update('none');
+  // Fetch event distribution from backend API with caching
+  getCachedApiData(`${API_BASE_URL}/stats/events/24h`, 'eventDistribution')
+    .then(data => {
+      if (!data || !data.distribution || !data.distribution.by_kind) {
+        console.warn('[Event Kinds Chart] No event kind distribution data from backend');
+        return;
+      }
+
+      const kindData = data.distribution.by_kind;
+      const sortedKinds = Object.entries(kindData)
+        .map(([kind, count]) => [parseInt(kind, 10), count])
+        .filter(([kind, count]) => !isNaN(kind) && typeof count === 'number')
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      if (sortedKinds.length === 0) {
+        console.log('[Event Kinds Chart] No event kinds data available');
+        return;
+      }
+
+      const labels = [];
+      const chartData = [];
+      sortedKinds.forEach(([kind, count]) => {
+        const kindInfo = getKindInfo(kind);
+        const label = (kindInfo && kindInfo.label) ? kindInfo.label : `Kind ${kind}`;
+        labels.push(`${label} (${kind})`);
+        chartData.push(count);
+      });
+
+      console.log('[Event Kinds Chart] Updating with:', { labels, chartData });
+      eventKindsChart.data.labels = labels;
+      eventKindsChart.data.datasets[0].data = chartData;
+      eventKindsChart.update('none');
+      console.log('[Event Kinds Chart] ✓ Updated with backend data');
+    })
+    .catch(err => {
+      console.error('[Event Kinds Chart] Error:', err);
+    });
 }
 
 function updateKindsBarChart() {
   if (!eventKindsBarChart) return;
 
-  // Build client usage list from collected clientCounts, excluding "Unknown"
-  const sortedClients = Object.entries(clientCounts)
-    .filter(([client, _]) => client !== 'Unknown') // Exclude Unknown clients
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 20); // Top 20 clients
+  // Fetch client stats from backend API with caching
+  getCachedApiData(`${API_BASE_URL}/stats/clients?range=24h`, 'topClients')
+    .then(data => {
+      if (!data || !data.clients) {
+        console.warn('[Client Stats Chart] No client data from backend');
+        return;
+      }
 
-  if (sortedClients.length === 0) return;
+      // Backend returns: { clients: [{name, count, event_count, last_seen, kinds}, ...], updated_at }
+      // Sort by event_count and take top 20
+      const sortedClients = data.clients
+        .filter(c => c.name && c.name !== 'Unknown') // Exclude Unknown
+        .sort((a, b) => (b.event_count || b.count || 0) - (a.event_count || a.count || 0))
+        .slice(0, 20);
 
-  const labels = sortedClients.map(([client, _]) => client);
-  const data = sortedClients.map(([_, count]) => count);
+      if (sortedClients.length === 0) {
+        console.log('[Client Stats Chart] No client data available');
+        return;
+      }
 
-  eventKindsBarChart.data.labels = labels;
-  eventKindsBarChart.data.datasets[0].data = data;
-  eventKindsBarChart.update('none');
+      const labels = sortedClients.map(c => c.name);
+      const chartData = sortedClients.map(c => c.event_count || c.count || 0);
+
+      console.log('[Client Stats Chart] Updating with:', { count: labels.length, labels });
+      
+      eventKindsBarChart.data.labels = labels;
+      eventKindsBarChart.data.datasets[0].data = chartData;
+      eventKindsBarChart.update('none');
+      console.log('[Client Stats Chart] ✓ Updated with backend data:', sortedClients.length, 'clients');
+    })
+    .catch(err => {
+      console.error('[Client Stats Chart] Error:', err);
+    });
 }
 
 function updateTimeRange() {
@@ -1404,36 +1657,55 @@ function updateTimeRange() {
 }
 
 function refreshStatistics() {
-  // Clear existing data
-  allEvents = [];
-  eventTimeline = [];
-  eventKindCounts = {};
-  clientCounts = {};
-  activeUsersPubkeys = new Set();
-  statsStartTime = Date.now();
+  // Refresh statistics from backend API
+  console.log('[Refresh] Refreshing statistics from backend');
   
-  // Disconnect and reconnect
-  relays.forEach(relay => {
-    if (relay.ws) {
-      relay.ws.close();
-    }
-    relay.connected = false;
-    relay.tried = false;
-    relay.events = 0;
-    relay.eventsByKind = {};
-    relay.eventsList = [];
-    relay.activeUsers = new Set();
-    relay.latencies = [];
-  });
-  
-  // Reconnect
-  setTimeout(() => {
-    connectToRelays();
-  }, 500);
-  
-  // Update immediately
-  updateStatistics();
-  updateCharts();
+  if (backendStatsCache) {
+    // If backend available, fetch fresh data
+    fetchBackendStats().then(data => {
+      if (data) {
+        console.log('[Refresh] ✅ Backend data refreshed');
+        updateStatistics();
+        updateCharts();
+      } else {
+        console.warn('[Refresh] ⚠️ Backend fetch failed');
+      }
+    });
+  } else {
+    // If backend not available, fall back to relay refresh
+    console.log('[Refresh] Backend not available, falling back to relay connections');
+    
+    // Clear existing data
+    allEvents = [];
+    eventTimeline = [];
+    eventKindCounts = {};
+    clientCounts = {};
+    activeUsersPubkeys = new Set();
+    statsStartTime = Date.now();
+    
+    // Disconnect and reconnect
+    relays.forEach(relay => {
+      if (relay.ws) {
+        relay.ws.close();
+      }
+      relay.connected = false;
+      relay.tried = false;
+      relay.events = 0;
+      relay.eventsByKind = {};
+      relay.eventsList = [];
+      relay.activeUsers = new Set();
+      relay.latencies = [];
+    });
+    
+    // Reconnect
+    setTimeout(() => {
+      connectToRelays();
+    }, 500);
+    
+    // Update immediately
+    updateStatistics();
+    updateCharts();
+  }
 }
 
 // Utility functions

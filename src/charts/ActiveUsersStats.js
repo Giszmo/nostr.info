@@ -20,10 +20,16 @@ export const ActiveUsersStats = ({ analytics, timeRange }) => {
     // Initial load
     const data = analytics.getActiveUsersData(timeRange);
     setActiveUsersData(data);
+    console.log('[ActiveUsersStats] Initialized with', data.length, 'days of data');
     
     // Listen for analytics updates
     const handleUpdate = (type, data) => {
+      console.log('[ActiveUsersStats] Update event:', type);
       if (type === 'event' || type === 'eventBatch') {
+        const updatedData = analytics.getActiveUsersData(timeRange);
+        setActiveUsersData(updatedData);
+      } else if (type === 'backend-update') {
+        // When backend updates, also refresh active users
         const updatedData = analytics.getActiveUsersData(timeRange);
         setActiveUsersData(updatedData);
       }
@@ -31,8 +37,18 @@ export const ActiveUsersStats = ({ analytics, timeRange }) => {
     
     analytics.addListener(handleUpdate);
     
+    // Listen for backend updates
+    const handleBackendUpdate = () => {
+      console.log('[ActiveUsersStats] Backend update received');
+      const updatedData = analytics.getActiveUsersData(timeRange);
+      setActiveUsersData(updatedData);
+    };
+    
+    window.addEventListener('backend-stats-updated', handleBackendUpdate, { passive: true });
+    
     return () => {
       analytics.removeListener(handleUpdate);
+      window.removeEventListener('backend-stats-updated', handleBackendUpdate);
     };
   }, [analytics, timeRange]);
   

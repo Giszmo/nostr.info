@@ -418,6 +418,23 @@ export class RelayCollectorService {
     }
   }
 
+    // Ensure relay exists in DB before update/log
+  private async ensureRelayExists(url: string): Promise<void> {
+    // Extract host from URL
+    let host = '';
+    try {
+      host = new URL(url).host;
+    } catch {
+      host = url.replace(/^wss?:\/\//, '').split('/')[0];
+    }
+    await db.query(
+      `INSERT INTO relays (url, host, is_active, is_discovered)
+       VALUES ($1, $2, true, true)
+       ON CONFLICT (url) DO NOTHING`,
+      [url, host]
+    );
+  }
+
   private extractClient(event: NostrEvent): string | null {
     // Look for client tag
     for (const tag of event.tags) {
@@ -482,6 +499,7 @@ export class RelayCollectorService {
     latency?: number
   ): Promise<void> {
     try {
+      await this.ensureRelayExists(url);
       if (status === 'connected') {
         await db.query(
           `UPDATE relays 
@@ -510,6 +528,7 @@ export class RelayCollectorService {
     metadata?: Record<string, unknown>
   ): Promise<void> {
     try {
+      await this.ensureRelayExists(url);
       const relayResult = await db.query<{ id: string }>(
         'SELECT id FROM relays WHERE url = $1',
         [url]

@@ -5,79 +5,124 @@ const formatSats = (sats) => `${formatNumber(sats)} sats`;
 
 export const OverviewStats = ({ analytics }) => {
   const [summaryStats, setSummaryStats] = useState({});
-  const [legacyStats, setLegacyStats] = useState({});
+  const [backendStats, setBackendStats] = useState({});
   const [loading, setLoading] = useState(true);
+  const [backendVersion, setBackendVersion] = useState(0);
+  
+  // Get backend stats from window.backendStatsCache (set by statistics.js)
+  const getBackendStats = () => {
+    if (window.backendStatsCache) {
+      console.log('[OverviewStats] Backend stats found:', window.backendStatsCache);
+      return {
+        totalRelays: window.backendStatsCache.total_relays,
+        activeRelays: window.backendStatsCache.active_relays,
+        totalEvents: window.backendStatsCache.total_events,
+        uniqueAuthors: window.backendStatsCache.unique_authors,
+        avgLatencyMs: window.backendStatsCache.avg_latency_ms,
+        updatedAt: window.backendStatsCache.updated_at
+      };
+    }
+    console.log('[OverviewStats] No backend stats available yet');
+    return {};
+  };
   
   useEffect(() => {
-    // Initial calculation
+    // Initial setup
     const stats = analytics.getSummaryStats();
     setSummaryStats(stats);
     
-    // Get legacy stats from statistics.js for consistency
-    if (window.nostrStats && typeof window.nostrStats.getLegacyStats === 'function') {
-      const legacy = window.nostrStats.getLegacyStats();
-      setLegacyStats(legacy);
-    }
-    
+    // Get backend stats (may be empty if not loaded yet)
+    const backend = getBackendStats();
+    setBackendStats(backend);
     setLoading(false);
     
-    // Listen for analytics updates and recalculate stats
+    // Listen for analytics updates
     const handleUpdate = (type, data) => {
+      console.log('[OverviewStats] Analytics update:', type, data);
       if (type === 'event' || type === 'eventBatch') {
         const updatedStats = analytics.getSummaryStats();
         setSummaryStats(updatedStats);
-        
-        // Also update legacy stats
-        if (window.nostrStats && typeof window.nostrStats.getLegacyStats === 'function') {
-          const legacy = window.nostrStats.getLegacyStats();
-          setLegacyStats(legacy);
-        }
+      } else if (type === 'backend-update') {
+        // Backend data was updated - fetch it
+        console.log('[OverviewStats] Backend update received from analytics');
+        const backend = getBackendStats();
+        setBackendStats(backend);
       }
     };
     
     analytics.addListener(handleUpdate);
     
-    // Fallback: also check every 2 seconds for updates
-    const interval = setInterval(() => {
-      const updatedStats = analytics.getSummaryStats();
-      setSummaryStats(updatedStats);
-      
-      // Also update legacy stats
-      if (window.nostrStats && typeof window.nostrStats.getLegacyStats === 'function') {
-        const legacy = window.nostrStats.getLegacyStats();
-        setLegacyStats(legacy);
+    // Also listen for backend updates from window global events
+    const handleBackendUpdate = (event) => {
+      console.log('[OverviewStats] Caught global backend-stats-updated event', event.detail);
+      const backend = getBackendStats();
+      setBackendStats(backend);
+    };
+    
+    window.addEventListener('backend-stats-updated', handleBackendUpdate, { passive: true });
+    
+    // Watch for version changes (backend stats updated)
+    const versionInterval = setInterval(() => {
+      const currentVersion = window.backendStatsVersion || 0;
+      if (currentVersion !== backendVersion) {
+        console.log('[OverviewStats] Backend version changed:', backendVersion, '->', currentVersion);
+        setBackendVersion(currentVersion);
+        const backend = getBackendStats();
+        if (backend.totalRelays) {
+          console.log('[OverviewStats] Updating backend stats from version change');
+          setBackendStats(backend);
+        }
       }
-    }, 2000);
+    }, 500);
     
     return () => {
       analytics.removeListener(handleUpdate);
-      clearInterval(interval);
+      window.removeEventListener('backend-stats-updated', handleBackendUpdate);
+      clearInterval(versionInterval);
     };
-  }, [analytics]);
+  }, [analytics, backendVersion]);
   
   if (loading) {
     return null;
   }
   
-  // Use legacy stats for relays, events, and clients to ensure consistency with Legacy Overview section
-  const totalEvents = legacyStats.totalEvents || summaryStats.totalEvents || 0;
-  const avgResponseMs = legacyStats.avgResponseMs || null;
-  const totalClients = legacyStats.totalClients || summaryStats.totalClients || 0;
+  console.log('[OverviewStats] Rendering with:', {
+    backendStats,
+    summaryStats
+  });
+  
+  // PRIORITY: Use backend data for overview stats (it's authoritative)
+  // Fall back to analytics data only if backend is not available
+  const totalRelays = backendStats.totalRelays || 0;
+  const activeRelays = backendStats.activeRelays || 0;
+  const totalEvents = backendStats.totalEvents || summaryStats.totalEvents || 0;
+  const uniqueAuthors = backendStats.uniqueAuthors || 0;
+  const avgLatencyMs = backendStats.avgLatencyMs || null;
   
   const stats = [
+    {
+      label: 'Total Relays',
+      value: formatNumber(totalRelays),
+      highlight: totalRelays > 1000,
+    },
+    {
+      label: 'Active Relays',
+      value: formatNumber(activeRelays),
+      highlight: activeRelays > 1000,
+    },
     {
       label: 'Total Events',
       value: formatNumber(totalEvents),
       highlight: false,
     },
     {
-      label: 'Avg Response',
-      value: avgResponseMs ? `${avgResponseMs}ms` : 'N/A',
+      label: 'Unique Authors',
+      value: formatNumber(uniqueAuthors),
       highlight: false,
     },
     {
-      label: 'Total Clients',
-      value: formatNumber(totalClients),
+      label: 'Avg Latency',
+      value: avgLatencyMs ? `${avgLatencyMs}ms` : 'N/A',
       highlight: false,
     },
     {
@@ -88,11 +133,6 @@ export const OverviewStats = ({ analytics }) => {
     {
       label: 'Total Users',
       value: formatNumber(summaryStats.totalUsers || 0),
-      highlight: false,
-    },
-    {
-      label: 'Days Tracked',
-      value: formatNumber(summaryStats.daysTracked || 0),
       highlight: false,
     },
   ];

@@ -6,6 +6,9 @@ layout: none
 /**
  * Analytics Dashboard Initialization
  * Integrates the new analytics system with existing nostr.info infrastructure
+ * 
+ * NOTE: With backend API mode, analytics focuses on dashboard data visualization
+ * rather than real-time relay event collection (which backend handles)
  */
 
 // Initialize analytics dashboard when page loads
@@ -16,11 +19,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 1000);
 });
 
-// Also listen for nostrStats events globally
-document.addEventListener('nostrStats:eventsUpdated', function(event) {
+// Also listen for backend stats updates
+document.addEventListener('backend-stats-updated', function(event) {
   if (window.analytics && event.detail) {
-    // Sync data periodically when nostrStats updates
-    syncWithNostrStats();
+    console.log('[Analytics] Backend stats updated:', event.detail);
+    // Notify analytics listeners about backend update
+    if (window.analytics.notifyListeners) {
+      window.analytics.notifyListeners('backend-update', event.detail);
+    }
   }
 });
 
@@ -29,339 +35,107 @@ function initializeAnalyticsDashboard() {
   if (typeof window.analytics === 'undefined' || 
       typeof window.TimeRangeFilter === 'undefined' ||
       typeof window.mountAnalyticsDashboard === 'undefined') {
-    console.error('Analytics components not loaded');
+    console.error('[Analytics] Analytics components not loaded');
     return;
   }
 
   try {
+    console.log('[Analytics] Initializing analytics dashboard');
+    
     // Initialize time filter - DISABLED: Not yet implemented for real-time sorting
     // const timeFilter = new TimeRangeFilter('analytics-time-filter', window.analytics);
     
     // Mount React dashboard
     const dashboardRoot = window.mountAnalyticsDashboard('analytics-dashboard-root', window.analytics);
     
-    // Connect to existing relay system
-    connectAnalyticsToRelays();
+    // Backend API mode: Don't connect to relays for statistics
+    // Analytics will focus on dashboard visualization of backend-provided data
+    console.log('[Analytics] Backend API mode - skipping relay connections for statistics');
     
-    // NOTE: Sample data generation disabled - we always use real network data
-    // The analytics system now exclusively uses:
-    // 1. Events from window.nostrStats (primary)
-    // 2. Events from window.allEvents array (fallback)
-    // 3. Live WebSocket relay connections (real-time)
+    // If backend data is available, load it into analytics
+    if (window.backendStatsCache) {
+      console.log('[Analytics] Loading backend statistics into analytics system');
+      loadBackendStatsIntoAnalytics(window.backendStatsCache);
+    }
     
-    // CRITICAL: Do a comprehensive catch-up sync after everything is initialized
-    // This ensures we don't miss events that arrived during initialization
-    setTimeout(() => {
-      if (typeof window.nostrStats !== 'undefined') {
-        const allEvents = window.nostrStats.getEventsForKind('all');
-        const analyticsStats = window.analytics.getSummaryStats();
-        
-        if (allEvents.length > analyticsStats.totalEvents) {
-          console.log(`Analytics: Catch-up sync - detected ${allEvents.length - analyticsStats.totalEvents} missed events`);
-          
-          // Process all events again (duplicates prevented by event ID tracking)
-          allEvents.forEach(event => {
-            window.analytics.trackEvent(event);
-          });
-        }
-      }
-      
-      // ALSO: Load metadata from legacy system's metadataByPubkey cache
-      loadMetadataFromLegacySystem();
-      
-    }, 3000); // Wait 3 seconds for all systems to initialize
+    // Listen for future backend updates
+    window.addEventListener('backend-stats-updated', (event) => {
+      console.log('[Analytics] Backend update received');
+      loadBackendStatsIntoAnalytics(event.detail);
+    });
     
-    console.log('Analytics dashboard initialized successfully');
+    console.log('[Analytics] Dashboard initialized successfully (backend mode)');
     
   } catch (error) {
-    console.error('Failed to initialize analytics dashboard:', error);
+    console.error('[Analytics] Failed to initialize dashboard:', error);
   }
 }
 
-function connectAnalyticsToRelays() {
-  let lastProcessedEventCount = 0;
+// Load backend statistics into the analytics system
+function loadBackendStatsIntoAnalytics(backendData) {
+  if (!backendData || !window.analytics) return;
   
-  // Hook into existing nostrStats system from statistics.js
-  if (typeof window.nostrStats !== 'undefined') {
-    console.log('Analytics: Connecting to existing nostrStats system');
+  try {
+    console.log('[Analytics] Loading backend data: relays=' + backendData.total_relays + 
+                ', events=' + backendData.total_events + ', authors=' + backendData.unique_authors);
     
-    // Get all existing events first
-    const existingEvents = window.nostrStats.getEventsForKind('all');
-    console.log(`Analytics: Processing ${existingEvents.length} existing events from nostrStats`);
+    // Create synthetic event for analytics to track
+    // This allows analytics system to work even though we're not collecting individual events
+    const syntheticEvent = {
+      id: 'backend-snapshot-' + Date.now(),
+      created_at: Math.floor(Date.now() / 1000),
+      kind: 999, // Custom kind for backend snapshots
+      pubkey: 'backend-collector',
+      content: JSON.stringify({
+        total_relays: backendData.total_relays,
+        active_relays: backendData.active_relays,
+        total_events: backendData.total_events,
+        unique_authors: backendData.unique_authors,
+        avg_latency_ms: backendData.avg_latency_ms
+      }),
+      tags: [['backend', 'snapshot']],
+      sig: ''
+    };
     
-    // Process ALL existing events initially
-    existingEvents.forEach(event => {
-      window.analytics.trackEvent(event);
-    });
-    
-    lastProcessedEventCount = existingEvents.length;
-    
-    // Subscribe to new event updates (event-driven)
-    window.nostrStats.subscribeEvents((payload) => {
-      syncAnalyticsWithNostrStats();
-    });
-    
-    // ALSO: Sync periodically to ensure we don't miss events
-    // This acts as a fallback in case subscription callbacks are delayed
-    setInterval(syncAnalyticsWithNostrStats, 2000);
-    
-    function syncAnalyticsWithNostrStats() {
-      const allEvents = window.nostrStats.getEventsForKind('all');
-      
-      if (allEvents.length > lastProcessedEventCount) {
-        const newEventsCount = allEvents.length - lastProcessedEventCount;
-        console.log(`Analytics: Syncing ${newEventsCount} new events from nostrStats (total: ${allEvents.length})`);
-        
-        // Get the newly added events (they're appended to the end of the array)
-        const newEvents = allEvents.slice(lastProcessedEventCount);
-        newEvents.forEach(event => {
-          window.analytics.trackEvent(event);
-        });
-        
-        lastProcessedEventCount = allEvents.length;
-      }
-    }
-    
-    // Don't continue to fallback if we successfully connected
-    if (existingEvents.length > 0) {
-      console.log('Analytics: Successfully connected to nostrStats with real events');
-      return;
-    }
-  } else {
-    console.log('Analytics: nostrStats not found, checking for direct access...');
-    
-    // Try to hook into global allEvents array directly
-    if (typeof window.allEvents !== 'undefined' && Array.isArray(window.allEvents)) {
-      console.log(`Analytics: Found global allEvents array with ${window.allEvents.length} events`);
-      
-      // Process ALL existing events
-      window.allEvents.forEach(event => {
-        window.analytics.trackEvent(event);
+    // Notify analytics about the backend data
+    if (window.analytics.notifyListeners) {
+      window.analytics.notifyListeners('backend-snapshot', {
+        totalRelays: backendData.total_relays,
+        activeRelays: backendData.active_relays,
+        totalEvents: backendData.total_events,
+        uniqueAuthors: backendData.unique_authors,
+        avgLatency: backendData.avg_latency_ms,
+        timestamp: Date.now()
       });
-      
-      lastProcessedEventCount = window.allEvents.length;
-      
-      // Monitor for new events by checking periodically
-      setInterval(() => {
-        if (window.allEvents.length > lastProcessedEventCount) {
-          // Get only new events (appended to end)
-          const newEvents = window.allEvents.slice(lastProcessedEventCount);
-          console.log(`Analytics: Processing ${newEvents.length} new events from allEvents`);
-          
-          newEvents.forEach(event => {
-            window.analytics.trackEvent(event);
-          });
-          
-          lastProcessedEventCount = window.allEvents.length;
-        }
-      }, 1000);
-      
-      // Don't continue to fallback if we have real events
-      if (window.allEvents.length > 0) {
-        console.log('Analytics: Successfully connected to allEvents with real data');
-        return;
-      }
     }
-  }
-  
-  // Hook into any existing WebSocket connections for live updates
-  if (typeof window.relays !== 'undefined') {
-    Object.values(window.relays).forEach(relay => {
-      if (relay.ws && relay.ws.readyState === WebSocket.OPEN) {
-        hookIntoRelay(relay);
-      }
-    });
+  } catch (error) {
+    console.error('[Analytics] Error loading backend data:', error);
   }
 }
 
-function hookIntoRelay(relay) {
-  // Store original onmessage handler
-  const originalOnMessage = relay.ws.onmessage;
-  
-  relay.ws.onmessage = function(event) {
-    // Call original handler first
-    if (originalOnMessage) {
-      originalOnMessage.call(this, event);
-    }
-    
-    // Parse and track the event
-    try {
-      const message = JSON.parse(event.data);
-      if (Array.isArray(message) && message[0] === 'EVENT' && message[2]) {
-        window.analytics.trackEvent(message[2]);
-      }
-    } catch (e) {
-      // Ignore parsing errors
-    }
-  };
+// Sync analytics with backend stats updates
+function syncWithNostrStats() {
+  console.log('[Analytics] Backend stats updated, syncing analytics');
+  if (window.backendStatsCache && window.analytics) {
+    loadBackendStatsIntoAnalytics(window.backendStatsCache);
+  }
 }
 
 // DEPRECATED: Sample data generation removed
-// The analytics system now exclusively uses real network data from relays
-// This function is kept for reference but should never be called
-/*
-function generateSampleData() {
-  // Generate sample data for demonstration
-  const now = Math.floor(Date.now() / 1000);
-  const daysBack = 30;
-  
-  const clients = ['damus', 'iris', 'amethyst', 'snort', 'nostrdotcom', 'nos2x', 'alby'];
-  const eventKinds = [0, 1, 3, 5, 7, 9735, 10002, 30023];
-  
-  console.log('Generating sample analytics data...');
-  
-  for (let i = 0; i < daysBack; i++) {
-    const dayStart = now - (i * 86400);
-    const eventsPerDay = Math.floor(Math.random() * 1000) + 500;
-    
-    for (let j = 0; j < eventsPerDay; j++) {
-      const event = generateSampleEvent(dayStart, clients, eventKinds);
-      window.analytics.trackEvent(event);
-    }
-  }
-  
-  console.log(`Generated ${daysBack * 500} sample events for analytics`);
-}
+// Analytics now uses backend API data for statistics
 
-function generateSampleEvent(baseTime, clients, kinds) {
-  const client = clients[Math.floor(Math.random() * clients.length)];
-  const kind = kinds[Math.floor(Math.random() * kinds.length)];
-  const pubkey = generateRandomHex(64);
-  
-  const event = {
-    id: generateRandomHex(64),
-    pubkey: pubkey,
-    created_at: baseTime + Math.floor(Math.random() * 86400),
-    kind: kind,
-    tags: [
-      ['client', client]
-    ],
-    content: `Sample event from ${client}`,
-    sig: generateRandomHex(128)
-  };
-  
-  // Add zap amount for zap events
-  if (kind === 9735) {
-    const amount = Math.floor(Math.random() * 10000) + 100;
-    event.tags.push(['bolt11', `lnbc${amount}m...`]);
-  }
-  
-  // Add follow relationships for kind 3
-  if (kind === 3) {
-    const followCount = Math.floor(Math.random() * 50);
-    for (let i = 0; i < followCount; i++) {
-      event.tags.push(['p', generateRandomHex(64)]);
-    }
-  }
-  
-  return event;
-}
-
-function generateRandomHex(length) {
-  const chars = '0123456789abcdef';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-}
-*/
-
-// Sync analytics with nostrStats data
-function syncWithNostrStats() {
-  if (typeof window.nostrStats === 'undefined' || !window.analytics) return;
-  
-  try {
-    // Get the latest events that might not be in analytics yet
-    const allEvents = window.nostrStats.getEventsForKind('all');
-    const currentAnalyticsCount = window.analytics.getSummaryStats().totalEvents;
-    
-    // If nostrStats has more events than analytics, sync the difference
-    if (allEvents.length > currentAnalyticsCount) {
-      const newEventsCount = allEvents.length - currentAnalyticsCount;
-      console.log(`Analytics: Syncing ${newEventsCount} new events (${currentAnalyticsCount} -> ${allEvents.length})`);
-      
-      // Get NEW events from the current count onwards (not backwards!)
-      // Events are appended to the array, so new events are at the end
-      const newEvents = allEvents.slice(currentAnalyticsCount);
-      
-      // Process the new events (analytics tracks by event ID to avoid duplicates)
-      newEvents.forEach(event => {
-        window.analytics.trackEvent(event);
-      });
-    }
-  } catch (error) {
-    console.error('Analytics sync error:', error);
-  }
+// Sync analytics with nostrStats data (fallback - not used in backend mode)
+function syncWithNostrStatsLegacy() {
+  console.log('[Analytics] Legacy relay sync called (should not happen in backend mode)');
 }
 
 // Load metadata from the legacy statistics system's metadataByPubkey cache
 function loadMetadataFromLegacySystem() {
-  if (typeof window.nostrStats === 'undefined' || typeof window.nostrStats.getMetadataForPubkey === 'undefined') {
-    console.log('Analytics: Legacy metadata system not available');
-    return;
-  }
-  
-  if (!window.analytics) {
-    console.error('Analytics: Analytics system not initialized');
-    return;
-  }
-  
-  try {
-    // Get all users that analytics is tracking
-    const pageRankData = window.analytics.getPageRankData(10000); // Get all users
-    let metadataLoaded = 0;
-    
-    pageRankData.forEach(user => {
-      // Skip if already has metadata from kind 0 events
-      if (user.metadata && user.metadata.name) {
-        return;
-      }
-      
-      // Try to get metadata from legacy system
-      const metadata = window.nostrStats.getMetadataForPubkey(user.pubkey);
-      if (metadata) {
-        // Update analytics with this metadata
-        window.analytics.setUserMetadata(user.pubkey, {
-          name: metadata.displayName || metadata.name || '',
-          picture: metadata.picture || '',
-          about: metadata.about || '',
-          nip05: metadata.nip05 || ''
-        });
-        metadataLoaded++;
-      }
-    });
-    
-    console.log(`Analytics: Loaded ${metadataLoaded} user profiles from legacy metadata cache`);
-    
-    // Also listen for future metadata updates
-    if (typeof window.nostrStats.subscribeEvents === 'function') {
-      window.nostrStats.subscribeEvents((payload) => {
-        if (payload.reason === 'metadata') {
-          // Check if we can get metadata for newly discovered users
-          const pageRankData = window.analytics.getPageRankData(10000);
-          pageRankData.forEach(user => {
-            if (!user.metadata || !user.metadata.name) {
-              const metadata = window.nostrStats.getMetadataForPubkey(user.pubkey);
-              if (metadata) {
-                window.analytics.setUserMetadata(user.pubkey, {
-                  name: metadata.displayName || metadata.name || '',
-                  picture: metadata.picture || '',
-                  about: metadata.about || '',
-                  nip05: metadata.nip05 || ''
-                });
-              }
-            }
-          });
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Analytics: Failed to load legacy metadata:', error);
-  }
+  console.log('[Analytics] Backend mode: metadata loading from legacy system disabled');
+  // In backend mode, metadata comes from backend API, not relay connections
 }
 
 // Export for global access
 window.initializeAnalyticsDashboard = initializeAnalyticsDashboard;
-window.connectAnalyticsToRelays = connectAnalyticsToRelays;
 window.syncWithNostrStats = syncWithNostrStats;
+window.loadBackendStatsIntoAnalytics = loadBackendStatsIntoAnalytics;
