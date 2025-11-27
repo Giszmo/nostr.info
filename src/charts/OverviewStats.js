@@ -28,7 +28,7 @@ export const OverviewStats = ({ analytics }) => {
 
   // Fetch zaps and clients only once on initial mount
   useEffect(() => {
-    fetch('http://localhost:3000/api/v1/stats/events/24h')
+    fetch('https://stage.nostr.info/api/v1/stats/events/24h')
       .then(res => res.json())
       .then(data => {
         if (data.activity_timeline && Array.isArray(data.activity_timeline)) {
@@ -37,7 +37,7 @@ export const OverviewStats = ({ analytics }) => {
         }
       });
 
-    fetch('http://localhost:3000/api/v1/stats/clients')
+    fetch('https://stage.nostr.info/api/v1/stats/clients')
       .then(res => res.json())
       .then(data => {
         if (data.clients && Array.isArray(data.clients)) {

@@ -10,7 +10,7 @@ export const ClientStats = ({ analytics }) => {
   // Fetch client stats from backend API
   const fetchClientStats = async () => {
     try {
-      const API_BASE_URL = 'http://localhost:3000/api/v1';
+      const API_BASE_URL = 'https://stage.nostr.info/api/v1';
       const response = await fetch(`${API_BASE_URL}/stats/clients?range=24h`);
       
       if (!response.ok) {
