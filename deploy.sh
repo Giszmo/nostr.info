@@ -26,10 +26,12 @@ docker system prune -a --volumes -f -f
 # Build fresh backend images
 docker-compose build --no-cache
 
-# Run database migrations in a temporary container
-docker-compose run --rm api npm run db:migrate
 # Start backend containers
 docker-compose up -d
+
+npm install
+npm run db:migrate
+
 
 # Test Nginx config and restart
 sudo nginx -t
