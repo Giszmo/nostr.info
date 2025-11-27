@@ -5,9 +5,9 @@ layout: none
 
 // Statistics tracking and visualization for Nostr network
 // Uses backend API for data consistency and scalability
-const API_BASE_URL = 'http://localhost:3000/api/v1'; // Backend API endpoint
-const API_POLL_INTERVAL = 60000; // Poll backend every 60 seconds
-const LIMIT = 100; // Events to request from each relay
+const API_BASE_URL = 'https://stage.nostr.info/api/v1'; // Backend API endpoint
+const API_POLL_INTERVAL = 120000; // Poll backend every 60 seconds
+const LIMIT = 10000; // Events to request from each relay
 const UPDATE_INTERVAL = 5000; // Update stats every 5 seconds
 const CHART_UPDATE_INTERVAL = 30000; // Update charts every 30 seconds (reduced from 10s to avoid rate limiting)
 
