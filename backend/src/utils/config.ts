@@ -75,8 +75,7 @@ export const config: AppConfig = {
     port: parseNumber(env.API_PORT, 3000),
     host: env.API_HOST || '0.0.0.0',
     cors_origins: env.ALLOWED_ORIGINS || '*',
-    rate_limit_window_ms: parseNumber(env.RATE_LIMIT_WINDOW_MS, 60000), // 1 minute
-    rate_limit_max_requests: parseNumber(env.RATE_LIMIT_MAX_REQUESTS, 1000), // 100 requests per minute (allows ~1 per client every 10s for 100 concurrent clients)
+    // Rate limiting removed
   },
 };
 

@@ -4,111 +4,91 @@ const formatNumber = (num) => num.toLocaleString();
 const formatSats = (sats) => `${formatNumber(sats)} sats`;
 
 export const OverviewStats = ({ analytics }) => {
-  const [summaryStats, setSummaryStats] = useState({});
   const [backendStats, setBackendStats] = useState({});
   const [loading, setLoading] = useState(true);
-  const [backendVersion, setBackendVersion] = useState(0);
-  
+  const [zaps, setZaps] = useState(0);
+  const [totalClients, setTotalClients] = useState(0);
+
   // Get backend stats from window.backendStatsCache (set by statistics.js)
   const getBackendStats = () => {
     if (window.backendStatsCache) {
-      console.log('[OverviewStats] Backend stats found:', window.backendStatsCache);
       return {
         totalRelays: window.backendStatsCache.total_relays,
         activeRelays: window.backendStatsCache.active_relays,
         totalEvents: window.backendStatsCache.total_events,
         uniqueAuthors: window.backendStatsCache.unique_authors,
         avgLatencyMs: window.backendStatsCache.avg_latency_ms,
-        updatedAt: window.backendStatsCache.updated_at
+        updatedAt: window.backendStatsCache.updated_at,
+        totalZaps: window.backendStatsCache.total_zaps || 0,
+        totalClients: window.backendStatsCache.total_clients || (window.backendStatsCache.client_stats ? window.backendStatsCache.client_stats.length : 0),
       };
     }
-    console.log('[OverviewStats] No backend stats available yet');
     return {};
   };
-  
+
+  // Fetch zaps and clients only once on initial mount
   useEffect(() => {
-    // Initial setup
-    const stats = analytics.getSummaryStats();
-    setSummaryStats(stats);
-    
-    // Get backend stats (may be empty if not loaded yet)
+    fetch('http://localhost:3000/api/v1/stats/events/24h')
+      .then(res => res.json())
+      .then(data => {
+        if (data.activity_timeline && Array.isArray(data.activity_timeline)) {
+          const totalZaps = data.activity_timeline.reduce((sum, day) => sum + (day.zaps || 0), 0);
+          setZaps(totalZaps);
+        }
+      });
+
+    fetch('http://localhost:3000/api/v1/stats/clients')
+      .then(res => res.json())
+      .then(data => {
+        if (data.clients && Array.isArray(data.clients)) {
+          setTotalClients(data.clients.length);
+        }
+      });
+  }, []);
+
+  // Handle backendStats updates and UI refresh
+  useEffect(() => {
     const backend = getBackendStats();
     setBackendStats(backend);
     setLoading(false);
-    
-    // Listen for analytics updates
-    const handleUpdate = (type, data) => {
-      console.log('[OverviewStats] Analytics update:', type, data);
-      if (type === 'event' || type === 'eventBatch') {
-        const updatedStats = analytics.getSummaryStats();
-        setSummaryStats(updatedStats);
-      } else if (type === 'backend-update') {
-        // Backend data was updated - fetch it
-        console.log('[OverviewStats] Backend update received from analytics');
-        const backend = getBackendStats();
-        setBackendStats(backend);
-      }
-    };
-    
-    analytics.addListener(handleUpdate);
-    
-    // Also listen for backend updates from window global events
+
     const handleBackendUpdate = (event) => {
-      console.log('[OverviewStats] Caught global backend-stats-updated event', event.detail);
       const backend = getBackendStats();
       setBackendStats(backend);
     };
-    
     window.addEventListener('backend-stats-updated', handleBackendUpdate, { passive: true });
-    
-    // Watch for version changes (backend stats updated)
+
     const versionInterval = setInterval(() => {
       const currentVersion = window.backendStatsVersion || 0;
-      if (currentVersion !== backendVersion) {
-        console.log('[OverviewStats] Backend version changed:', backendVersion, '->', currentVersion);
-        setBackendVersion(currentVersion);
-        const backend = getBackendStats();
-        if (backend.totalRelays) {
-          console.log('[OverviewStats] Updating backend stats from version change');
-          setBackendStats(backend);
-        }
+      if (currentVersion !== backendStats.version) {
+        setBackendStats(getBackendStats());
       }
     }, 500);
-    
+
     return () => {
-      analytics.removeListener(handleUpdate);
       window.removeEventListener('backend-stats-updated', handleBackendUpdate);
       clearInterval(versionInterval);
     };
-  }, [analytics, backendVersion]);
-  
+  }, [backendStats]);
+
   if (loading) {
     return null;
   }
-  
-  console.log('[OverviewStats] Rendering with:', {
-    backendStats,
-    summaryStats
-  });
-  
-  // PRIORITY: Use backend data for overview stats (it's authoritative)
-  // Fall back to analytics data only if backend is not available
+
+  // Use backend data for overview stats (it's authoritative)
   const totalRelays = backendStats.totalRelays || 0;
   const activeRelays = backendStats.activeRelays || 0;
-  const totalEvents = backendStats.totalEvents || summaryStats.totalEvents || 0;
+  const totalEvents = backendStats.totalEvents || 0;
   const uniqueAuthors = backendStats.uniqueAuthors || 0;
   const avgLatencyMs = backendStats.avgLatencyMs || null;
-  
+  // Zaps and clients now come from API calls
+
   const stats = [
     {
-      label: 'Total Relays',
-      value: formatNumber(totalRelays),
-      highlight: totalRelays > 1000,
-    },
-    {
-      label: 'Active Relays',
+      label: 'Active Relays (Connected)',
       value: formatNumber(activeRelays),
       highlight: activeRelays > 1000,
+      tooltip: `Total Relays: ${formatNumber(totalRelays)}`,
     },
     {
       label: 'Total Events',
@@ -127,29 +107,33 @@ export const OverviewStats = ({ analytics }) => {
     },
     {
       label: 'Total Zaps',
-      value: formatSats(summaryStats.totalZaps || 0),
+      value: formatSats(zaps),
       highlight: false,
     },
     {
-      label: 'Total Users',
-      value: formatNumber(summaryStats.totalUsers || 0),
+      label: 'Total Clients',
+      value: formatNumber(totalClients),
       highlight: false,
     },
   ];
-  
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-4">
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className={`border text-neutral-100 p-3 rounded-lg text-center ${
+          className={`border bg-neutral-700 text-neutral-100 p-3 rounded-lg text-center ${
             stat.highlight
-              ? 'bg-purple-900/20 border-purple-700'
-              : 'bg-neutral-700 border-neutral-600'
+              ? 'border-purple-700'
+              : 'border-neutral-600'
           }`}
+          title={stat.tooltip || ''}
         >
           <div className="text-2xl font-bold">{stat.value}</div>
           <div className="text-xs text-neutral-400">{stat.label}</div>
+          {stat.tooltip && (
+            <div className="text-xs text-neutral-500 mt-1">{stat.tooltip}</div>
+          )}
         </div>
       ))}
     </div>

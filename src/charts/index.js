@@ -5,7 +5,7 @@ import ReactDOM from 'react-dom/client';
 // Import all chart components
 import { ActivityCharts } from './ActivityCharts';
 import { ClientStats } from './ClientStats';
-import { ActiveUsersStats } from './ActiveUsersStats';
+// import { ActiveUsersStats } from './ActiveUsersStats';
 import { PageRankStats } from './PageRankStats';
 import { OverviewStats } from './OverviewStats';
 
@@ -71,7 +71,7 @@ const AnalyticsDashboard = ({ analytics }) => {
       content: (
         <>
           <OverviewStats analytics={analytics} />
-          <ActiveUsersStats analytics={analytics} timeRange={timeRange} />
+          {/* <ActiveUsersStats analytics={analytics} timeRange={timeRange} /> */}
         </>
       ),
     },
@@ -98,7 +98,7 @@ const AnalyticsDashboard = ({ analytics }) => {
 export {
   ActivityCharts,
   ClientStats,
-  ActiveUsersStats,
+  // ActiveUsersStats,
   PageRankStats,
   OverviewStats,
   AnalyticsDashboard,
@@ -122,7 +122,7 @@ window.mountAnalyticsDashboard = (containerId, analytics) => {
 export default {
   ActivityCharts,
   ClientStats,
-  ActiveUsersStats,
+  // ActiveUsersStats,
   PageRankStats,
   OverviewStats,
   AnalyticsDashboard,

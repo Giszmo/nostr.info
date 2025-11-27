@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
+// import rateLimit from 'express-rate-limit';
 import { StatisticsService } from '../services/statistics';
 import redis from '../database/redis';
 import db from '../database/client';
@@ -29,15 +29,7 @@ app.use(
 );
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: config.api.rate_limit_window_ms,
-  max: config.api.rate_limit_max_requests,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' },
-});
-
-app.use('/api/', limiter);
+// Rate limiting middleware removed
 
 // Request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {

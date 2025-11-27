@@ -610,8 +610,13 @@ window.addEventListener('load', () => {
 
 // Poll backend API for updated statistics
 function startBackendPolling() {
+  let lastPoll = 0;
   setInterval(() => {
-    fetchBackendStats();
+    const now = Date.now();
+    if (now - lastPoll >= API_POLL_INTERVAL) {
+      fetchBackendStats();
+      lastPoll = now;
+    }
   }, API_POLL_INTERVAL);
 }
 
@@ -1273,34 +1278,30 @@ function updateTopRelays() {
       }
 
       tbody.innerHTML = topRelays.map((relay, index) => {
-        // Status from backend: 'active' or 'offline'
-        const status = relay.status === 'active'
-          ? `<span class="status-badge online">✓</span>`
-          : `<span class="status-badge offline">✗</span>`;
+        // Status: show health_score from backend
+        const status = typeof relay.health_score === 'number'
+          ? `<span class="status-badge online">${relay.health_score}</span>`
+          : `<span class="status-badge offline">N/A</span>`;
+
+        // Events: show events from backend
+        const events = typeof relay.events === 'number'
+          ? relay.events.toLocaleString()
+          : 'N/A';
+
+        // Active users from backend
+        const activeUsers = typeof relay.active_users === 'number'
+          ? relay.active_users.toLocaleString()
+          : 'N/A';
 
         // Latency from backend
         const avgLatency = relay.avg_latency_ms !== undefined && relay.avg_latency_ms !== null
-          ? relay.avg_latency_ms.toFixed(0)
+          ? `${relay.avg_latency_ms.toFixed(0)}ms`
           : '-';
 
-        // Top 3 event kinds
+        // Top kinds from backend
         let topKindsStr = 'N/A';
-        if (relay.top_kinds && Object.keys(relay.top_kinds).length > 0) {
-          const sortedKinds = Object.entries(relay.top_kinds)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3);
-          
-          if (sortedKinds.length > 0) {
-            topKindsStr = sortedKinds.map(([kind, count]) => {
-              const kindInfo = getKindInfo(Number(kind));
-              return `<span class="relay-kind-label" title="${kindInfo.label}: ${count} events">${kind}</span>`;
-            }).join(', ');
-            
-            const remainingKinds = Object.keys(relay.top_kinds).length - 3;
-            if (remainingKinds > 0) {
-              topKindsStr += ` <span class="relay-kind-count">+${remainingKinds}</span>`;
-            }
-          }
+        if (Array.isArray(relay.top_kinds) && relay.top_kinds.length > 0) {
+          topKindsStr = relay.top_kinds.join(', ');
         }
 
         return `
@@ -1308,9 +1309,9 @@ function updateTopRelays() {
             <td class="text-center">#${index + 1}</td>
             <td><code>${relay.url}</code></td>
             <td class="text-center">${status}</td>
-            <td class="text-right">${(relay.event_count || 0).toLocaleString()}</td>
-            <td class="text-right">${(relay.active_users || 0).toLocaleString()}</td>
-            <td class="text-right">${avgLatency}${avgLatency !== '-' ? 'ms' : ''}</td>
+            <td class="text-right">${events}</td>
+            <td class="text-right">${activeUsers}</td>
+            <td class="text-right">${avgLatency}</td>
             <td>${topKindsStr}</td>
           </tr>
         `;
@@ -1661,16 +1662,21 @@ function refreshStatistics() {
   console.log('[Refresh] Refreshing statistics from backend');
   
   if (backendStatsCache) {
-    // If backend available, fetch fresh data
-    fetchBackendStats().then(data => {
-      if (data) {
-        console.log('[Refresh] ✅ Backend data refreshed');
-        updateStatistics();
-        updateCharts();
-      } else {
-        console.warn('[Refresh] ⚠️ Backend fetch failed');
-      }
-    });
+    // If backend available, debounce manual refreshes to avoid spamming backend
+    if (!window._lastManualRefresh || Date.now() - window._lastManualRefresh > API_POLL_INTERVAL) {
+      window._lastManualRefresh = Date.now();
+      fetchBackendStats().then(data => {
+        if (data) {
+          console.log('[Refresh] ✅ Backend data refreshed');
+          updateStatistics();
+          updateCharts();
+        } else {
+          console.warn('[Refresh] ⚠️ Backend fetch failed');
+        }
+      });
+    } else {
+      console.warn('[Refresh] Manual refresh ignored to avoid backend rate limit');
+    }
   } else {
     // If backend not available, fall back to relay refresh
     console.log('[Refresh] Backend not available, falling back to relay connections');

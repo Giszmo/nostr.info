@@ -406,6 +406,14 @@ export class RelayCollectorService {
                  last_seen_at = NOW()`,
               [client_name, client_name.toLowerCase()]
             );
+            // Update kind_distribution JSON field
+            await client.query(
+              `UPDATE clients
+                 SET kind_distribution = COALESCE(kind_distribution, '{}'::jsonb) || 
+                   jsonb_build_object($1::text, COALESCE((kind_distribution->>$1)::int, 0) + 1)
+                 WHERE name = $2`,
+              [event.kind, client_name]
+            );
           }
         }
       });
