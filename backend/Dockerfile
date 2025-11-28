@@ -3,6 +3,8 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Initialize git submodules
+RUN apk add --no-cache git
 
 # Install dependencies (including devDependencies for build)
 COPY package*.json ./
@@ -10,6 +12,9 @@ RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Initialize and update git submodules (e.g., _nostrResources)
+RUN git submodule update --init --recursive || true
 
 # Build TypeScript
 RUN npm run build
