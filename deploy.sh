@@ -29,11 +29,16 @@ docker-compose build --no-cache
 # Start backend containers
 docker-compose up -d
 
-npm install
-npm run db:migrate
+# Wait for PostgreSQL to be ready
+echo "⏳ Waiting for PostgreSQL to be ready..."
+sleep 10
 
+# Run migrations INSIDE the container
+echo "📦 Running database migrations..."
+docker-compose exec -T api npm run db:migrate
 
-# Test Nginx config and restart
+# Back to root directory
+cd ..
 sudo nginx -t
 sudo systemctl restart nginx
 
