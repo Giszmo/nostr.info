@@ -3,18 +3,20 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Initialize git submodules
+# Install git before copying source (needed for submodule init)
 RUN apk add --no-cache git
+
+# Configure git to allow directory ownership (Docker safety)
+RUN git config --global --add safe.directory /app
+
+# Copy source code FIRST (includes .gitmodules and .git)
+COPY . .
+
+RUN git submodule update --init --recursive || true
 
 # Install dependencies (including devDependencies for build)
 COPY package*.json ./
 RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Initialize and update git submodules (e.g., _nostrResources)
-RUN git submodule update --init --recursive || true
 
 # Build TypeScript
 RUN npm run build

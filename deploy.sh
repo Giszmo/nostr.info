@@ -4,6 +4,9 @@ set -e
 # Pull latest code
 git pull origin master
 
+git submodule update --init --recursive
+echo "✅ Git submodules initialized - _nostrResources/data available"
+
 # Build frontend (Jekyll + charts)
 bundle install
 bundle exec jekyll build
@@ -13,6 +16,9 @@ npm run build:charts
 
 # Deploy frontend to Nginx folder
 cp -r _site/* /var/www/stage.nostr.info/
+
+# Copy _nostrResources to Nginx folder
+cp -r _nostrResources /var/www/stage.nostr.info/_nostrResources
 
 # Go to backend folder
 cd backend
