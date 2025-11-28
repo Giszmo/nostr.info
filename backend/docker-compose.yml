@@ -55,6 +55,9 @@ services:
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_PRETTY: ${LOG_PRETTY:-false}
+    volumes:
+      - ../_data:/app/_data:ro
+      - ../_nostrResources:/app/_nostrResources:ro
     restart: unless-stopped
     networks:
       - nostr-network
@@ -81,6 +84,9 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
     ports:
       - "${API_PORT:-3000}:3000"
+    volumes:
+      - ../_data:/app/_data:ro
+      - ../_nostrResources:/app/_nostrResources:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
