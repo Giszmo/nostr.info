@@ -53,7 +53,7 @@ async function migrate() {
     logger.info('Schema applied successfully');
 
     // Seed relays from YAML
-    const relaysYamlPath = path.join(__dirname, '../../../_data/relays.yml');
+    const relaysYamlPath = path.join(__dirname, '../../_data/relays.yml');
     try {
       const relaysYaml = await fs.readFile(relaysYamlPath, 'utf-8');
       const relaysData = yaml.parse(relaysYaml);
