@@ -1,6 +1,36 @@
+/* make layout sizing reliable across elements */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Set IBM Plex Mono as the site font (loaded via Google Fonts in head) */
+html, body {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Override minima theme wrapper to use consistent 1200px max-width */
+.wrapper {
+  max-width: 1200px !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+  padding-right: 30px !important;
+  padding-left: 30px !important;
+}
+
 .event {
-  white-space: nowrap;
+  display: inline-block;
   background-color: lightgray;
+  color: inherit;
+  padding: 0.25rem 0.5rem;
+  margin: 0.25rem 0.35rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  white-space: normal; /* allow wrapping */
+  vertical-align: middle;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .kind-0 {
@@ -49,10 +79,15 @@
 }
 
 .meta {
-  display: inline-block;
   display: inline-flex;
-  overflow-x: clip;
+  align-items: center;
+  gap: 0.4rem;
   width: 15em;
+  max-width: 100%;
+  min-width: 0; /* allow flex children to shrink */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -70,3 +105,66 @@
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+/* Page content improvements - consistent across all pages */
+.page-content .wrapper {
+  max-width: 1200px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  line-height: 1.6;
+  color: var(--text-on-brand);
+  padding-left: 30px !important;
+  padding-right: 30px !important;
+}
+
+.home img {
+  max-width: 40%;
+  height: auto;
+  margin: 0 1rem 1rem 0;
+  border-radius: 8px;
+}
+
+/* Round corners for content images site-wide for a softer look */
+.page-content img {
+  border-radius: 8px;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* Make small avatar/meta images circular */
+.meta > img {
+  object-fit: cover;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+}
+
+/* ensure inline floats stack on small screens */
+@media (max-width: 720px) {
+  .home img { float: none !important; display: block; width: 6.5rem; height: auto; margin: 0 0.5rem 0.75rem 0; }
+  .page-content .wrapper { padding-left: 0.75rem; padding-right: 0.75rem; }
+}
+
+/* make meta and event badges wrap on small screens to avoid overlap */
+@media (max-width: 720px) {
+  .meta { width: auto; white-space: normal; overflow: visible; }
+  .event { padding: 0.15rem 0.35rem; font-size: 0.92rem; }
+  .home img { max-width: 45%; }
+}
+
+/* ensure code/pre and long tokens don't cause horizontal scroll */
+code, pre, .event, .meta, .post-list li { word-break: break-word; overflow-wrap: anywhere; }
+
+/* headings and lists spacing */
+.home h2 { margin-top: 0.75rem; margin-bottom: 0.5rem; font-size: 1.25rem; }
+.home h3 { margin-top: 0.6rem; }
+.home ul { margin-left: 1.2rem; margin-bottom: 1rem; }
+.home p { margin-bottom: 0.9rem; }
+
+/* improve readability of blockquotes/excerpts */
+.home blockquote { border-left: 3px solid var(--brand-accent); padding-left: 0.8rem; color: #374151; background: rgba(29,185,84,0.03); border-radius:4px; margin:0.5rem 0 1rem 0; }
+
+/* Post list tweaks in home layout */
+.post-list { list-style: none; padding-left: 0; margin: 0.6rem 0; }
+.post-list li { padding: 0.6rem 0; border-bottom: 1px dashed rgba(11,18,38,0.04); }
+.post-meta { color: var(--muted); font-size: 0.9rem; margin-right: 0.6rem; }

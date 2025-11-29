@@ -1,0 +1,337 @@
+/* Relays Grid Layout */
+.relays-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+/* Modern relay card styles (matching statistics page) */
+.modern-justify {
+  padding: 1.5rem 1.25rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  border: 1px solid #e3e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.modern-justify:hover {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.14);
+  border-color: #b6c2d9;
+}
+
+.relay-card-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem 1.5rem;
+  width: 100%;
+}
+
+.relay-label-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.relay-value-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.7rem;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.relay-label {
+  font-size: 1rem;
+  color: #888;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: left;
+}
+
+.relay-value {
+  font-size: 1.08rem;
+  color: #222;
+  font-weight: 600;
+  word-break: break-all;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.relay-url {
+  font-family: 'Fira Mono', 'Menlo', 'Monaco', monospace;
+  font-size: 1.02rem;
+  color: #222;
+  flex: 1 1 220px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.relay-status {
+  text-align: right;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.metrics-row {
+  margin-top: 0.5rem;
+}
+
+/* Status badges with icons */
+.status-badge {
+  padding: 0.25em 0.7em;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95em;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  min-width: 1.5em;
+  min-height: 1.5em;
+  box-sizing: border-box;
+}
+
+.status-badge.online {
+  background: #e6f9e6;
+  color: #1a7f37;
+  border: 1px solid #b6e6b6;
+}
+
+.status-badge.offline {
+  background: #fbeaea;
+  color: #c0392b;
+  border: 1px solid #f5b7b1;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+}
+
+.status-badge svg {
+  width: 1.2em;
+  height: 1.2em;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0;
+}
+
+.status-badge.online svg {
+  color: #1a7f37;
+  fill: #1a7f37;
+}
+
+.status-badge.offline svg {
+  color: #c0392b;
+  fill: #c0392b;
+}
+
+.status-badge.pending svg {
+  color: #856404;
+  fill: #856404;
+}
+
+/* Relay info notes */
+.relay-info-notes {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: #495057;
+  border-left: 4px solid #3498db;
+}
+
+.relay-info-notes p {
+  margin: 0.5rem 0;
+}
+
+/* Modern Filters Layout */
+.filters-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-item-wide {
+  grid-column: span 2;
+}
+
+.filter-item label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-item label svg {
+  width: 1rem;
+  height: 1rem;
+  fill: #3498db;
+}
+
+.filter-select, .filter-input {
+  background: #ffffff;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  color: #495057;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.filter-input {
+  cursor: text;
+}
+
+.filter-select:hover, .filter-input:hover {
+  border-color: #3498db;
+}
+
+.filter-select:focus, .filter-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.filter-select:disabled {
+  background: #f8f9fa;
+  color: #adb5bd;
+  cursor: not-allowed;
+  border-color: #dee2e6;
+}
+
+.filter-select:disabled:hover {
+  border-color: #dee2e6;
+}
+
+.connect-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.connect-button:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.connect-button:active {
+  transform: translateY(0);
+}
+
+.connect-button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .relays-grid {
+    gap: 1.25rem;
+  }
+
+  .modern-justify {
+    padding: 1.35rem 1.1rem;
+  }
+
+  .relay-card-row {
+    gap: 0.85rem 1.1rem;
+  }
+
+  .filters-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .filter-item-wide {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .relays-grid {
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+  }
+
+  .modern-justify {
+    padding: 1.2rem;
+  }
+
+  .relay-card-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .relay-status {
+    justify-content: flex-start;
+  }
+
+  .relay-value-col {
+    align-items: flex-start;
+  }
+
+  .relay-value {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .relays-grid {
+    gap: 1rem;
+  }
+
+  .relay-url {
+    font-size: 0.95rem;
+  }
+
+  .connect-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

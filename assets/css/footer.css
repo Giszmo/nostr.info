@@ -1,0 +1,57 @@
+/* Footer styles — match white + green theme from header */
+:root {
+  --brand-bg: #ffffff;
+  --brand-accent: #1db954;
+  --text-on-brand: #0b1226;
+  --muted: #6b7280;
+}
+
+.site-footer{
+  background: var(--brand-bg);
+  color: var(--text-on-brand);
+  border-top: 1px solid rgba(11,18,38,0.06);
+  padding: 1.25rem 0;
+}
+.site-footer .wrapper{
+  display:flex;
+  gap:1.5rem;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+.footer-heading{
+  margin:0 0 0.5rem 0;
+  font-size:1.125rem;
+}
+.footer-col-wrapper{
+  display:flex;
+  gap:1.25rem;
+  width:100%;
+}
+.footer-col{ flex:1 1 200px; min-width:180px }
+.contact-list{ list-style:none; padding:0; margin:0; color:var(--muted); }
+.contact-list .p-name{ color:var(--text-on-brand); font-weight:600; }
+.contact-list a{ color:var(--brand-accent); text-decoration:none }
+.contact-list a:hover{ text-decoration:underline; }
+.site-copy{ margin-top:0.75rem; color:var(--muted); font-size:0.9rem }
+
+/* Override minima svg icon padding so footer icons are not cropped */
+.site-footer .svg-icon,
+.site-footer .icon{
+  padding-right:0;
+  margin-right:0.4rem;
+  width:18px;
+  height:18px;
+  display:inline-block;
+  fill:currentColor;
+}
+
+@media (max-width:720px){
+
+  .site-footer .wrapper{ flex-direction:column; gap:0.35rem; padding: 0.5rem 1rem }
+  .footer-col-wrapper{ flex-direction:column; gap:0.35rem }
+  .footer-col{ flex: 1 1 120px; min-width: 120px }
+  .footer-heading{ margin-bottom:0.25rem }
+  .contact-list{ margin-bottom:0 }
+  .site-copy{ margin-top:0.35rem; font-size:0.85rem }
+}

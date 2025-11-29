@@ -7,28 +7,37 @@ layout: default
     <h1 class="page-heading">{{ page.title }}</h1>
   {%- endif -%}
 
-  {{ content }}
+  <div class="hero-content">
+    {{ content }}
+  </div>
 
   {%- if site.posts.size > 0 -%}
-    <h2 class="post-list-heading">{{ page.list_title | default: "Posts" }}</h2>
-    <ul class="post-list">
-      {%- for post in site.posts -%}
-      <li>
-        {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
-        <span class="post-meta">{{ post.date | date: date_format }}</span>
-        <h3>
-          <a class="post-link" href="{{ post.url | relative_url }}">
-            {{ post.title | escape }}
-          </a>
-        </h3>
-        {%- if site.show_excerpts -%}
-          {{ post.excerpt }}
-        {%- endif -%}
-      </li>
-      {%- endfor -%}
-    </ul>
-
-    <p class="rss-subscribe">subscribe <a href="{{ "/feed.xml" | relative_url }}">via RSS</a></p>
+    <section class="blog-section">
+      <div class="blog-header">
+        <h2 class="post-list-heading">{{ page.list_title | default: "Latest Updates" }}</h2>
+        <a href="{{ "/feed.xml" | relative_url }}" class="rss-link" title="Subscribe via RSS">
+          <span class="rss-icon">📡</span>
+        </a>
+      </div>
+      <ul class="post-list">
+        {%- for post in site.posts limit: 5 -%}
+        <li class="post-item">
+          {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
+          <div class="post-header">
+            <h3>
+              <a class="post-link" href="{{ post.url | relative_url }}">
+                {{ post.title | escape }}
+              </a>
+            </h3>
+            <span class="post-meta">{{ post.date | date: date_format }}</span>
+          </div>
+          {%- if site.show_excerpts -%}
+            <p class="post-excerpt">{{ post.excerpt }}</p>
+          {%- endif -%}
+        </li>
+        {%- endfor -%}
+      </ul>
+    </section>
   {%- endif -%}
 
 </div>

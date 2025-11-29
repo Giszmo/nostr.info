@@ -3,7 +3,7 @@
   <div class="wrapper">
     {%- assign default_paths = site.pages | map: "path" -%}
     {%- assign page_paths = site.header_pages | default: default_paths -%}
-    <a class="site-title" rel="author" href="{{ "/" | relative_url }}">{{ site.title | escape }}</a>
+  <a class="site-title" rel="author" href="{{ "/" | relative_url }}">{% fa_svg fas.fa-house %} {{ site.title | escape }}</a>
 
     {%- if page_paths -%}
       <nav class="site-nav">
@@ -26,5 +26,10 @@
         </div>
       </nav>
     {%- endif -%}
+
+    <div class="header-search">
+      <input id="global-search" type="text" placeholder="Search..." class="search-input" aria-label="Site search">
+    </div>
+    <script src="/assets/js/site-search.js"></script>
   </div>
 </header>

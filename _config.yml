@@ -21,8 +21,9 @@
 title: nostr.info
 email: leo@walletscrutiny.com
 description: >-
-  What is going on in the world of nostr. Stats, Charts, Live Monitors,
-  Resources, ...
+  Nostr.info — curated news, realtime relay monitors, and developer resources
+  for the Nostr protocol. Browse live stats, charts, tools, tutorials, and a
+  searchable catalog of projects and relays to help you explore and contribute.
 baseurl: ""
 url: https://nostr.info
 twitter_username: LeoWandersleb
@@ -34,13 +35,18 @@ plugins:
   - jekyll-feed
 include:
   - _pages
+
 exclude:
   - _nostrResources/LICENSE
   - _nostrResources/Readme.md
+  - node_modules
+  - backend
 
 header_pages:
+  - _pages/about.md
   - _pages/resources.md
   - _pages/relays.md
+  - _pages/events.md
   - _pages/relayr.html
 
 collections:
@@ -74,13 +80,13 @@ defaults:
 # Excluded items can be processed by explicitly listing the directories or
 # their entries' file path in the `include:` list.
 #
-# exclude:
+#   exclude:
 #   - .sass-cache/
 #   - .jekyll-cache/
 #   - gemfiles/
 #   - Gemfile
 #   - Gemfile.lock
-#   - node_modules/
+#    - node_modules/
 #   - vendor/bundle/
 #   - vendor/cache/
 #   - vendor/gems/

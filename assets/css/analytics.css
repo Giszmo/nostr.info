@@ -1,0 +1,508 @@
+/* Analytics Dashboard Styles - Matching Statistics Page Design */
+
+/* Main Analytics Container - Matching stats-connection-block style */
+.analytics-dashboard-container {
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+  box-shadow: none;
+}
+
+/* Header styling matching stats-connection-header */
+.analytics-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.analytics-dashboard-title {
+  margin: 0;
+  font-size: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0b1226;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+.analytics-dashboard-title svg {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.analytics-dashboard-sub {
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+/* Time Range Filter - Matching existing button styles */
+.analytics-dashboard-container .time-range-btn {
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-right: 0.75rem;
+}
+
+.analytics-dashboard-container .time-range-btn:hover {
+  background: rgba(148, 163, 184, 0.18);
+  color: #0f172a;
+}
+
+.analytics-dashboard-container .time-range-btn.active {
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 10px 15px -10px rgba(15, 23, 42, 0.4);
+}
+
+/* Analytics Cards - Matching stat-card style */
+.analytics-dashboard-container .bg-neutral-800 {
+  background: white !important;
+  border-radius: 12px !important;
+  padding: 1.5rem !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: #212529 !important;
+}
+
+.analytics-dashboard-container .bg-neutral-800:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Analytics text colors */
+.analytics-dashboard-container .text-neutral-100 {
+  color: #212529 !important;
+}
+
+.analytics-dashboard-container .text-neutral-300 {
+  color: #495057 !important;
+}
+
+.analytics-dashboard-container .text-neutral-400 {
+  color: #6c757d !important;
+}
+
+/* Grid cards matching overview-grid */
+.analytics-dashboard-container .bg-neutral-700 {
+  background: white !important;
+  border-radius: 12px !important;
+  padding: 1.5rem !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.analytics-dashboard-container .bg-neutral-700:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Chart containers matching existing chart-container */
+.analytics-dashboard-container .recharts-responsive-container {
+  background: white !important;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* Table styling matching existing tables */
+.analytics-dashboard-container table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.analytics-dashboard-container th {
+  background: #f8f9fa !important;
+  color: #495057 !important;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.analytics-dashboard-container td {
+  padding: 0.75rem;
+  color: #212529 !important;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.analytics-dashboard-container tbody tr:hover {
+  background: #f8f9fa !important;
+}
+
+/* Tab system matching existing stats-tabs */
+.analytics-dashboard-container .flex {
+  display: flex;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  padding-bottom: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.75rem;
+}
+
+.analytics-dashboard-container .flex button {
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.analytics-dashboard-container .flex button:hover {
+  background: rgba(148, 163, 184, 0.18);
+  color: #0f172a;
+}
+
+.analytics-dashboard-container .flex button.bg-neutral-700 {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 15px -10px rgba(15, 23, 42, 0.4) !important;
+}
+
+/* Chart styling to match theme */
+.analytics-dashboard-container .recharts-text {
+  fill: #495057 !important;
+}
+
+.analytics-dashboard-container .recharts-cartesian-grid-horizontal line,
+.analytics-dashboard-container .recharts-cartesian-grid-vertical line {
+  stroke: rgba(148, 163, 184, 0.35) !important;
+}
+
+.analytics-dashboard-container .recharts-legend-wrapper {
+  color: #495057 !important;
+}
+
+/* Tooltip styling matching theme */
+.analytics-dashboard-container .recharts-default-tooltip {
+  background: white !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  border-radius: 8px !important;
+  color: #212529 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Loading states */
+.analytics-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.analytics-loading:before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  margin-right: 0.5rem;
+  border: 2px solid #dee2e6;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: analytics-spin 1s linear infinite;
+}
+
+@keyframes analytics-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Time filter container styling */
+.analytics-dashboard-container #analytics-time-filter > div {
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.analytics-dashboard-container #analytics-time-filter .flex {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0.5rem;
+}
+
+.analytics-dashboard-container #analytics-time-filter input[type="date"] {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.85rem;
+  color: #495057;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+.analytics-dashboard-container #analytics-time-filter input[type="date"]:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.analytics-dashboard-container #analytics-time-filter button {
+  padding: 0.5rem 1.5rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+.analytics-dashboard-container #analytics-time-filter button:hover {
+  background: #0056b3;
+}
+
+/* Status badges matching existing style */
+.analytics-dashboard-container .status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.analytics-dashboard-container .status-badge.online {
+  background: #d4edda;
+  color: #155724;
+}
+
+.analytics-dashboard-container .status-badge.offline {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Grid layouts matching existing responsive design */
+.analytics-dashboard-container .grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.analytics-dashboard-container .grid-cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.analytics-dashboard-container .grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.analytics-dashboard-container .grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.analytics-dashboard-container .md\:grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.analytics-dashboard-container .md\:grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Responsive adjustments matching existing breakpoints */
+@media (max-width: 768px) {
+  .analytics-dashboard-container {
+    padding: 1.25rem;
+  }
+  
+  .analytics-dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .analytics-dashboard-container .md\:grid-cols-2,
+  .analytics-dashboard-container .md\:grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .analytics-dashboard-container .time-range-btn {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.9rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .analytics-dashboard-container .grid-cols-2,
+  .analytics-dashboard-container .grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Chart height adjustments for better mobile experience */
+@media (max-width: 768px) {
+  .analytics-dashboard-container [style*="height: 350px"],
+  .analytics-dashboard-container [style*="height: 300px"] {
+    height: 250px !important;
+  }
+}
+
+/* Font consistency */
+.analytics-dashboard-container * {
+  font-family: inherit;
+}
+
+.analytics-dashboard-container h2,
+.analytics-dashboard-container h3 {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+/* Animation matching existing fade-in */
+.analytics-dashboard-container .tab-panel {
+  animation: fadeIn 180ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Time Filter Component Styling */
+.time-filter-container {
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.custom-range-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.custom-label,
+.date-separator {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+.date-input {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.85rem;
+  color: #495057;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+  transition: border-color 0.2s;
+}
+
+.date-input:hover {
+  border-color: #80bdff;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.apply-button {
+  padding: 0.5rem 1.5rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+.apply-button:hover {
+  background: #0056b3;
+}
+
+.apply-button:active {
+  transform: scale(0.98);
+}
+
+.current-selection {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+
+/* Responsive adjustments for time filter */
+@media (max-width: 768px) {
+  .filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .preset-buttons {
+    justify-content: center;
+  }
+  
+  .custom-range-container {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .custom-range-container {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .date-input,
+  .apply-button {
+    width: 100%;
+  }
+}

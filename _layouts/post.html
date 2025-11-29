@@ -4,24 +4,74 @@ layout: default
 <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">{{ page.title | escape }}</h1>
-    <p class="post-meta">
-      <time class="dt-published" datetime="{{ page.date | date_to_xmlschema }}" itemprop="datePublished">
-        {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
-        {{ page.date | date: date_format }}
-      </time>
-      {%- if page.author -%}
-        • <span itemprop="author" itemscope itemtype="http://schema.org/Person"><span class="p-author h-card" itemprop="name">{{ page.author }}</span></span>
-      {%- endif -%}</p>
+    <div class="post-header-content">
+      <h1 class="post-title p-name" itemprop="name headline">{{ page.title | escape }}</h1>
+      <div class="post-meta-info">
+        <time class="dt-published" datetime="{{ page.date | date_to_xmlschema }}" itemprop="datePublished">
+          {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
+          {{ page.date | date: date_format }}
+        </time>
+        {%- if page.author -%}
+          <span class="post-author">
+            <span itemprop="author" itemscope itemtype="http://schema.org/Person">
+              <span class="p-author h-card" itemprop="name">{{ page.author }}</span>
+            </span>
+          </span>
+        {%- endif -%}
+      </div>
+    </div>
+  <a href="{{ "/posts/" | relative_url }}" class="back-link js-back" title="Back to Home" data-back-fallback="{{ "/posts/" | relative_url }}">← Back</a>
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
     {{ content }}
   </div>
 
-  {%- if site.disqus.shortname -%}
-    {%- include disqus_comments.html -%}
-  {%- endif -%}
+  <footer class="post-footer">
+    {%- if site.disqus.shortname -%}
+      <div class="post-comments">
+        {%- include disqus_comments.html -%}
+      </div>
+    {%- endif -%}
+    <div class="post-nav">
+  <a href="{{ "/posts/" | relative_url }}" class="post-nav-link">← Back to All Posts</a>
+    </div>
+  </footer>
+
+  <script>
+    (function(){
+      // Make the header "Back" act like browser back when possible,
+      // otherwise fall back to the provided href (site root / posts index).
+      function setupBackLinks(){
+        var els = document.querySelectorAll('.js-back');
+        if(!els) return;
+        els.forEach(function(el){
+          el.addEventListener('click', function(e){
+            // Only intercept left-clicks without modifier keys
+            if(e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            var ref = document.referrer || '';
+            var sameOriginRef = ref.indexOf(location.origin) === 0;
+            if(history.length > 1 && sameOriginRef){
+              e.preventDefault();
+              history.back();
+            } else {
+              // let the anchor follow its href (fallback)
+              // but ensure href exists; if not, use data-back-fallback
+              var href = el.getAttribute('href') || el.getAttribute('data-back-fallback');
+              if(!href){
+                e.preventDefault();
+              }
+            }
+          }, false);
+        });
+      }
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', setupBackLinks);
+      } else {
+        setupBackLinks();
+      }
+    })();
+  </script>
 
   <a class="u-url" href="{{ page.url | relative_url }}" hidden></a>
 </article>
