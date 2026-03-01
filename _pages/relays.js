@@ -32,43 +32,50 @@ window.addEventListener('load', () => {
   window.pubkeyFilter = document.getElementById("pubkey-filter")
   window.degreeFilter = document.getElementById("degree-filter")
   window.output = document.getElementById("output")
-  window.pauseBtn = document.getElementById("pause-btn")
+  window.stopBtn = document.getElementById("stop-btn")
   window.expandedEvent = ""
 })
 
 const LIMIT = 100 // how many events to show
 const throttleMs = 500
 var received = []
-var paused_buffer = []
-var isPaused = false
+var isStopped = false
 const meta = {}
 const follows = {}
 
-function togglePause() {
-  isPaused = !isPaused
-  if (!isPaused) {
-    // Flush buffered events into received
-    paused_buffer.forEach(ev => received.push(ev))
-    paused_buffer = []
-    updatePauseBtn()
-    setDirty()
+function toggleStop() {
+  isStopped = !isStopped
+  if (isStopped) {
+    // Disconnect all WebSockets
+    relays.forEach(r => {
+      if (r.ws && r.ws.readyState <= 1) {
+        r.ws.close()
+      }
+    })
+    updateStopBtn()
   } else {
-    updatePauseBtn()
+    // Reconnect all relays
+    relays.forEach((r, id) => {
+      r.tried = -1
+      r.connected = false
+      setupWs(r, id)
+    })
+    updateStopBtn()
+    setDirty()
   }
 }
 
-function updatePauseBtn() {
-  if (!pauseBtn) return
-  if (isPaused) {
-    pauseBtn.textContent = `⏸ Paused (${paused_buffer.length} buffered)`
+function updateStopBtn() {
+  if (!stopBtn) return
+  if (isStopped) {
+    stopBtn.textContent = '▶ Start'
   } else {
-    pauseBtn.textContent = '⏸ Pause'
+    stopBtn.textContent = '⏹ Stop'
   }
 }
 
 var tUpdate = 0
 function setDirty() {
-  if (isPaused) return
   const t = ts()
   // ms since last scheduled update. Negative if in the future.
   const dt = t - tUpdate
@@ -83,12 +90,9 @@ function setDirty() {
 }
 
 function update() {
-  const nearFuture = ts() / 1000 + 60 * 60
   received = received
-    // near future
-    .filter(it=>it.created_at<nearFuture)
-    // newest first
-    .sort( (a,b) => b.created_at - a.created_at )
+    // sort by first-seen time (newest first) — avoids future-timestamp events piling at top
+    .sort( (a,b) => b._firstSeen - a._firstSeen )
     // clip to only LIMIT events
     .slice(0, LIMIT)
 
@@ -97,7 +101,7 @@ function update() {
   switch(tab.value) {
     case "relays":
       relayFilters.hidden = false
-      if (pauseBtn) pauseBtn.hidden = true
+      if (stopBtn) stopBtn.hidden = true
       output.innerHTML = relaysTable()
       break
     case "events":
@@ -107,7 +111,7 @@ function update() {
         degreeFilter.setAttribute('disabled', '')
       }
       eventFilters.hidden = false
-      if (pauseBtn) pauseBtn.hidden = false
+      if (stopBtn) stopBtn.hidden = false
       output.innerHTML = eventsTable()
       break
   }
@@ -246,7 +250,7 @@ function nameFromPubkey(pubkey) {
 
 function setExpand(id) {
   expandedEvent = id
-  setDirty()
+  update() // immediate — no throttle for expand/collapse
 }
 
 function rawEventWidget(event) {
@@ -425,11 +429,11 @@ function eventBadge(event) {
         break
       }
     case 1000: {
-        badge += ` kind 1000 event`
+        badge += ` unknown kind 1000`
         break
       }
     case 1009: {
-        badge += ` kind 1009 event`
+        badge += ` unknown kind 1009`
         break
       }
     case 1059: {
@@ -455,11 +459,11 @@ function eventBadge(event) {
         break
       }
     case 1808: {
-        badge += ` kind 1808 event`
+        badge += ` unknown kind 1808`
         break
       }
     case 1809: {
-        badge += ` kind 1809 event`
+        badge += ` unknown kind 1809`
         break
       }
     case 1984: {
@@ -483,7 +487,7 @@ function eventBadge(event) {
         break
       }
     case 4515: {
-        badge += ` kind 4515 event`
+        badge += ` unknown kind 4515`
         break
       }
     case 5300: {
@@ -553,7 +557,7 @@ function eventBadge(event) {
         break
       }
     case 10007: {
-        badge += ` kind 10007 event`
+        badge += ` unknown kind 10007`
         break
       }
     case 10009: {
@@ -567,11 +571,11 @@ function eventBadge(event) {
         break
       }
     case 10099: {
-        badge += ` kind 10099 event`
+        badge += ` unknown kind 10099`
         break
       }
     case 10100: {
-        badge += ` kind 10100 event`
+        badge += ` unknown kind 10100`
         break
       }
     case 10166: {
@@ -581,7 +585,7 @@ function eventBadge(event) {
         break
       }
     case 11998: {
-        badge += ` kind 11998 event`
+        badge += ` unknown kind 11998`
         break
       }
     case 13194: {
@@ -594,7 +598,7 @@ function eventBadge(event) {
         break
       }
     case 15750: {
-        badge += ` kind 15750 event`
+        badge += ` unknown kind 15750`
         break
       }
     case 20000: {
@@ -645,7 +649,7 @@ function eventBadge(event) {
         break
       }
     case 23023: {
-        badge += ` kind 23023 event`
+        badge += ` unknown kind 23023`
         break
       }
     case 24133: {
@@ -704,7 +708,7 @@ function eventBadge(event) {
         break
       }
     case 30081: {
-        badge += ` kind 30081 event`
+        badge += ` unknown kind 30081`
         break
       }
     case 30166: {
@@ -736,11 +740,11 @@ function eventBadge(event) {
         break
       }
     case 30333: {
-        badge += ` kind 30333 event`
+        badge += ` unknown kind 30333`
         break
       }
     case 30515: {
-        badge += ` kind 30515 event`
+        badge += ` unknown kind 30515`
         break
       }
     case 30617: {
@@ -753,7 +757,7 @@ function eventBadge(event) {
     case 31000: {
         const dTag31000 = event.tags.find(t => t[0] === 'd')
         const d31000 = dTag31000 ? escapeHTML(dTag31000[1]) : ''
-        badge += ` kind 31000 event${d31000 ? ': ' + d31000 : ''}`
+        badge += ` unknown kind 31000${d31000 ? ': ' + d31000 : ''}`
         break
       }
     case 31234: {
@@ -771,15 +775,15 @@ function eventBadge(event) {
         break
       }
     case 31991: {
-        badge += ` kind 31991 event`
+        badge += ` unknown kind 31991`
         break
       }
     case 34838: {
-        badge += ` kind 34838 event`
+        badge += ` unknown kind 34838`
         break
       }
     case 38225: {
-        badge += ` kind 38225 event`
+        badge += ` unknown kind 38225`
         break
       }
     case 38383: {
@@ -796,7 +800,7 @@ function eventBadge(event) {
         break
       }
     case 38422: {
-        badge += ` kind 38422 event`
+        badge += ` unknown kind 38422`
         break
       }
     default: {
@@ -808,7 +812,7 @@ function eventBadge(event) {
         } else {
           const preview = event.content ? escapeHTML(event.content.slice(0, 100)) + (event.content.length > 100 ? '…' : '') : ''
           const tagCount = event.tags ? event.tags.length : 0
-          badge += ` kind ${event.kind} event${preview ? ': ' + preview : ''} [${tagCount} tags]`
+          badge += ` unknown kind ${event.kind}${preview ? ': ' + preview : ''} [${tagCount} tags]`
         }
         break
       }
@@ -915,18 +919,14 @@ function setupWs(relay, id) {
           break
         case 'main':
           event.relays = [{id: id,count:relay.events,timeMs:ts()}]
+          event._firstSeen = ts()
           if (!event.tags) {
             relay.invalid++
             relay.msg = msg.data
             console.log(`${relay.url} sent event with no tags.`)
             event.tags = []
           }
-          if (isPaused) {
-            paused_buffer.push(event)
-            updatePauseBtn()
-          } else {
-            received.push(event)
-          }
+          received.push(event)
           break
       }
     } else if (arr[0] === 'EOSE') {

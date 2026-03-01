@@ -11,7 +11,7 @@ permalink: /relays/
   <option value="relays">Show Relays</option>
   <option value="events">Show Events</option>
 </select>
-<button id="pause-btn" hidden onclick="togglePause()" style="margin-left:8px;">⏸ Pause</button>
+<button id="stop-btn" hidden onclick="toggleStop()" style="margin-left:8px;">⏹ Stop</button>
 <br>
 
 <div id="relay-filters">
@@ -132,24 +132,24 @@ permalink: /relays/
       <option value="443">kind-443: Marmot KeyPackage</option>
       <option value="445">kind-445: Marmot Group Event</option>
       <option value="1000">kind-1000: Reserved</option>
-      <option value="1009">kind-1009: App-specific</option>
-      <option value="4515">kind-4515: App-specific</option>
-      <option value="1808">kind-1808: App-specific</option>
-      <option value="1809">kind-1809: App-specific</option>
-      <option value="10007">kind-10007: App-specific</option>
-      <option value="10099">kind-10099: App-specific</option>
-      <option value="10100">kind-10100: App-specific</option>
-      <option value="11998">kind-11998: App-specific</option>
-      <option value="15750">kind-15750: App-specific</option>
-      <option value="23023">kind-23023: App-specific</option>
-      <option value="30081">kind-30081: Addressable</option>
-      <option value="30333">kind-30333: Addressable</option>
-      <option value="30515">kind-30515: Addressable</option>
-      <option value="31000">kind-31000: Addressable</option>
-      <option value="31991">kind-31991: Handler Related</option>
-      <option value="34838">kind-34838: Addressable</option>
-      <option value="38225">kind-38225: App-specific</option>
-      <option value="38422">kind-38422: App-specific</option>
+      <option value="1009">kind-1009: Unknown (seen in use)</option>
+      <option value="4515">kind-4515: Unknown (seen in use)</option>
+      <option value="1808">kind-1808: Unknown (seen in use)</option>
+      <option value="1809">kind-1809: Unknown (seen in use)</option>
+      <option value="10007">kind-10007: Unknown (seen in use)</option>
+      <option value="10099">kind-10099: Unknown (seen in use)</option>
+      <option value="10100">kind-10100: Unknown (seen in use)</option>
+      <option value="11998">kind-11998: Unknown (seen in use)</option>
+      <option value="15750">kind-15750: Unknown (seen in use)</option>
+      <option value="23023">kind-23023: Unknown (seen in use)</option>
+      <option value="30081">kind-30081: Unknown (seen in use)</option>
+      <option value="30333">kind-30333: Unknown (seen in use)</option>
+      <option value="30515">kind-30515: Unknown (seen in use)</option>
+      <option value="31000">kind-31000: Unknown (seen in use)</option>
+      <option value="31991">kind-31991: Unknown (seen in use)</option>
+      <option value="34838">kind-34838: Unknown (seen in use)</option>
+      <option value="38225">kind-38225: Unknown (seen in use)</option>
+      <option value="38422">kind-38422: Unknown (seen in use)</option>
     </optgroup>
   </select>
   <br>
