@@ -1,5 +1,5 @@
 ---
-permalink: /js/relays.js
+permalink: /js/events.js
 layout: none
 ---
 
@@ -23,10 +23,6 @@ window.addEventListener('load', () => {
   }})
   shuffle(relays)
   relays.forEach((r, id) => { setupWs(r, id) })
-  window.tab = document.getElementById("tab")
-  window.relayFilters = document.getElementById("relay-filters")
-  window.relayQualityFilter = document.getElementById("relay-filter")
-  window.connectRelaysBtn = document.getElementById("connectNewRelays")
   window.eventFilters = document.getElementById("event-filters")
   window.kindFilter = document.getElementById("kind-filter")
   window.pubkeyFilter = document.getElementById("pubkey-filter")
@@ -128,67 +124,12 @@ function setDirty() {
 }
 
 function update() {
-
-  eventFilters.hidden = true
-  relayFilters.hidden = true
-  switch(tab.value) {
-    case "relays":
-      relayFilters.hidden = false
-      if (stopBtn) stopBtn.hidden = true
-      output.innerHTML = relaysTable()
-      break
-    case "events":
-      if (pubkeyFilter.value) {
-        degreeFilter.removeAttribute('disabled')
-      } else {
-        degreeFilter.setAttribute('disabled', '')
-      }
-      eventFilters.hidden = false
-      if (stopBtn) stopBtn.hidden = false
-      output.innerHTML = eventsTable()
-      break
+  if (pubkeyFilter.value) {
+    degreeFilter.removeAttribute('disabled')
+  } else {
+    degreeFilter.setAttribute('disabled', '')
   }
-}
-
-function connectRelays() {
-  relays.forEach((r, id) => {
-    if (r.tried < 0) {
-      setupWs(r, id)
-    }
-  })
-}
-
-function relaysTable() {
-  connectRelaysBtn.hidden = relays.filter(it=>it.tried<0).length === 0
-  return '<table>' +
-    '<tr><td>Relay</td><td>Events<sup>1</sup></td><td>Connection<sup>2</sup></td><td>Comment</td></tr>' +
-    relays.filter(r=>{
-      switch (relayQualityFilter.value) {
-        case 'all': return true
-        case 'didConnect': return r.answered
-        case 'sent': return r.events > 0
-        case 'sentMany': return r.events >= DISPLAY_LIMIT
-        case 'sentConnected': return r.events >= DISPLAY_LIMIT && r.connected
-        default: return false
-      }
-    }).map(r=>`<tr><td>${r.url}</td><td>${r.events}</td><td>${
-      r.tried < 0
-        ? '?'
-        : r.connected
-          ? 'true'
-          : r.answered
-            ? 'lost'
-            : 'false'
-        }</td><td>${ (r.wrongKind > 0
-          ? r.wrongKind + ' unrequested'
-          : '') + (r.invalid > 0
-            ? '<br>' + r.invalid + ' invalid'
-            : '') + (r.msg.length > 0
-              ? ` (${r.msg})`
-              : '')}</td></tr>`).join('') +
-        `<tr><td colspan="5"><sup>1</sup> counting all events received after requesting ${DISPLAY_LIMIT} most recent events per relay.<br>Events received to determine names and follows are not counted.</td></tr>` +
-        '<tr><td colspan="5"><sup>2</sup> "false" = connection never succeeded. "?" = we haven\'t tried yet. Press button above to try.</td></tr>' +
-    '</table>'
+  output.innerHTML = eventsTable()
 }
 
 function eventsTable() {

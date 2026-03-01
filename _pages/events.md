@@ -1,30 +1,13 @@
 ---
 layout: page
-title: Relays
-permalink: /relays/
+title: Events
+permalink: /events/
 ---
 
 <link rel="stylesheet" href="/assets/css/main.css">
-<script src="/js/relays.js"></script>
+<script src="/js/events.js"></script>
 
-<select name="tab" id="tab" onchange="setDirty()">
-  <option value="relays">Show Relays</option>
-  <option value="events">Show Events</option>
-</select>
-<button id="stop-btn" hidden onclick="toggleStop()" style="margin-left:8px;">⏹ Stop</button>
-<br>
-
-<div id="relay-filters">
-  <label for="relay-filter">Filter by Relay performance:</label>
-  <select name="relay-filter" id="relay-filter" onchange="setDirty()">
-    <option value="sentConnected">Sent us many without dropping</option>
-    <option value="sentMany">Sent us many events</option>
-    <option value="sent">Sent us events</option>
-    <option value="didConnect" selected>Accepted WebSocket connection</option>
-    <option value="all">All</option>
-  </select>
-  <br><input id="connectNewRelays" type="button" onclick="connectRelays()" value="Connect new relays!">
-</div>
+<button id="stop-btn" onclick="toggleStop()">⏹ Stop</button>
 <div id="event-filters">
   <label for="kind-filter">Filter by Kind:</label>
   <select name="kind-filter" id="kind-filter" onchange="setDirty()">

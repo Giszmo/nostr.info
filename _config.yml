@@ -40,7 +40,7 @@ exclude:
 
 header_pages:
   - _pages/resources.md
-  - _pages/relays.md
+  - _pages/events.md
   - _pages/relayr.html
 
 collections:
