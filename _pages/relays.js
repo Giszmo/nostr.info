@@ -37,10 +37,41 @@ window.addEventListener('load', () => {
 })
 
 const DISPLAY_LIMIT = 100 // how many events to show after filtering
-const STORE_LIMIT = 10000 // how many events to keep in memory
+const PER_KIND_LIMIT = 100 // how many events to keep per kind
 const throttleMs = 500
-var received = []
+var receivedByKind = {} // kind -> array of events, max PER_KIND_LIMIT each
+var receivedById = {} // id -> event reference, for fast dedup
 var isStopped = false
+
+function getReceived() {
+  // Flatten all per-kind buckets into one array
+  return Object.values(receivedByKind).flat()
+}
+
+function storeEvent(event) {
+  const k = event.kind
+  if (!receivedByKind[k]) receivedByKind[k] = []
+  receivedByKind[k].push(event)
+  receivedById[event.id] = event
+  // Trim this kind's bucket if over limit (drop oldest by _firstSeen)
+  if (receivedByKind[k].length > PER_KIND_LIMIT) {
+    receivedByKind[k].sort((a, b) => b._firstSeen - a._firstSeen)
+    // Remove evicted events from the id index
+    const evicted = receivedByKind[k].slice(PER_KIND_LIMIT)
+    evicted.forEach(e => delete receivedById[e.id])
+    receivedByKind[k] = receivedByKind[k].slice(0, PER_KIND_LIMIT)
+  }
+}
+
+function totalStored() {
+  let n = 0
+  for (const k in receivedByKind) n += receivedByKind[k].length
+  return n
+}
+
+function kindsStored() {
+  return Object.keys(receivedByKind).length
+}
 const meta = {}
 const follows = {}
 
@@ -91,11 +122,6 @@ function setDirty() {
 }
 
 function update() {
-  received = received
-    // sort by first-seen time (newest first) — avoids future-timestamp events piling at top
-    .sort( (a,b) => b._firstSeen - a._firstSeen )
-    // keep up to STORE_LIMIT in memory for filtering
-    .slice(0, STORE_LIMIT)
 
   eventFilters.hidden = true
   relayFilters.hidden = true
@@ -162,9 +188,11 @@ function relaysTable() {
 function eventsTable() {
   const kindFiltered = filterByKind()
   const filtered = filterByPubkey(kindFiltered)
+  // sort by first-seen, newest first
+  filtered.sort((a, b) => b._firstSeen - a._firstSeen)
   const displayed = filtered.slice(0, DISPLAY_LIMIT)
   
-  return `${displayed.length}/${filtered.length} Events (${received.length} stored):<br>`
+  return `${displayed.length}/${filtered.length} Events (${totalStored()} stored across ${kindsStored()} kinds):<br>`
     + displayed.map(it => eventBadge(it)).join('<br>')
 }
 
@@ -226,21 +254,22 @@ const allCategorizedKinds = new Set(
 function filterByKind() {
   const kind = kindFilter.value
   if (kind === 'all') {
-    return received
+    return getReceived()
   } else if (kind === 'unknown') {
     // Anything not in ANY category and not in DVM ranges
-    return received.filter(ev =>
+    return getReceived().filter(ev =>
       !allCategorizedKinds.has(ev.kind) &&
       !(ev.kind >= 5000 && ev.kind <= 5999) &&
       !(ev.kind >= 6000 && ev.kind <= 6999) &&
       ev.kind !== 7000
     )
   } else if (kind === 'dvm-request') {
-    return received.filter(it => it.kind >= 5000 && it.kind <= 5999)
+    // Fast path: grab matching kind buckets directly
+    return getReceived().filter(it => it.kind >= 5000 && it.kind <= 5999)
   } else if (kind === 'dvm-result') {
-    return received.filter(it => it.kind >= 6000 && it.kind <= 6999)
+    return getReceived().filter(it => it.kind >= 6000 && it.kind <= 6999)
   } else if (kind === 'cat-dvm') {
-    return received.filter(it =>
+    return getReceived().filter(it =>
       (it.kind >= 5000 && it.kind <= 5999) ||
       (it.kind >= 6000 && it.kind <= 6999) ||
       it.kind === 7000
@@ -248,12 +277,13 @@ function filterByKind() {
   } else if (kindCategories[kind]) {
     const kinds = kindCategories[kind]
     if (Array.isArray(kinds)) {
-      const kindSet = new Set(kinds)
-      return received.filter(it => kindSet.has(it.kind))
+      // Fast path: grab buckets directly
+      return kinds.flatMap(k => receivedByKind[k] || [])
     }
-    return received
+    return getReceived()
   } else {
-    return received.filter(it => it.kind == kind)
+    // Single kind — direct bucket lookup
+    return (receivedByKind[kind] || []).slice()
   }
 }
 
@@ -880,7 +910,7 @@ function setupWs(relay, id) {
       if (arr[1] === "main") {
         relay.events++
       }
-      const prior = received.find(e=>e.id==event.id)
+      const prior = receivedById[event.id]
       if (prior) {
         if (0 > prior.relays.findIndex(i=>i.id==id)) {
           prior.relays.push({id: id,count:relay.events,timeMs:ts()})
@@ -949,7 +979,7 @@ function setupWs(relay, id) {
             console.log(`${relay.url} sent event with no tags.`)
             event.tags = []
           }
-          received.push(event)
+          storeEvent(event)
           break
       }
     } else if (arr[0] === 'EOSE') {
