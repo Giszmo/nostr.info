@@ -30,7 +30,42 @@ window.addEventListener('load', () => {
   window.output = document.getElementById("output")
   window.stopBtn = document.getElementById("stop-btn")
   window.expandedEvent = ""
+  // Apply URL params to filters
+  applyUrlParams()
 })
+
+function applyUrlParams() {
+  const params = new URLSearchParams(window.location.search)
+  if (params.has('kind')) {
+    const v = params.get('kind')
+    // Check if the value exists as an option
+    if ([...kindFilter.options].some(o => o.value === v)) {
+      kindFilter.value = v
+    }
+  }
+  if (params.has('pubkey')) {
+    pubkeyFilter.value = params.get('pubkey')
+  }
+  if (params.has('degree')) {
+    degreeFilter.value = params.get('degree')
+  }
+}
+
+function updateUrl() {
+  const params = new URLSearchParams()
+  if (kindFilter.value !== 'all') {
+    params.set('kind', kindFilter.value)
+  }
+  if (pubkeyFilter.value) {
+    params.set('pubkey', pubkeyFilter.value)
+  }
+  if (pubkeyFilter.value && degreeFilter.value !== '0') {
+    params.set('degree', degreeFilter.value)
+  }
+  const qs = params.toString()
+  const newUrl = window.location.pathname + (qs ? '?' + qs : '')
+  window.history.replaceState(null, '', newUrl)
+}
 
 const DISPLAY_LIMIT = 100 // how many events to show after filtering
 const PER_KIND_LIMIT = 100 // how many events to keep per kind
@@ -129,6 +164,7 @@ function update() {
   } else {
     degreeFilter.setAttribute('disabled', '')
   }
+  updateUrl()
   output.innerHTML = eventsTable()
 }
 
