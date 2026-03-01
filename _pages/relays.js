@@ -78,19 +78,25 @@ const follows = {}
 function toggleStop() {
   isStopped = !isStopped
   if (isStopped) {
-    // Disconnect all WebSockets
+    // Close only the "main" event subscription — keep meta/follows/relays alive
     relays.forEach(r => {
       if (r.ws && r.ws.readyState <= 1) {
-        r.ws.close()
+        r.ws.send('["CLOSE","main"]')
       }
     })
     updateStopBtn()
   } else {
-    // Reconnect all relays
+    // Re-subscribe to "main" on connected relays, reconnect dead ones
     relays.forEach((r, id) => {
-      r.tried = -1
-      r.connected = false
-      setupWs(r, id)
+      if (r.ws && r.ws.readyState === 1) {
+        // Still connected — just re-subscribe
+        r.ws.send(`["REQ","main",{"limit":${DISPLAY_LIMIT},"until":${(ts() / 1000 + 60 * 60).toFixed()}}]`)
+      } else {
+        // Connection lost — reconnect fully
+        r.tried = -1
+        r.connected = false
+        setupWs(r, id)
+      }
     })
     updateStopBtn()
     setDirty()
@@ -196,6 +202,23 @@ function eventsTable() {
     + displayed.map(it => eventBadge(it)).join('<br>')
 }
 
+// Track which pubkeys we've already requested follows for
+var followsRequested = new Set()
+
+function requestFollows(pubkeys) {
+  // Request kind-3 events for specific pubkeys we haven't fetched yet
+  const needed = pubkeys.filter(p => !followsRequested.has(p) && !follows[p])
+  if (needed.length === 0) return
+  needed.forEach(p => followsRequested.add(p))
+  relays.forEach(r => {
+    if (r.ws && r.ws.readyState === 1) {
+      // Use a unique sub id to avoid collisions
+      const subId = `follows-${needed[0].slice(0, 8)}`
+      r.ws.send(JSON.stringify(["REQ", subId, {"kinds": [3], "authors": needed, "limit": needed.length}]))
+    }
+  })
+}
+
 function filterByPubkey(list) {
   const pubkey = pubkeyFilter.value
   const degree = degreeFilter.value
@@ -207,20 +230,24 @@ function filterByPubkey(list) {
   }
   const followsByDegree = [new Set()]
   followsByDegree[0].add(pubkey)
-  for (n=1; n<= degree; n++) {
-    // determine the n-th degree of follows
+  for (let n = 1; n <= degree; n++) {
     const f = new Set()
     followsByDegree[n - 1]
       .forEach(it => {
         (follows[it] || [])
           .forEach(x => f.add(x))
         })
-    for (i=0; i<n; i++) {
-      // store each pubkey only in the lowest degree
+    for (let i = 0; i < n; i++) {
       followsByDegree[i].forEach(it => f.delete(it))
     }
     followsByDegree[n] = f
+    // Request follow lists for this degree's pubkeys so the next degree works
+    if (n < degree) {
+      requestFollows([...f])
+    }
   }
+  // Also request follows for the root pubkey if we don't have them
+  requestFollows([pubkey])
   return list.map(it => {
     it.degree = followsByDegree.findIndex(x => x.has(it.pubkey))
     return it
@@ -919,7 +946,10 @@ function setupWs(relay, id) {
           return // this event was handled by main already
         }
       }
-      switch (arr[1]) {
+      const subId = arr[1]
+      // Route follows-* targeted subs to the follows handler
+      const subType = subId.startsWith('follows') ? 'follows' : subId
+      switch (subType) {
         case 'meta':
           if (event.kind === 0) {
             try {
@@ -936,6 +966,7 @@ function setupWs(relay, id) {
         case 'follows':
           if (event.kind === 3) {
             follows[event.pubkey] = event.tags.filter(it => it[0] === "p").map(it => it[1])
+            setDirty() // re-render — new follow data may expand degree results
           } else {
             relay.wrongKind++
             relay.msg = msg.data
@@ -983,7 +1014,7 @@ function setupWs(relay, id) {
           break
       }
     } else if (arr[0] === 'EOSE') {
-      if (['meta','follows','relays'].includes(arr[1])) {
+      if (['meta','follows','relays'].includes(arr[1]) || arr[1].startsWith('follows-')) {
         ws.send(`["CLOSE","${arr[1]}"]`)
       }
     } else {
