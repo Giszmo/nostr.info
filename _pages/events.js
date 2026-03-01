@@ -107,27 +107,33 @@ const meta = {}
 const follows = {}
 
 function toggleStop() {
+  if (!window.relays) return // not initialized yet
   isStopped = !isStopped
   if (isStopped) {
     // Close only the "main" event subscription — keep meta/follows/relays alive
     relays.forEach(r => {
-      if (r.ws && r.ws.readyState <= 1) {
-        r.ws.send('["CLOSE","main"]')
-      }
+      try {
+        if (r.ws && r.ws.readyState === 1) {
+          r.ws.send('["CLOSE","main"]')
+        }
+      } catch(e) { console.log('Error closing main sub:', e) }
     })
     updateStopBtn()
+    setDirty()
   } else {
     // Re-subscribe to "main" on connected relays, reconnect dead ones
     relays.forEach((r, id) => {
-      if (r.ws && r.ws.readyState === 1) {
-        // Still connected — just re-subscribe
-        r.ws.send(`["REQ","main",{"limit":${DISPLAY_LIMIT},"until":${(ts() / 1000 + 60 * 60).toFixed()}}]`)
-      } else {
-        // Connection lost — reconnect fully
-        r.tried = -1
-        r.connected = false
-        setupWs(r, id)
-      }
+      try {
+        if (r.ws && r.ws.readyState === 1) {
+          // Still connected — just re-subscribe
+          r.ws.send(`["REQ","main",{"limit":${DISPLAY_LIMIT},"until":${(ts() / 1000 + 60 * 60).toFixed()}}]`)
+        } else {
+          // Connection lost — reconnect fully
+          r.tried = -1
+          r.connected = false
+          setupWs(r, id)
+        }
+      } catch(e) { console.log('Error restarting sub:', e) }
     })
     updateStopBtn()
     setDirty()
