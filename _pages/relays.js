@@ -198,8 +198,33 @@ function filterByKind() {
   if (kind === 'all') {
     return received
   } else if (kind === 'unknown') {
-    const knownKinds = [0,1,2,3,4,5,6,7,30,40,41,42,43,44,60,1063,1984,9735,10002,30023,30078,30311,31990]
-    return received.filter(ev => !knownKinds.includes(ev.kind))
+    const knownKinds = [
+      0,1,2,3,4,5,6,7,8,9,11,13,14,16,20,21,22,
+      30,40,41,42,43,44,60,
+      443,445,
+      1000,1009,1059,1063,1066,1808,1809,1984,1985,
+      4515,
+      5300,6300,7000,
+      9735,
+      10000,10002,10003,10007,10009,10050,10099,10100,10166,
+      11998,
+      13194,13196,
+      15750,
+      20000,20001,20004,20166,
+      21111,21647,
+      22416,22456,22651,22811,
+      23023,24133,24242,25050,
+      29333,
+      30000,30017,30018,30023,30078,30081,30166,30311,30315,30333,30515,30617,
+      31000,31234,31990,31991,
+      34838,
+      38225,38383,38384,38385,38422
+    ]
+    return received.filter(ev => !knownKinds.includes(ev.kind) && !(ev.kind >= 5000 && ev.kind <= 5999) && !(ev.kind >= 6000 && ev.kind <= 6999))
+  } else if (kind === 'dvm-request') {
+    return received.filter(it => it.kind >= 5000 && it.kind <= 5999)
+  } else if (kind === 'dvm-result') {
+    return received.filter(it => it.kind >= 6000 && it.kind <= 6999)
   } else {
     return received.filter(it => it.kind == kind)
   }
@@ -286,13 +311,70 @@ function eventBadge(event) {
         break
       }
     case 6: {
-        badge += ` made a "quoted boost". Damus sends and interprets those. ${JSON.stringify({tags:event.tags,content:escapeHTML(event.content)})}`
+        // NIP-18: Repost
+        const eTag6 = event.tags.find(t => t[0] === 'e')
+        const repostRef = eTag6 ? escapeHTML(eTag6[1].slice(0,16) + '…') : '(no ref)'
+        badge += ` reposted event ${repostRef}`
         break
       }
     case 7: {
         badge += ` boosted an event with ${event.content.length === 0
           ? ' implicit 👍'
           : `explicit ${escapeHTML(event.content)}`}.`
+        break
+      }
+    case 8: {
+        // NIP-58: Badge Award
+        const badgeTag = event.tags.find(t => t[0] === 'a')
+        const badgeName = badgeTag ? escapeHTML(badgeTag[1].split(':').pop()) : 'unknown badge'
+        badge += ` awarded badge: ${badgeName}`
+        break
+      }
+    case 9: {
+        // NIP-C7: Chat Message
+        const preview9 = event.content ? escapeHTML(event.content.slice(0, 100)) + (event.content.length > 100 ? '…' : '') : ''
+        badge += ` ${preview9}`
+        break
+      }
+    case 11: {
+        // NIP-7D: Thread
+        const preview11 = event.content ? escapeHTML(event.content.slice(0, 100)) + (event.content.length > 100 ? '…' : '') : ''
+        badge += ` thread: ${preview11}`
+        break
+      }
+    case 13: {
+        // NIP-59: Seal
+        badge += ` sealed event (encrypted)`
+        break
+      }
+    case 14: {
+        // NIP-17: Direct Message
+        const pTags14 = event.tags.filter(t => t[0] === 'p')
+        badge += ` encrypted DM to ${pTags14.length} recipient(s)`
+        break
+      }
+    case 16: {
+        // NIP-18: Generic Repost
+        const kTag16 = event.tags.find(t => t[0] === 'k')
+        const repostedKind = kTag16 ? escapeHTML(kTag16[1]) : '?'
+        badge += ` reposted kind-${repostedKind} event`
+        break
+      }
+    case 20: {
+        // NIP-68: Picture
+        const urlTag20 = event.tags.find(t => t[0] === 'url' || t[0] === 'imeta')
+        const picUrl = urlTag20 ? escapeHTML(urlTag20[1].slice(0,60)) : ''
+        badge += ` shared a picture${picUrl ? ': ' + picUrl : ''}`
+        break
+      }
+    case 21: {
+        // NIP-71: Video Event
+        badge += ` shared a video`
+        break
+      }
+    case 22: {
+        // NIP-71: Short Video
+        badge += ` shared a short video`
         break
       }
     case 30: {
@@ -334,6 +416,27 @@ function eventBadge(event) {
         badge += ` Something about ride sharing: ${escapeHTML(event.content)}`
         break
       }
+    case 443: {
+        badge += ` Marmot key package`
+        break
+      }
+    case 445: {
+        badge += ` Marmot group event`
+        break
+      }
+    case 1000: {
+        badge += ` kind 1000 event`
+        break
+      }
+    case 1009: {
+        badge += ` kind 1009 event`
+        break
+      }
+    case 1059: {
+        // NIP-59: Gift Wrap
+        badge += ` gift-wrapped event (encrypted)`
+        break
+      }
     case 1063: {
         // NIP-94: File metadata
         const urlTag = event.tags.find(t => t[0] === 'url')
@@ -342,6 +445,21 @@ function eventBadge(event) {
         const filename = nameTag ? escapeHTML(nameTag[1]) : (urlTag ? escapeHTML(urlTag[1].split('/').pop()) : 'unknown')
         const mime = mTag ? escapeHTML(mTag[1]) : 'unknown type'
         badge += ` shared a file: ${filename} (${mime})`
+        break
+      }
+    case 1066: {
+        // NIP-66: Relay Monitor Delta
+        const dTag1066 = event.tags.find(t => t[0] === 'd')
+        const relayUrl1066 = dTag1066 ? escapeHTML(dTag1066[1]) : 'unknown relay'
+        badge += ` relay status change: ${relayUrl1066}`
+        break
+      }
+    case 1808: {
+        badge += ` kind 1808 event`
+        break
+      }
+    case 1809: {
+        badge += ` kind 1809 event`
         break
       }
     case 1984: {
@@ -353,6 +471,36 @@ function eventBadge(event) {
         const reported = reportedTag ? escapeHTML(reportedTag[1].slice(0, 16) + '…') : 'unknown'
         const reason = reportType ? escapeHTML(reportType[1]) : (event.content ? escapeHTML(event.content.slice(0, 60)) : 'no reason given')
         badge += ` reported ${reported}: ${reason}`
+        break
+      }
+    case 1985: {
+        // NIP-32: Label
+        const LTag = event.tags.find(t => t[0] === 'L')
+        const lTag = event.tags.find(t => t[0] === 'l')
+        const labelNs = LTag ? escapeHTML(LTag[1]) : ''
+        const labelVal = lTag ? escapeHTML(lTag[1]) : '(no label)'
+        badge += ` labeled: ${labelVal}${labelNs ? ' [' + labelNs + ']' : ''}`
+        break
+      }
+    case 4515: {
+        badge += ` kind 4515 event`
+        break
+      }
+    case 5300: {
+        // NIP-90 specific: content discovery request
+        badge += ` DVM: content discovery request`
+        break
+      }
+    case 6300: {
+        // NIP-90 specific: content discovery result
+        badge += ` DVM: content discovery result`
+        break
+      }
+    case 7000: {
+        // NIP-90: Job Feedback
+        const statusTag7000 = event.tags.find(t => t[0] === 'status')
+        const fbStatus = statusTag7000 ? escapeHTML(statusTag7000[1]) : ''
+        badge += ` DVM job feedback${fbStatus ? ': ' + fbStatus : ''}`
         break
       }
     case 9735: {
@@ -392,6 +540,132 @@ function eventBadge(event) {
         badge += ` updated relay list (${relayTags.length} relays)`
         break
       }
+    case 10000: {
+        // NIP-51: Mute List
+        const muteTags = event.tags.filter(t => t[0] === 'p' || t[0] === 'e' || t[0] === 't' || t[0] === 'word')
+        badge += ` updated mute list (${muteTags.length} entries)`
+        break
+      }
+    case 10003: {
+        // NIP-51: Bookmark List
+        const bookmarkTags = event.tags.filter(t => t[0] === 'e')
+        badge += ` updated bookmarks (${bookmarkTags.length} entries)`
+        break
+      }
+    case 10007: {
+        badge += ` kind 10007 event`
+        break
+      }
+    case 10009: {
+        // NIP-51: Pin List
+        badge += ` updated pins`
+        break
+      }
+    case 10050: {
+        // NIP-17: DM Relay List
+        badge += ` updated DM relay list`
+        break
+      }
+    case 10099: {
+        badge += ` kind 10099 event`
+        break
+      }
+    case 10100: {
+        badge += ` kind 10100 event`
+        break
+      }
+    case 10166: {
+        // NIP-66: Relay Monitor Announcement
+        const cTags10166 = event.tags.filter(t => t[0] === 'c').map(t => escapeHTML(t[1]))
+        badge += ` relay monitor announcement${cTags10166.length ? ': checks ' + cTags10166.slice(0,3).join(', ') : ''}`
+        break
+      }
+    case 11998: {
+        badge += ` kind 11998 event`
+        break
+      }
+    case 13194: {
+        // NIP-47: Wallet Connect Info
+        badge += ` NWC wallet info`
+        break
+      }
+    case 13196: {
+        badge += ` NWC event`
+        break
+      }
+    case 15750: {
+        badge += ` kind 15750 event`
+        break
+      }
+    case 20000: {
+        const gTag20000 = event.tags.find(t => t[0] === 'g')
+        const geohash20000 = gTag20000 ? escapeHTML(gTag20000[1]) : ''
+        badge += ` bitchat message${geohash20000 ? ' @ ' + geohash20000 : ''}`
+        break
+      }
+    case 20001: {
+        const gTag20001 = event.tags.find(t => t[0] === 'g')
+        const geohash20001 = gTag20001 ? escapeHTML(gTag20001[1]) : ''
+        badge += ` ephemeral kind 20001${geohash20001 ? ' @ ' + geohash20001 : ''}`
+        break
+      }
+    case 20004: {
+        badge += ` ephemeral encrypted event`
+        break
+      }
+    case 20166: {
+        // NIP-66: Relay Monitor Ephemeral
+        const dTag20166 = event.tags.find(t => t[0] === 'd')
+        const url20166 = dTag20166 ? escapeHTML(dTag20166[1]) : ''
+        badge += ` relay status update (ephemeral)${url20166 ? ': ' + url20166 : ''}`
+        break
+      }
+    case 21111: {
+        badge += ` ephemeral sync event`
+        break
+      }
+    case 21647: {
+        badge += ` WebRTC signaling`
+        break
+      }
+    case 22416: {
+        badge += ` WebRTC signaling`
+        break
+      }
+    case 22456: {
+        badge += ` ephemeral encrypted event`
+        break
+      }
+    case 22651: {
+        badge += ` ephemeral kind 22651`
+        break
+      }
+    case 22811: {
+        badge += ` WebRTC signaling`
+        break
+      }
+    case 23023: {
+        badge += ` kind 23023 event`
+        break
+      }
+    case 24133: {
+        // NIP-46: Nostr Connect
+        badge += ` Nostr Connect request`
+        break
+      }
+    case 24242: {
+        // Blossom
+        badge += ` Blossom media server event`
+        break
+      }
+    case 25050: {
+        badge += ` WebRTC/peer signaling`
+        break
+      }
+    case 29333: {
+        badge += ` WebRTC signaling`
+        break
+      }
     case 30023: {
         // NIP-23: Long-form article
         const titleTag = event.tags.find(t => t[0] === 'title')
@@ -400,11 +674,48 @@ function eventBadge(event) {
         badge += ` published article: <strong>${title}</strong> — ${preview}`
         break
       }
+    case 30000: {
+        // NIP-51: Follow Sets
+        const dTag30000 = event.tags.find(t => t[0] === 'd')
+        const setName = dTag30000 ? escapeHTML(dTag30000[1]) : 'unnamed'
+        const pCount30000 = event.tags.filter(t => t[0] === 'p').length
+        badge += ` follow set: ${setName} (${pCount30000} follows)`
+        break
+      }
+    case 30017: {
+        // NIP-15: Marketplace Stall
+        let stallName = ''
+        try { stallName = JSON.parse(event.content).name || '' } catch(e) {}
+        badge += ` marketplace stall${stallName ? ': ' + escapeHTML(stallName) : ''}`
+        break
+      }
+    case 30018: {
+        // NIP-15: Marketplace Product
+        let productName = ''
+        try { productName = JSON.parse(event.content).name || '' } catch(e) {}
+        badge += ` marketplace product${productName ? ': ' + escapeHTML(productName) : ''}`
+        break
+      }
     case 30078: {
         // App-specific data
         const appTag = event.tags.find(t => t[0] === 'd')
         const appName = appTag ? escapeHTML(appTag[1]) : 'unknown app'
         badge += ` app-specific data for: ${appName}`
+        break
+      }
+    case 30081: {
+        badge += ` kind 30081 event`
+        break
+      }
+    case 30166: {
+        // NIP-66: Relay Discovery
+        const dTag30166 = event.tags.find(t => t[0] === 'd')
+        const relayUrl30166 = dTag30166 ? escapeHTML(dTag30166[1]) : 'unknown'
+        const rttTag = event.tags.find(t => t[0] === 'rtt-open')
+        const rtt = rttTag ? ` RTT:${escapeHTML(rttTag[1])}ms` : ''
+        const nipCount = event.tags.filter(t => t[0] === 'N').length
+        const nipStr = nipCount ? ` NIPs:${nipCount}` : ''
+        badge += ` relay discovery: ${relayUrl30166}${rtt}${nipStr}`
         break
       }
     case 30311: {
@@ -416,6 +727,40 @@ function eventBadge(event) {
         badge += ` live event: <strong>${title}</strong> (${status})`
         break
       }
+    case 30315: {
+        // NIP-38: User Status
+        const dTag30315 = event.tags.find(t => t[0] === 'd')
+        const statusType = dTag30315 ? escapeHTML(dTag30315[1]) : 'general'
+        const statusContent = event.content ? escapeHTML(event.content.slice(0, 80)) : ''
+        badge += ` status [${statusType}]: ${statusContent}`
+        break
+      }
+    case 30333: {
+        badge += ` kind 30333 event`
+        break
+      }
+    case 30515: {
+        badge += ` kind 30515 event`
+        break
+      }
+    case 30617: {
+        // NIP-34: Repository Announcement
+        const dTag30617 = event.tags.find(t => t[0] === 'd')
+        const repoName = dTag30617 ? escapeHTML(dTag30617[1]) : 'unknown repo'
+        badge += ` repository announcement: ${repoName}`
+        break
+      }
+    case 31000: {
+        const dTag31000 = event.tags.find(t => t[0] === 'd')
+        const d31000 = dTag31000 ? escapeHTML(dTag31000[1]) : ''
+        badge += ` kind 31000 event${d31000 ? ': ' + d31000 : ''}`
+        break
+      }
+    case 31234: {
+        // NIP-37: Draft Event
+        badge += ` draft event`
+        break
+      }
     case 31990: {
         // Handler information
         const dTag = event.tags.find(t => t[0] === 'd')
@@ -425,8 +770,46 @@ function eventBadge(event) {
         badge += ` handler info: ${handlerName} (for kind ${handlerKind})`
         break
       }
+    case 31991: {
+        badge += ` kind 31991 event`
+        break
+      }
+    case 34838: {
+        badge += ` kind 34838 event`
+        break
+      }
+    case 38225: {
+        badge += ` kind 38225 event`
+        break
+      }
+    case 38383: {
+        // NIP-69: P2P Order
+        badge += ` P2P trade order`
+        break
+      }
+    case 38384: {
+        badge += ` P2P trade event`
+        break
+      }
+    case 38385: {
+        badge += ` P2P trade event`
+        break
+      }
+    case 38422: {
+        badge += ` kind 38422 event`
+        break
+      }
     default: {
-        badge += ` unhandled kind ${event.kind} event with ${JSON.stringify({tags:event.tags,content:escapeHTML(event.content)})}.`
+        // For DVM job requests (5000-5999) and results (6000-6999)
+        if (event.kind >= 5000 && event.kind <= 5999) {
+          badge += ` DVM job request (kind ${event.kind})`
+        } else if (event.kind >= 6000 && event.kind <= 6999) {
+          badge += ` DVM job result (kind ${event.kind})`
+        } else {
+          const preview = event.content ? escapeHTML(event.content.slice(0, 100)) + (event.content.length > 100 ? '…' : '') : ''
+          const tagCount = event.tags ? event.tags.length : 0
+          badge += ` kind ${event.kind} event${preview ? ': ' + preview : ''} [${tagCount} tags]`
+        }
         break
       }
   }
