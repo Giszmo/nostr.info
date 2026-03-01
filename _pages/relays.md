@@ -11,6 +11,7 @@ permalink: /relays/
   <option value="relays">Show Relays</option>
   <option value="events">Show Events</option>
 </select>
+<button id="pause-btn" hidden onclick="togglePause()" style="margin-left:8px;">⏸ Pause</button>
 <br>
 
 <div id="relay-filters">
@@ -44,6 +45,14 @@ permalink: /relays/
     <option value="43">kind-43: Hide message</option>
     <option value="44">kind-44: Mute user</option>
     <option value="60">kind-60: Ride Sharing</option>
+    <option value="1063">kind-1063: File Metadata (NIP-94)</option>
+    <option value="1984">kind-1984: Report (NIP-56)</option>
+    <option value="9735">kind-9735: Zap Receipt (NIP-57)</option>
+    <option value="10002">kind-10002: Relay List Metadata (NIP-65)</option>
+    <option value="30023">kind-30023: Long-form Article (NIP-23)</option>
+    <option value="30078">kind-30078: App-specific Data</option>
+    <option value="30311">kind-30311: Live Event (NIP-53)</option>
+    <option value="31990">kind-31990: Handler Information</option>
   </select>
   <br>
   <label for="pubkey-filter">Filter by Pubkey:</label>

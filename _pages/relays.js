@@ -32,17 +32,43 @@ window.addEventListener('load', () => {
   window.pubkeyFilter = document.getElementById("pubkey-filter")
   window.degreeFilter = document.getElementById("degree-filter")
   window.output = document.getElementById("output")
+  window.pauseBtn = document.getElementById("pause-btn")
   window.expandedEvent = ""
 })
 
 const LIMIT = 100 // how many events to show
 const throttleMs = 500
 var received = []
+var paused_buffer = []
+var isPaused = false
 const meta = {}
 const follows = {}
 
+function togglePause() {
+  isPaused = !isPaused
+  if (!isPaused) {
+    // Flush buffered events into received
+    paused_buffer.forEach(ev => received.push(ev))
+    paused_buffer = []
+    updatePauseBtn()
+    setDirty()
+  } else {
+    updatePauseBtn()
+  }
+}
+
+function updatePauseBtn() {
+  if (!pauseBtn) return
+  if (isPaused) {
+    pauseBtn.textContent = `⏸ Paused (${paused_buffer.length} buffered)`
+  } else {
+    pauseBtn.textContent = '⏸ Pause'
+  }
+}
+
 var tUpdate = 0
 function setDirty() {
+  if (isPaused) return
   const t = ts()
   // ms since last scheduled update. Negative if in the future.
   const dt = t - tUpdate
@@ -71,6 +97,7 @@ function update() {
   switch(tab.value) {
     case "relays":
       relayFilters.hidden = false
+      if (pauseBtn) pauseBtn.hidden = true
       output.innerHTML = relaysTable()
       break
     case "events":
@@ -80,6 +107,7 @@ function update() {
         degreeFilter.setAttribute('disabled', '')
       }
       eventFilters.hidden = false
+      if (pauseBtn) pauseBtn.hidden = false
       output.innerHTML = eventsTable()
       break
   }
@@ -170,7 +198,7 @@ function filterByKind() {
   if (kind === 'all') {
     return received
   } else if (kind === 'unknown') {
-    const knownKinds = [0,1,2,3,4,5,6,7,30,40,41,42,43,44,60]
+    const knownKinds = [0,1,2,3,4,5,6,7,30,40,41,42,43,44,60,1063,1984,9735,10002,30023,30078,30311,31990]
     return received.filter(ev => !knownKinds.includes(ev.kind))
   } else {
     return received.filter(it => it.kind == kind)
@@ -299,11 +327,102 @@ function eventBadge(event) {
         const mutedPubkey = pTag[1]
         const content = JSON.parse(event.content)
         const reason = content.reason ? content.reason : "Unknown reason"
-        badge += ` Muted user ${nameFromPubkey(mutedPubkey)} (${reason})}}`
+        badge += ` Muted user ${nameFromPubkey(mutedPubkey)} (${reason})}`
         break
     }
     case 60: {
         badge += ` Something about ride sharing: ${escapeHTML(event.content)}`
+        break
+      }
+    case 1063: {
+        // NIP-94: File metadata
+        const urlTag = event.tags.find(t => t[0] === 'url')
+        const mTag = event.tags.find(t => t[0] === 'm')
+        const nameTag = event.tags.find(t => t[0] === 'name') || event.tags.find(t => t[0] === 'filename')
+        const filename = nameTag ? escapeHTML(nameTag[1]) : (urlTag ? escapeHTML(urlTag[1].split('/').pop()) : 'unknown')
+        const mime = mTag ? escapeHTML(mTag[1]) : 'unknown type'
+        badge += ` shared a file: ${filename} (${mime})`
+        break
+      }
+    case 1984: {
+        // NIP-56: Report
+        const pTag = event.tags.find(t => t[0] === 'p')
+        const reportedETag = event.tags.find(t => t[0] === 'e')
+        const reportedTag = reportedETag || pTag
+        const reportType = event.tags.find(t => t[0] === 'report')
+        const reported = reportedTag ? escapeHTML(reportedTag[1].slice(0, 16) + '…') : 'unknown'
+        const reason = reportType ? escapeHTML(reportType[1]) : (event.content ? escapeHTML(event.content.slice(0, 60)) : 'no reason given')
+        badge += ` reported ${reported}: ${reason}`
+        break
+      }
+    case 9735: {
+        // NIP-57: Zap receipt
+        const zapPTag = event.tags.find(t => t[0] === 'p')
+        const bolt11Tag = event.tags.find(t => t[0] === 'bolt11')
+        const amountTag = event.tags.find(t => t[0] === 'amount')
+        const descTag = event.tags.find(t => t[0] === 'description')
+        const recipient = zapPTag ? nameFromPubkey(zapPTag[1]) : 'unknown'
+        let sender = 'unknown sender'
+        if (descTag) {
+          try {
+            const desc = JSON.parse(descTag[1])
+            if (desc.pubkey) sender = nameFromPubkey(desc.pubkey)
+          } catch(e) {}
+        }
+        let msats = '?'
+        if (amountTag) {
+          msats = escapeHTML(amountTag[1])
+        } else if (bolt11Tag) {
+          // Try to extract amount from bolt11 human-readable part
+          const b11 = bolt11Tag[1]
+          const m = b11.match(/^lnbc(\d+)([munp])/i)
+          if (m) {
+            const val = parseInt(m[1])
+            const mult = m[2].toLowerCase()
+            const multipliers = { m: 100000000, u: 100000, n: 100, p: 0.1 }
+            msats = Math.round(val * (multipliers[mult] || 1)).toString()
+          }
+        }
+        badge += ` zapped ${recipient} — ${msats} msats (from ${sender})`
+        break
+      }
+    case 10002: {
+        // NIP-65: Relay list metadata
+        const relayTags = event.tags.filter(t => t[0] === 'r')
+        badge += ` updated relay list (${relayTags.length} relays)`
+        break
+      }
+    case 30023: {
+        // NIP-23: Long-form article
+        const titleTag = event.tags.find(t => t[0] === 'title')
+        const title = titleTag ? escapeHTML(titleTag[1]) : 'Untitled'
+        const preview = event.content ? escapeHTML(event.content.slice(0, 80)) + (event.content.length > 80 ? '…' : '') : ''
+        badge += ` published article: <strong>${title}</strong> — ${preview}`
+        break
+      }
+    case 30078: {
+        // App-specific data
+        const appTag = event.tags.find(t => t[0] === 'd')
+        const appName = appTag ? escapeHTML(appTag[1]) : 'unknown app'
+        badge += ` app-specific data for: ${appName}`
+        break
+      }
+    case 30311: {
+        // NIP-53: Live Event
+        const titleTag = event.tags.find(t => t[0] === 'title')
+        const statusTag = event.tags.find(t => t[0] === 'status')
+        const title = titleTag ? escapeHTML(titleTag[1]) : 'Untitled event'
+        const status = statusTag ? escapeHTML(statusTag[1]) : 'unknown'
+        badge += ` live event: <strong>${title}</strong> (${status})`
+        break
+      }
+    case 31990: {
+        // Handler information
+        const dTag = event.tags.find(t => t[0] === 'd')
+        const kTag = event.tags.find(t => t[0] === 'k')
+        const handlerName = dTag ? escapeHTML(dTag[1]) : 'unknown handler'
+        const handlerKind = kTag ? escapeHTML(kTag[1]) : '?'
+        badge += ` handler info: ${handlerName} (for kind ${handlerKind})`
         break
       }
     default: {
@@ -419,7 +538,12 @@ function setupWs(relay, id) {
             console.log(`${relay.url} sent event with no tags.`)
             event.tags = []
           }
-          received.push(event)
+          if (isPaused) {
+            paused_buffer.push(event)
+            updatePauseBtn()
+          } else {
+            received.push(event)
+          }
           break
       }
     } else if (arr[0] === 'EOSE') {
