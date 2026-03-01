@@ -197,38 +197,59 @@ function filterByPubkey(list) {
   }).filter(e => e.degree >= 0)
 }
 
+const kindCategories = {
+  'cat-core':        [0,1,2,3,5,6,7,8,9,11,16],
+  'cat-encryption':  [4,13,14,1059,10050,20004,22456],
+  'cat-media':       [20,21,22,1063],
+  'cat-chat':        [40,41,42,43,44],
+  'cat-relaymon':    [1066,10166,20166,30166],
+  'cat-lists':       [10000,10002,10003,10009,30000],
+  'cat-dvm':         'dvm', // special: 5000-5999, 6000-6999, 7000, 5300, 6300
+  'cat-marketplace': [30017,30018,38383,38384,38385],
+  'cat-content':     [30023,1984,1985,30311,30315],
+  'cat-developer':   [30617,31234],
+  'cat-webrtc':      [21647,22416,22811,25050,29333,21111,22651,20000,20001],
+  'cat-connect':     [24133,24242,13194,13196],
+  'cat-social':      [9735,30078,31990],
+  'cat-other':       [30,60,443,445,1000,1009,4515,1808,1809,10007,10099,10100,11998,15750,23023,30081,30333,30515,31000,31991,34838,38225,38422],
+}
+
+// All explicitly categorized kinds (flat set for "unknown" filter)
+const allCategorizedKinds = new Set(
+  Object.values(kindCategories)
+    .filter(v => Array.isArray(v))
+    .flat()
+)
+
 function filterByKind() {
   const kind = kindFilter.value
   if (kind === 'all') {
     return received
   } else if (kind === 'unknown') {
-    const knownKinds = [
-      0,1,2,3,4,5,6,7,8,9,11,13,14,16,20,21,22,
-      30,40,41,42,43,44,60,
-      443,445,
-      1000,1009,1059,1063,1066,1808,1809,1984,1985,
-      4515,
-      5300,6300,7000,
-      9735,
-      10000,10002,10003,10007,10009,10050,10099,10100,10166,
-      11998,
-      13194,13196,
-      15750,
-      20000,20001,20004,20166,
-      21111,21647,
-      22416,22456,22651,22811,
-      23023,24133,24242,25050,
-      29333,
-      30000,30017,30018,30023,30078,30081,30166,30311,30315,30333,30515,30617,
-      31000,31234,31990,31991,
-      34838,
-      38225,38383,38384,38385,38422
-    ]
-    return received.filter(ev => !knownKinds.includes(ev.kind) && !(ev.kind >= 5000 && ev.kind <= 5999) && !(ev.kind >= 6000 && ev.kind <= 6999))
+    // Anything not in ANY category and not in DVM ranges
+    return received.filter(ev =>
+      !allCategorizedKinds.has(ev.kind) &&
+      !(ev.kind >= 5000 && ev.kind <= 5999) &&
+      !(ev.kind >= 6000 && ev.kind <= 6999) &&
+      ev.kind !== 7000
+    )
   } else if (kind === 'dvm-request') {
     return received.filter(it => it.kind >= 5000 && it.kind <= 5999)
   } else if (kind === 'dvm-result') {
     return received.filter(it => it.kind >= 6000 && it.kind <= 6999)
+  } else if (kind === 'cat-dvm') {
+    return received.filter(it =>
+      (it.kind >= 5000 && it.kind <= 5999) ||
+      (it.kind >= 6000 && it.kind <= 6999) ||
+      it.kind === 7000
+    )
+  } else if (kindCategories[kind]) {
+    const kinds = kindCategories[kind]
+    if (Array.isArray(kinds)) {
+      const kindSet = new Set(kinds)
+      return received.filter(it => kindSet.has(it.kind))
+    }
+    return received
   } else {
     return received.filter(it => it.kind == kind)
   }
