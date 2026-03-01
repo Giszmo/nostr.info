@@ -36,7 +36,8 @@ window.addEventListener('load', () => {
   window.expandedEvent = ""
 })
 
-const LIMIT = 100 // how many events to show
+const DISPLAY_LIMIT = 100 // how many events to show after filtering
+const STORE_LIMIT = 10000 // how many events to keep in memory
 const throttleMs = 500
 var received = []
 var isStopped = false
@@ -93,8 +94,8 @@ function update() {
   received = received
     // sort by first-seen time (newest first) — avoids future-timestamp events piling at top
     .sort( (a,b) => b._firstSeen - a._firstSeen )
-    // clip to only LIMIT events
-    .slice(0, LIMIT)
+    // keep up to STORE_LIMIT in memory for filtering
+    .slice(0, STORE_LIMIT)
 
   eventFilters.hidden = true
   relayFilters.hidden = true
@@ -134,8 +135,8 @@ function relaysTable() {
         case 'all': return true
         case 'didConnect': return r.answered
         case 'sent': return r.events > 0
-        case 'sentMany': return r.events >= LIMIT
-        case 'sentConnected': return r.events >= LIMIT && r.connected
+        case 'sentMany': return r.events >= DISPLAY_LIMIT
+        case 'sentConnected': return r.events >= DISPLAY_LIMIT && r.connected
         default: return false
       }
     }).map(r=>`<tr><td>${r.url}</td><td>${r.events}</td><td>${
@@ -153,7 +154,7 @@ function relaysTable() {
             : '') + (r.msg.length > 0
               ? ` (${r.msg})`
               : '')}</td></tr>`).join('') +
-        `<tr><td colspan="5"><sup>1</sup> counting all events received after requesting ${LIMIT} most recent events.<br>Events received to determine names and follows are not counted.</td></tr>` +
+        `<tr><td colspan="5"><sup>1</sup> counting all events received after requesting ${DISPLAY_LIMIT} most recent events per relay.<br>Events received to determine names and follows are not counted.</td></tr>` +
         '<tr><td colspan="5"><sup>2</sup> "false" = connection never succeeded. "?" = we haven\'t tried yet. Press button above to try.</td></tr>' +
     '</table>'
 }
@@ -161,9 +162,10 @@ function relaysTable() {
 function eventsTable() {
   const kindFiltered = filterByKind()
   const filtered = filterByPubkey(kindFiltered)
+  const displayed = filtered.slice(0, DISPLAY_LIMIT)
   
-  return `${filtered.length}/${LIMIT} Events:<br>`
-    + filtered.map(it => eventBadge(it)).join('<br>')
+  return `${displayed.length}/${filtered.length} Events (${received.length} stored):<br>`
+    + displayed.map(it => eventBadge(it)).join('<br>')
 }
 
 function filterByPubkey(list) {
@@ -972,7 +974,7 @@ function setupWs(relay, id) {
     relay.connected = true
     relay.answered = true
     setDirty()
-    ws.send(`["REQ","main",{"limit":${LIMIT},"until":${(ts() / 1000 + 60 * 60).toFixed()}}]`)
+    ws.send(`["REQ","main",{"limit":${DISPLAY_LIMIT},"until":${(ts() / 1000 + 60 * 60).toFixed()}}]`)
     ws.send('["REQ","meta",{"kinds":[0]}]')
     ws.send('["REQ","follows",{"kinds":[3]}]')
     ws.send('["REQ","relays",{"kinds":[2]}]')
