@@ -199,8 +199,7 @@ function updateFilterCounts() {
     // Store original label on first pass
     if (!opt.dataset.label) opt.dataset.label = opt.textContent
     const count = countForKind(opt.value)
-    const isCategory = opt.value.startsWith('cat-') || opt.value === 'all' || opt.value === 'unknown'
-    const suffix = count === 0 ? '' : isCategory && count > 100 ? ' (100+)' : ` (${count})`
+    const suffix = count === 0 ? '' : count >= 100 ? ' (100+)' : ` (${count})`
     opt.textContent = opt.dataset.label + suffix
   }
 }
