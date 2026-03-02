@@ -164,12 +164,54 @@ function setDirty() {
   }
 }
 
+function countForKind(val) {
+  if (val === 'all') return totalStored()
+  if (val === 'unknown') {
+    return getReceived().filter(ev =>
+      !allCategorizedKinds.has(ev.kind) &&
+      !(ev.kind >= 5000 && ev.kind <= 5999) &&
+      !(ev.kind >= 6000 && ev.kind <= 6999) &&
+      ev.kind !== 7000
+    ).length
+  }
+  if (val === 'dvm-request') return getReceived().filter(it => it.kind >= 5000 && it.kind <= 5999).length
+  if (val === 'dvm-result') return getReceived().filter(it => it.kind >= 6000 && it.kind <= 6999).length
+  if (val === 'cat-dvm') {
+    return getReceived().filter(it =>
+      (it.kind >= 5000 && it.kind <= 5999) ||
+      (it.kind >= 6000 && it.kind <= 6999) ||
+      it.kind === 7000
+    ).length
+  }
+  if (kindCategories[val]) {
+    const kinds = kindCategories[val]
+    if (Array.isArray(kinds)) {
+      return kinds.reduce((sum, k) => sum + (receivedByKind[k] || []).length, 0)
+    }
+    return 0
+  }
+  // Single kind
+  return (receivedByKind[val] || []).length
+}
+
+function updateFilterCounts() {
+  for (const opt of kindFilter.options) {
+    // Store original label on first pass
+    if (!opt.dataset.label) opt.dataset.label = opt.textContent
+    const count = countForKind(opt.value)
+    const isCategory = opt.value.startsWith('cat-') || opt.value === 'all' || opt.value === 'unknown'
+    const suffix = count === 0 ? '' : isCategory && count > 100 ? ' (100+)' : ` (${count})`
+    opt.textContent = opt.dataset.label + suffix
+  }
+}
+
 function update() {
   if (pubkeyFilter.value) {
     degreeFilter.removeAttribute('disabled')
   } else {
     degreeFilter.setAttribute('disabled', '')
   }
+  updateFilterCounts()
   updateUrl()
   output.innerHTML = eventsTable()
 }
