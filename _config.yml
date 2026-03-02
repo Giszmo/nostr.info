@@ -30,6 +30,12 @@ github_username:  Giszmo
 
 # Build settings
 theme: minima
+sass:
+  quiet_deps: true
+  silence_deprecations:
+    - import
+    - global-builtin
+    - color-functions
 plugins:
   - jekyll-feed
 include:
