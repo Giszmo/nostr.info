@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Resources | nostr.info</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Resources" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="What is going on in the world of nostr. Stats, Charts, Live Monitors, Resources, …" />
+<meta property="og:description" content="What is going on in the world of nostr. Stats, Charts, Live Monitors, Resources, …" />
+<link rel="canonical" href="https://nostr.info/resources/" />
+<meta property="og:url" content="https://nostr.info/resources/" />
+<meta property="og:site_name" content="nostr.info" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Resources" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"What is going on in the world of nostr. Stats, Charts, Live Monitors, Resources, …","headline":"Resources","url":"https://nostr.info/resources/"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="https://nostr.info/feed.xml" title="nostr.info" /><link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png">
+  <link rel="manifest" href="/assets/images/site.webmanifest">
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+  <meta name="msapplication-TileColor" content="#da532c">
+  <meta name="msapplication-config" content="/assets/images/browserconfig.xml">
+  <meta name="theme-color" content="#ffffff">
+</head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">nostr.info</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/resources/">Resources</a><a class="page-link" href="/events/">Events</a><a class="page-link" href="/relayr/">Query</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Resources</h1>
+  </header>
+
+  <div class="post-content">
+    <h2>Projects</h2>
+
+<div class="controls" style="margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+  <label style="cursor: pointer; user-select: none; font-size: 14px;">
+    <input type="checkbox" id="curatedCb" checked="" style="cursor: pointer; margin-right: 6px;" />
+    Curated only
+  </label>
+  <a href="javascript:void(0)" onclick="document.getElementById('submitForm').style.display=document.getElementById('submitForm').style.display==='block'?'none':'block'" style="font-size: 13px; color: #2563eb; text-decoration: none;">+ Submit resource</a>
+</div>
+
+<div id="submitForm" style="display:none; margin-bottom: 20px; padding: 16px;">
+  <h3 style="margin-top:0; font-size: 16px;">Submit a Nostr Resource</h3>
+  <p style="font-size:12px; color:#666; margin:4px 0 14px">
+    Publish a kind 30078 event with tag <code>t: nostr.info/resource</code>.
+  </p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 600px;">
+    <label style="font-size:12px;">Title<br /><input id="sfTitle" style="width:100%; padding:6px; margin-top:2px;" /></label>
+    <label style="font-size:12px;">Slug (d-tag)<br /><input id="sfSlug" style="width:100%; padding:6px; margin-top:2px;" /></label>
+    <label style="font-size:12px;">Git URL<br /><input id="sfGit" style="width:100%; padding:6px; margin-top:2px;" /></label>
+    <label style="font-size:12px;">Web URL<br /><input id="sfWeb" style="width:100%; padding:6px; margin-top:2px;" /></label>
+    <label style="font-size:12px; grid-column: 1 / -1;">Description<br /><textarea id="sfDesc" rows="2" style="width:100%; padding:6px; margin-top:2px;"></textarea></label>
+    <label style="font-size:12px;">Tags (comma sep)<br /><input id="sfTags" style="width:100%; padding:6px; margin-top:2px;" placeholder="client, social, dm" /></label>
+    <label style="font-size:12px;">Platforms (comma sep)<br /><input id="sfPlatforms" style="width:100%; padding:6px; margin-top:2px;" placeholder="web, android, ios" /></label>
+    <label style="font-size:12px; grid-column: 1 / -1;">nsec (optional, for signing without extension)<br /><input id="sfNsec" type="password" style="width:100%; padding:6px; margin-top:2px;" placeholder="nsec1..." /></label>
+  </div>
+  <div style="margin-top:12px;">
+    <button onclick="submitResource()">Publish</button>
+    <button onclick="document.getElementById('submitForm').style.display='none'">Cancel</button>
+  </div>
+  <div id="sfStatus" style="margin-top:10px; font-size:13px;"></div>
+</div>
+
+<div id="toggles"></div>
+
+<div id="results">
+  <p style="padding:3em; text-align:center; color:#666;">⟳ Loading resources from nostr relays...</p>
+</div>
+
+<script src="/js/resources.js"></script>
+
+<link rel="stylesheet" href="/assets/css/resources.css" />
+
+
+  </div>
+
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">nostr.info</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">nostr.info</li><li><a class="u-email" href="mailto:leo@walletscrutiny.com">leo@walletscrutiny.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/Giszmo"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">Giszmo</span></a></li><li><a href="https://github.com/Giszmo/nostr.info"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">nostr.info</span></a></li><li><a href="https://www.twitter.com/LeoWandersleb"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg> <span class="username">LeoWandersleb</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>What is going on in the world of nostr. Stats, Charts, Live Monitors, Resources, ...</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

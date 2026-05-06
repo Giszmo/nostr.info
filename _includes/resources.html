@@ -1,3 +1,14 @@
+<!-- nostr-auth: provides window.nostr for NIP-07 extensions, NIP-46 bunkers, Amber, nsec local -->
+<script src="/assets/js/nostr-auth.js?v=20260504"></script>
+
+<div class="controls" style="margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+  <label style="cursor: pointer; user-select: none; font-size: 14px;">
+    <input type="checkbox" id="curatedCb" checked="" style="cursor: pointer; margin-right: 6px;" />
+    WoT only
+  </label>
+  <input type="text" id="searchInput" placeholder="Search resources…" style="padding: 6px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 14px; min-width: 180px;" />
+</div>
+
 <h2>Projects</h2>
 
 <div id="toggles" class="tags"></div>
@@ -24,12 +35,11 @@
           {%- for t in p.tags -%}{% include tag.html tag=t type="tag" %}{%- endfor -%}
           {%- for t in p.nips -%}{% include tag.html tag=t type="nip" %}{%- endfor -%}
         </div>
-        <div class="gh">{%- if p.git contains 'https://github.com/' -%}{%- assign repo = p.git | remove: "https://github.com/" -%}<img src="https://img.shields.io/github/stars/{{ repo }}.svg?style=social" alt="stars">{%- endif -%}</div>
         <div class="details">{%- if p.content.size > 20 -%}<a href="{{ p.url }}">🔍</a>{%- endif -%}</div>
       </div>
     {%- endif -%}
   {%- endfor -%}
 </div>
 
-<script src="/js/resources.js"></script>
-<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css" />
+<script src="/js/resources.js?v=20260506"></script>
+<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css?v=20260506" />
