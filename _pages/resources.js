@@ -18,7 +18,7 @@ const RELAYS = [
 // Public key of the nostr.info curator account (npub form — no private keys in repo)
 const CURATOR_NPUB = 'npub1c4ptewkhdzhzqutt0tq60z44jzhw2pg9pj888m905pv3m23svcqska5c34';
 const NAMESPACE   = 'nostr.info/resource';
-const FALLBACK_MS = 8000;
+const FALLBACK_MS = 15000;
 
 let allResourceEvents = [];
 let curatedResources  = [];
@@ -982,83 +982,108 @@ async function queryAll(relays, filter, onEvent, timeoutMs=8000) {
   await Promise.all(relays.map(url => query(url, filter, onEvent, null, timeoutMs)));
 }
 
-// ─── Loading ──────────────────────────────────────────────────────────────────
-function connectRelays() {
-  setStatus('⟳ Loading resources from nostr relays…');
+// ─── IDB cache ────────────────────────────────────────────────────────────────────────────────
+const IDB_NAME    = 'nostr-resources';
+const IDB_STORE   = 'events';
+const IDB_VERSION = 1;
 
-  const seenIds = new Set();
-  let eoseCount  = 0;
-  let rendered   = false;
-  const openWs   = [];
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
 
-  const tryRender = () => {
-    if (rendered) return;
-    rendered = true;
-    loadedFrom = 'nostr';
-    openWs.forEach(ws => { try { ws.close(); } catch(e){} });
+async function idbLoadAll() {
+  try {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).getAll();
+      req.onsuccess = e => resolve(e.target.result || []);
+      req.onerror   = e => reject(e.target.error);
+    });
+  } catch(e) { return []; }
+}
+
+async function idbSaveAll(events) {
+  try {
+    const db = await idbOpen();
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    events.forEach(ev => { if (ev.id) store.put(ev); });
+    return new Promise((resolve) => { tx.oncomplete = resolve; tx.onerror = resolve; });
+  } catch(e) {}
+}
+
+// ─── Loading ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+async function connectRelays() {
+  // 1. Show IDB cache immediately so something renders while relays load
+  const cached = await idbLoadAll();
+  if (cached.length > 0) {
+    cached.forEach(ev => { if (!allResourceEvents.some(e => e.id === ev.id)) allResourceEvents.push(ev); });
+    loadedFrom = 'cache';
+    setStatus('⧳ Showing ' + cached.length + ' cached — loading fresh from relays…');
     dedupAndRender();
     loadSecondary();
-    // After 12s, accept late events from slower relays and re-render if anything new arrived
-    setTimeout(() => {
-      if (lateWs.length > 0) {
-        lateWs.forEach(ws => { try { ws.close(); } catch(e){} });
-        lateWs.length = 0;
-      }
-      if (lateEventCount > 0) {
-        lateEventCount = 0;
-        renderOrder = null;
-        dedupAndRender();
-        loadSecondary();
-      }
-    }, 12000);
-  };
+  } else {
+    setStatus('⧳ Loading resources from nostr relays…');
+  }
 
-  // Late-relay listeners — collect events for 12s after first render
-  const lateWs = [];
-  let lateEventCount = 0;
+  // 2. Fetch fresh from all relays in parallel; update when all done
+  const seenIds   = new Set(allResourceEvents.map(e => e.id));
+  let doneCount   = 0;
+  let relayDone   = false;
+  const TOTAL     = RELAYS.length;
+  const newEvents = [];
+
+  const tryRender = () => {
+    if (relayDone) return;
+    relayDone = true;
+    if (newEvents.length > 0 || cached.length === 0) {
+      loadedFrom = 'nostr';
+      idbSaveAll(allResourceEvents);
+      renderOrder = null;
+      dedupAndRender();
+      loadSecondary();
+    } else {
+      // Nothing new from relays — cached data was already rendered
+      loadedFrom = 'nostr';
+      setStatus('');
+    }
+  };
 
   RELAYS.forEach(url => {
     try {
       const ws = new WebSocket(url);
-      openWs.push(ws);
+      let done = false;
+      const finish = () => { if (done) return; done = true; if (++doneCount >= TOTAL) tryRender(); };
       ws.onopen = () => ws.send(JSON.stringify(['REQ','r1',{kinds:[30078],'#t':[NAMESPACE],limit:1000}]));
       ws.onmessage = msg => {
-        const d = JSON.parse(msg.data);
-        if (d[0]==='EVENT') {
-          if (!seenIds.has(d[2].id)) {
+        try {
+          const d = JSON.parse(msg.data);
+          if (d[0]==='EVENT' && !seenIds.has(d[2].id)) {
             seenIds.add(d[2].id);
             allResourceEvents.push(d[2]);
-            if (rendered) lateEventCount++;
+            newEvents.push(d[2]);
           }
-        }
-        if (d[0]==='EOSE') {
-          ws.close();
-          if (++eoseCount >= Math.min(4, RELAYS.length)) tryRender();
-        }
+          if (d[0]==='EOSE') { ws.close(); finish(); }
+        } catch(e) {}
       };
-      ws.onerror = ws.onclose = () => {
-        if (++eoseCount >= RELAYS.length) tryRender();
-      };
-    } catch(e) {}
+      ws.onclose = () => finish();
+      ws.onerror = () => finish();
+    } catch(e) { if (++doneCount >= TOTAL) tryRender(); }
   });
 
-  // Hard fallback
-  setTimeout(() => {
-    if (!rendered) {
-      openWs.forEach(ws => { try { ws.close(); } catch(e){} });
-      rendered = true;
-      loadedFrom = 'cache';
-      setStatus('⟳ No relay response. Trying local cache…');
-      fetch('/events.json')
-        .then(r => r.json())
-        .then(data => {
-          allResourceEvents = data.resources || [];
-          dedupAndRender();
-          loadSecondary();
-        })
-        .catch(() => setStatus('⚠ Could not load from relays or cache.'));
-    }
-  }, FALLBACK_MS);
+  // Hard timeout — render whatever we have after FALLBACK_MS
+  setTimeout(() => { if (!relayDone) tryRender(); }, FALLBACK_MS);
 }
 
 // ─── Live subscription for new events ────────────────────────────────────────
@@ -1121,7 +1146,6 @@ async function loadSecondary() {
     .map(r => slugToAddr(r.slug, r.pubkeyHex));
 
   // Collect ALL event ids across all versions of all slugs, filter out empty strings
-  // (events.json fallback has id="" — empty IDs would match nothing on relays)
   const allVersionEventIds = Object.values(slugEventIds)
     .flatMap(s => [...s])
     .filter(id => id && id.length === 64);

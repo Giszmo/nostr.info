@@ -545,3 +545,18 @@
 .zd-pct { font-weight: 600; color: #888; white-space: nowrap; }
 .zd-ago { font-size: 11px; color: #aaa; white-space: nowrap; }
 .zd-empty { font-size: 12px; color: #aaa; margin: 4px 0; }
+
+/* ── Diff modal ─────────────────────────────────────────────────────────────── */
+pre.diff-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 11px;
+  font-family: monospace;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.proposal-row--mine {
+  background: #fffbe6;
+  border-left: 3px solid #f59e0b;
+}
