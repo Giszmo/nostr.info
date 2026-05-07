@@ -1056,10 +1056,9 @@ async function connectRelays() {
       renderOrder = null;
       dedupAndRender();
       loadSecondary();
-    } else {
-      // Nothing new from relays, cache was already rendered — just clear status
-      setStatus('');
     }
+    // Always update status: relay load done, live subscription still watching
+    setStatus('👁 Watching for updates…');
   };
 
   RELAYS.forEach(url => {
@@ -1480,6 +1479,8 @@ function render() {
   const resultsEl = document.getElementById('results');
   if (resultsEl) resultsEl.innerHTML = html;
   renderToggles(pool);
+  // After DOM update, show "more…" only on cards that are actually clipped
+  requestAnimationFrame(checkAllDescOverflows);
 }
 
 function renderCard(r) {
@@ -1579,7 +1580,7 @@ function renderCard(r) {
     return `<a href="${esc(url)}" target="_blank">${esc(name)}</a>${esc(com)}`;
   }).join(' · ')}</div>` : '';
 
-  const descHtml = r.description ? `<div class="resource-desc"><div class="resource-desc-inner">${mdToHtml(r.description)}</div><button class="desc-expand" onclick="toggleDesc(this)">more…</button></div>` : '';
+  const descHtml = r.description ? `<div class="resource-desc"><div class="resource-desc-inner" onload="checkDescOverflow(this)">${mdToHtml(r.description)}</div><button class="desc-expand desc-expand--hidden" onclick="toggleDesc(this)">more…</button></div>` : '';
   const discontinuedBadge = r.discontinued ? `<span class="pill discontinued" title="This project appears to be discontinued">🪦 discontinued</span>` : '';
   const cardClass = r.discontinued ? 'resource-card resource-card--discontinued' : 'resource-card';
 
@@ -1734,6 +1735,19 @@ function toggleDesc(btn) {
   if (!inner) return;
   const expanded = inner.classList.toggle('expanded');
   btn.textContent = expanded ? 'less…' : 'more…';
+}
+// After cards are inserted into DOM, check which desc-inners are actually clipped
+// and only show the "more…" button for those.
+function checkAllDescOverflows() {
+  document.querySelectorAll('.resource-desc-inner').forEach(inner => {
+    const btn = inner.nextElementSibling;
+    if (!btn || !btn.classList.contains('desc-expand')) return;
+    if (inner.scrollHeight > inner.clientHeight + 4) {
+      btn.classList.remove('desc-expand--hidden');
+    } else {
+      btn.classList.add('desc-expand--hidden');
+    }
+  });
 }
 
 async function deleteResource(slug, eventId) {
@@ -1967,25 +1981,37 @@ function toggleProposals(slug) {
   if (!r) return;
   const versions = slugVersions[slug] || [];
   const winnerTs = versions.find(v => v.id === r.eventId)?.created_at ?? 0;
-  const proposals = versions.filter(v => v.pubkey !== r.pubkeyHex && v.created_at >= winnerTs);
-  if (!proposals.length) return;
-  const rows = proposals.map(ev => {
+
+  // Outside-WoT proposals newer than winner
+  const outsideProposals = versions.filter(v =>
+    v.pubkey !== r.pubkeyHex && wotTrust(v.pubkey) < 2 && v.created_at >= winnerTs
+  );
+  // My own superseded version (I'm in WoT but curator's batch edit overtook me)
+  const myOwn = loggedInPubkey && loggedInPubkey !== r.pubkeyHex && wotTrust(loggedInPubkey) >= 2
+    ? versions.find(v => v.pubkey === loggedInPubkey && !outsideProposals.includes(v))
+    : null;
+
+  const allProposals = [...(myOwn ? [myOwn] : []), ...outsideProposals];
+  if (!allProposals.length) return;
+
+  const rows = allProposals.map(ev => {
     const p = profileCache[ev.pubkey] || {};
     const npub = hexToNpub(ev.pubkey);
     const name = p.name || (npub.slice(0,14)+'…');
+    const isMe = ev.pubkey === loggedInPubkey;
     const avatar = p.picture
       ? `<img src="${esc(p.picture)}" onerror="this.src='/images/nostrich.webp'" style="width:18px;height:18px;border-radius:50%;vertical-align:middle;">`
       : `<img src="/images/nostrich.webp" style="width:18px;height:18px;border-radius:50%;vertical-align:middle;">`;
     const date = new Date(ev.created_at*1000).toLocaleDateString();
-    let content={}; try{content=JSON.parse(ev.content);}catch(e){}
-    const title = content.title || ev.tags?.find(t=>t[0]==='d')?.[1]||'';
-    // Any logged-in user can adopt — curator adoption = curated version, others = community version
-    const adoptLabel = loggedInPubkey === CURATOR ? '✓ Approve' : loggedInPubkey ? '✓ Adopt' : '';
+    let evContent={}; try{evContent=JSON.parse(ev.content);}catch(e){}
+    const title = evContent.title || ev.tags?.find(t=>t[0]==='d')?.[1]||'';
+    const supersededLabel = isMe ? ' <span style="color:#b06000;font-size:11px;">⚠ yours (superseded)</span>' : '';
+    const adoptLabel = isMe ? '↩ Override' : (loggedInPubkey === CURATOR ? '✓ Approve' : loggedInPubkey ? '✓ Adopt' : '');
     const approveHtml = adoptLabel
       ? `<button class="action-btn approve-btn" onclick="approveProposal('${esc(slug)}','${esc(ev.id)}')">${adoptLabel}</button>`
       : '';
-    return `<div class="proposal-row">
-      <span class="proposal-author">${avatar} <a href="https://njump.me/${npub}" target="_blank">${esc(name)}</a></span>
+    return `<div class="proposal-row${isMe ? ' proposal-row--mine' : ''}">
+      <span class="proposal-author">${avatar} <a href="https://njump.me/${npub}" target="_blank">${esc(name)}</a>${supersededLabel}</span>
       <span class="proposal-title">${esc(title)}</span>
       <span class="proposal-date">${date}</span>
       <button class="action-btn" onclick="showProposalDiff('${esc(slug)}','${esc(ev.id)}')">⟷ Diff</button>

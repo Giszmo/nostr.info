@@ -243,7 +243,7 @@
 .resource-desc p  { margin: 4px 0; }
 .resource-desc code { background: #eee; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
 .resource-desc-inner {
-  max-height: 120px;
+  max-height: 200px;
   overflow: hidden;
   transition: max-height 0.25s ease;
 }
@@ -252,6 +252,11 @@
 }
 .desc-expand {
   display: block;
+}
+.desc-expand--hidden {
+  display: none !important;
+}
+/* desc-expand--show is unused, .desc-expand is default visible */
   margin: 6px auto 0;
   padding: 4px 12px;
   border: 1px solid #dadce0;
