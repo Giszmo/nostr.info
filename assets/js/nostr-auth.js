@@ -14,7 +14,7 @@ var __nostrAuth=(()=>{var pi=Object.create;var Mr=Object.defineProperty;var gi=O
           <div class="na-section">
             <p class="na-label">\u{1F4F1} Mobile signer (Amber, etc.)</p>
             <div id="na-qr-wrap"></div>
-            <p class="na-hint">Scan with your Nostr signer app</p>
+            <p class="na-hint">Scan with Amber: open Amber → Apps → Add connection</p>
           </div>
           <div class="na-section">
             <p class="na-label">\u{1F517} Bunker URI</p>

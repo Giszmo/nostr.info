@@ -18,7 +18,7 @@ const RELAYS = [
 // Public key of the nostr.info curator account (npub form — no private keys in repo)
 const CURATOR_NPUB = 'npub1c4ptewkhdzhzqutt0tq60z44jzhw2pg9pj888m905pv3m23svcqska5c34';
 const NAMESPACE   = 'nostr.info/resource';
-const FALLBACK_MS = 15000;
+const FALLBACK_MS = 8000;
 
 let allResourceEvents = [];
 let curatedResources  = [];
@@ -1047,15 +1047,15 @@ async function connectRelays() {
   const tryRender = () => {
     if (relayDone) return;
     relayDone = true;
+    loadedFrom = 'nostr';
     if (newEvents.length > 0 || cached.length === 0) {
-      loadedFrom = 'nostr';
-      idbSaveAll(allResourceEvents);
+      // New events arrived or nothing was in cache — do a full render
+      if (allResourceEvents.length > 0) idbSaveAll(allResourceEvents);
       renderOrder = null;
       dedupAndRender();
       loadSecondary();
     } else {
-      // Nothing new from relays — cached data was already rendered
-      loadedFrom = 'nostr';
+      // Nothing new from relays, cache was already rendered — just clear status
       setStatus('');
     }
   };
@@ -1228,7 +1228,7 @@ async function loadAnchorFollows(pubkey) {
     await queryAll(RELAYS.slice(0, 3), { kinds: [3], authors: [pubkey], limit: 1 }, ev => {
       const ptags = ev.tags?.filter(t => t[0] === 'p') || [];
       ptags.forEach(t => anchorFollows.add(t[1]));
-    }, 5000);
+    }, 3000);
   } catch(e) {}
   anchorFollows.add(pubkey); // anchor always trusts themselves
 
@@ -1241,7 +1241,7 @@ async function loadAnchorFollows(pubkey) {
         await queryAll(RELAYS.slice(0, 3), { kinds: [3], authors: hop1 }, ev => {
           const ptags = ev.tags?.filter(t => t[0] === 'p') || [];
           ptags.forEach(t => anchorFollows.add(t[1]));
-        }, 6000);
+        }, 4000);
       } catch(e) {}
     }
   }
@@ -1393,8 +1393,16 @@ function parseEvent(ev, submitterPubkey = null) {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 function setStatus(msg) {
-  const el = document.getElementById('results');
-  if (el) el.innerHTML = `<p style="padding:3em;text-align:center;color:#666;">${msg}</p>`;
+  // Use a dedicated status bar above results, never wipe the cards
+  let el = document.getElementById('loadStatus');
+  if (!el) {
+    el = document.createElement('p');
+    el.id = 'loadStatus';
+    el.style.cssText = 'text-align:center;color:#888;font-size:13px;padding:6px 0;margin:0;min-height:22px;';
+    const results = document.getElementById('results');
+    if (results) results.parentNode.insertBefore(el, results);
+  }
+  el.textContent = msg;
 }
 
 function render() {
@@ -1759,8 +1767,13 @@ async function fetchOwnProfile() {
 }
 
 function launchLogin() {
+  // nostr-auth.js handles all cases: NIP-07 extension, nsec, NIP-46 bunker URI, QR.
+  // On mobile: Amber NIP-55 intents don't work in browser contexts (can't receive
+  // the signed event back). Users should use Amber's "Nostr Connect" (NIP-46 bunker)
+  // mode instead: open Amber → Connect apps → copy bunker URI → paste below.
   document.dispatchEvent(new CustomEvent("nlLaunch", { detail: "welcome" }));
 }
+
 
 // ─── Submit / Edit modal ──────────────────────────────────────────────────────
 let _submitModal = null;
@@ -2434,7 +2447,6 @@ async function submitResource() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener("load", async () => {
-  connectRelays();
   startLiveSubscription();
   document.getElementById("curatedCb")?.addEventListener("change", e => {
     curatedOnly = e.target.checked; renderOrder = null; render();
@@ -2469,17 +2481,31 @@ window.addEventListener("load", async () => {
   // Also give late-injecting extensions a moment
   await new Promise(r => setTimeout(r, 100));
 
-  if (window.nostr) {
-    try {
-      loggedInPubkey = await window.nostr.getPublicKey();
-      await fetchOwnProfile();
-      setAnchor(loggedInPubkey);
-      updateLoginUI();
-    } catch(e) {
-      // not logged in — load anchor follows for default curator
-      loadAnchorFollows(CURATOR);
+  // Start connectRelays immediately so IDB cache shows something fast.
+  // loadAnchorFollows runs in parallel; when it finishes, re-render with correct WoT.
+  // This avoids a blank 5-11s wait when relay connections are slow.
+  const followsPromise = (async () => {
+    if (window.nostr) {
+      try {
+        loggedInPubkey = await window.nostr.getPublicKey();
+        await fetchOwnProfile();
+        anchorPubkey = loggedInPubkey;
+        updateLoginUI();
+        updateAnchorUI();
+        await loadAnchorFollows(loggedInPubkey);
+      } catch(e) {
+        await loadAnchorFollows(CURATOR);
+      }
+    } else {
+      await loadAnchorFollows(CURATOR);
     }
-  } else {
-    loadAnchorFollows(CURATOR);
-  }
+    // Re-render with correct WoT once follows are loaded
+    renderOrder = null;
+    dedupAndRender();
+  })();
+
+  // Show empty state + submit card immediately (before any relay data)
+  render();
+  // Kick off relay loading immediately (shows IDB cache right away)
+  connectRelays();
 });
