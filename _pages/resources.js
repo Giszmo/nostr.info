@@ -1030,7 +1030,9 @@ async function connectRelays() {
   if (cached.length > 0) {
     cached.forEach(ev => { if (!allResourceEvents.some(e => e.id === ev.id)) allResourceEvents.push(ev); });
     loadedFrom = 'cache';
-    setStatus('⧳ Showing ' + cached.length + ' cached — loading fresh from relays…');
+    // Count unique slugs not raw events — that's what the user cares about
+    const cachedSlugs = new Set(cached.map(ev => ev.tags?.find(t=>t[0]==='d')?.[1]).filter(Boolean));
+    setStatus('⧳ Showing ' + cachedSlugs.size + ' cached resources — loading fresh from relays…');
     dedupAndRender();
     loadSecondary();
   } else {
@@ -1270,13 +1272,18 @@ function wotTrust(pubkey) {
 // Pick the best version of a slug given current WoT.
 // Priority: anchor's own > anchor's direct follows (newest) > everyone else (newest)
 function pickWinner(group) {
-  // Sort within tiers: anchor first, then follows by created_at desc, then others
-  const tiered = group.map(ev => ({ ev, trust: wotTrust(ev.pubkey) }));
-  tiered.sort((a, b) => b.trust - a.trust || b.ev.created_at - a.ev.created_at);
-  const winner = tiered[0].ev;
-  // Find the original submitter if winner is anchor (to credit them)
+  // Within WoT (trust >= 2), newest event wins regardless of whether it's
+  // the anchor or a direct follow. The anchor doesn't get priority over a newer edit
+  // from someone they follow — that would mean Leo's edits show as "proposals" on his
+  // own entries just because the curator has an older version.
+  // Outside WoT: newest wins as fallback.
+  const wot = group.filter(ev => wotTrust(ev.pubkey) >= 2);
+  const pool = wot.length > 0 ? wot : group;
+  pool.sort((a, b) => b.created_at - a.created_at);
+  const winner = pool[0];
+  // Credit the original submitter if the anchor published this
   const submitterEv = winner.pubkey === anchorPubkey
-    ? group.find(e => e.pubkey !== anchorPubkey)
+    ? group.find(e => e.pubkey !== anchorPubkey && wotTrust(e.pubkey) >= 1)
     : null;
   return { winner, submitterPubkey: submitterEv?.pubkey || null };
 }
@@ -1576,22 +1583,33 @@ function renderCard(r) {
   const discontinuedBadge = r.discontinued ? `<span class="pill discontinued" title="This project appears to be discontinued">🪦 discontinued</span>` : '';
   const cardClass = r.discontinued ? 'resource-card resource-card--discontinued' : 'resource-card';
 
-  // Proposals = versions from OTHER authors that are NEWER than the current winner.
-  // Older versions are history, not proposals. The winner is r itself (r.eventId).
+  // Proposals: versions from authors OUTSIDE the WoT.
+  // WoT members all compete on newest-wins; a WoT member's version is never a proposal.
+  // Exception: show logged-in user's own superseded version so they can diff/override.
   const versions = slugVersions[r.slug] || [];
   const winnerCreatedAt = versions.find(v => v.id === r.eventId)?.created_at ?? 0;
-  // A proposal: different author AND created after the winner (or same time, different author)
+
+  // Outside-WoT proposals: newer than winner, from non-WoT authors
   const pendingProposals = versions.filter(v =>
     v.pubkey !== r.pubkeyHex &&
+    wotTrust(v.pubkey) < 2 &&
     v.created_at >= winnerCreatedAt
   );
 
-  const proposalBadge = pendingProposals.length > 0
-    ? `<button class="action-btn proposals-btn" onclick="toggleProposals('${esc(r.slug)}')" title="See ${pendingProposals.length} proposal${pendingProposals.length>1?'s':''}">${pendingProposals.length} proposal${pendingProposals.length>1?'s':''}</button>`
+  // My superseded: I'm in WoT but my version lost to a newer WoT edit
+  const mySuperseded = loggedInPubkey && loggedInPubkey !== r.pubkeyHex && wotTrust(loggedInPubkey) >= 2
+    ? versions.find(v => v.pubkey === loggedInPubkey && !pendingProposals.includes(v))
+    : null;
+
+  const totalProposals = pendingProposals.length + (mySuperseded ? 1 : 0);
+  const mySupersededLabel = mySuperseded ? ' (incl. yours)' : '';
+
+  const proposalBadge = totalProposals > 0
+    ? `<button class="action-btn proposals-btn" onclick="toggleProposals('${esc(r.slug)}')" title="See ${totalProposals} proposal${totalProposals>1?'s':''}">${totalProposals} proposal${totalProposals>1?'s':''}${mySupersededLabel}</button>`
     : '';
 
-  // Review button — shown to any logged-in user (adopting = publishing under your own key)
-  const reviewBtn = (loggedInPubkey && pendingProposals.length > 0)
+  // Review button shown to any logged-in user
+  const reviewBtn = (loggedInPubkey && totalProposals > 0)
     ? `<button class="action-btn approve-btn" onclick="showProposalDiff('${esc(r.slug)}')" title="Review proposals">📋 Review</button>`
     : '';
 
@@ -1982,67 +2000,145 @@ function showProposalDiff(slug, proposalEventId) {
   const r = allResources.find(x => x.slug === slug);
   if (!r) return;
   const versions = slugVersions[slug] || [];
-  // The "current" version is whatever the anchor's WoT picked as the winner = r itself
   const currentEv = versions.find(v => v.id === r.eventId) || versions[0];
   const winnerTs = currentEv?.created_at ?? 0;
   const proposal = proposalEventId
     ? versions.find(v => v.id === proposalEventId)
     : versions.find(v => v.pubkey !== r.pubkeyHex && v.created_at >= winnerTs);
   if (!proposal) return;
-  const current  = parseEvent(currentEv);
-  const proposed = parseEvent(proposal);
-  const fields = [
-    ['Title',       current.title,                 proposed.title],
-    ['Git URL',     current.git,                   proposed.git],
-    ['Web URL',     current.web,                   proposed.web],
-    ['Description', current.description,           proposed.description],
-    ['Tags',        current.tags.filter(t=>t!=='discontinued').join(', '), proposed.tags.filter(t=>t!=='discontinued').join(', ')],
-    ['Platforms',   current.platforms.join(', '),  proposed.platforms.join(', ')],
-    ['Discontinued',String(!!current.discontinued), String(!!proposed.discontinued)],
-  ];
-  const diffRows = fields.map(([label,cur,prop]) => {
-    const changed = cur !== prop;
-    return `<tr class="${changed?'diff-changed':''}">
-      <td class="diff-label">${esc(label)}</td>
-      <td class="diff-current">${esc(cur||'—')}</td>
-      <td class="diff-proposed${changed?' diff-new':''}">${esc(prop||'—')}</td>
+
+  // Build full tag diff — compare every tag (except d, id, sig, pubkey, created_at)
+  // Group tags by key → values string for comparison
+  const SKIP_KEYS = new Set(['d']);
+  function tagMap(ev) {
+    const m = {};
+    (ev.tags || []).forEach(t => {
+      if (SKIP_KEYS.has(t[0])) return;
+      const key = t[0];
+      const val = t.slice(1).join('\t');
+      if (!m[key]) m[key] = [];
+      m[key].push(val);
+    });
+    return m;
+  }
+  const curTags = tagMap(currentEv);
+  const propTags = tagMap(proposal);
+  const allTagKeys = [...new Set([...Object.keys(curTags), ...Object.keys(propTags)])].sort();
+
+  // Content JSON fields
+  let curContent = {}, propContent = {};
+  try { curContent  = JSON.parse(currentEv.content); } catch(e) {}
+  try { propContent = JSON.parse(proposal.content); } catch(e) {}
+  const allContentKeys = [...new Set([...Object.keys(curContent), ...Object.keys(propContent)])];
+
+  const rows = [];
+
+  // Metadata: author, date
+  rows.push(['meta', 'Author',
+    hexToNpub(currentEv.pubkey).slice(0,20)+'…',
+    hexToNpub(proposal.pubkey).slice(0,20)+'…',
+    currentEv.pubkey !== proposal.pubkey]);
+  rows.push(['meta', 'Date',
+    new Date(currentEv.created_at*1000).toLocaleString(),
+    new Date(proposal.created_at*1000).toLocaleString(),
+    currentEv.created_at !== proposal.created_at]);
+
+  // Content fields
+  allContentKeys.forEach(k => {
+    const cur  = curContent[k]  !== undefined ? JSON.stringify(curContent[k])  : '';
+    const prop = propContent[k] !== undefined ? JSON.stringify(propContent[k]) : '';
+    rows.push(['content', 'content.' + k, cur, prop, cur !== prop]);
+  });
+
+  // Tag fields
+  allTagKeys.forEach(k => {
+    const curV  = (curTags[k]  || []).join(' | ');
+    const propV = (propTags[k] || []).join(' | ');
+    rows.push(['tag', 'tag[' + k + ']', curV, propV, curV !== propV]);
+  });
+
+  const changedCount = rows.filter(r => r[4]).length;
+
+  const renderRows = (showAll) => rows.map(([type, label, cur, prop, changed]) => {
+    if (!showAll && !changed) return '';
+    const cls = changed ? ' diff-changed' : '';
+    const propCls = changed ? ' diff-new' : '';
+    return `<tr class="${cls}">
+      <td class="diff-label" style="font-size:11px;color:${type==='meta'?'#aaa':'#555'};white-space:nowrap;">${esc(label)}</td>
+      <td class="diff-current"><pre class="diff-pre">${esc(cur||'—')}</pre></td>
+      <td class="diff-proposed${propCls}"><pre class="diff-pre">${esc(prop||'—')}</pre></td>
     </tr>`;
   }).join('');
+
   const pNpub = hexToNpub(proposal.pubkey);
-  const pProf = profileCache[proposal.pubkey]||{};
-  const pName = pProf.name||(pNpub.slice(0,14)+'…');
-  // Any logged-in user can adopt/approve — curator's version becomes curated, others add to community
+  const pProf = profileCache[proposal.pubkey] || {};
+  const pName = pProf.name || (pNpub.slice(0,14)+'…');
+  const cNpub = hexToNpub(currentEv.pubkey);
+  const cProf = profileCache[currentEv.pubkey] || {};
+  const cName = cProf.name || (cNpub.slice(0,14)+'…');
+
   const adoptLabel = loggedInPubkey === CURATOR ? '✓ Approve' : loggedInPubkey ? '✓ Adopt this version' : '';
   const approveHtml = adoptLabel
     ? `<button onclick="approveProposal('${esc(slug)}','${esc(proposal.id)}')" style="background:#137333;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:14px;">${adoptLabel}</button>`
     : '';
+  const editFromHtml = loggedInPubkey
+    ? `<button onclick="editFromProposal('${esc(slug)}','${esc(proposal.id)}')" style="background:#1a73e8;color:#fff;border:none;padding:8px 18px;border-radius:6px;cursor:pointer;font-size:14px;">✎ Edit from this</button>`
+    : '';
+
   let dm = document.getElementById('diffModal');
   if (!dm) {
     dm = document.createElement('div');
     dm.id = 'diffModal';
     dm.style.cssText = 'position:fixed;inset:0;z-index:9100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);';
     document.body.appendChild(dm);
-    dm.addEventListener('click', e => { if(e.target===dm) dm.style.display='none'; });
+    let mdOnDm = false;
+    dm.addEventListener('mousedown', e => { mdOnDm = (e.target===dm); });
+    dm.addEventListener('click', e => { if(e.target===dm && mdOnDm) dm.style.display='none'; });
   }
-  dm.innerHTML = `
-    <div style="background:#fff;border-radius:10px;max-width:860px;width:100%;margin:16px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+
+  const buildModal = (showAll) => `
+    <div style="background:#fff;border-radius:10px;max-width:900px;width:100%;margin:16px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e0e0e0;flex-shrink:0;">
-        <div><strong style="font-size:15px;">Proposal: ${esc(proposed.title)}</strong><br>
-          <span style="font-size:12px;color:#666;">by <a href="https://njump.me/${pNpub}" target="_blank">${esc(pName)}</a></span></div>
+        <div>
+          <strong style="font-size:15px;">Diff: ${esc(slug)}</strong>
+          <span style="font-size:12px;color:#888;margin-left:8px;">${changedCount} field${changedCount!==1?'s':''} differ</span><br>
+          <span style="font-size:12px;color:#666;">
+            Current: <a href="https://njump.me/${cNpub}" target="_blank">${esc(cName)}</a>
+            &nbsp;→&nbsp; Proposal: <a href="https://njump.me/${pNpub}" target="_blank">${esc(pName)}</a>
+            &nbsp;<a href="https://njump.me/${proposal.id}" target="_blank" style="color:#aaa;font-size:11px;">event ↗</a>
+          </span>
+        </div>
+        <button onclick="document.getElementById('diffModal').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">&times;</button>
       </div>
-      <div style="overflow-y:auto;flex:1;padding:16px 18px;">
-        <table class="diff-table">
-          <thead><tr><th class="diff-label">Field</th><th class="diff-current">Current (yours)</th><th class="diff-proposed">Proposed</th></tr></thead>
-          <tbody>${diffRows}</tbody>
+      <div style="overflow-y:auto;flex:1;padding:12px 18px;">
+        <table class="diff-table" style="font-size:12px;width:100%;">
+          <thead><tr>
+            <th class="diff-label" style="width:130px;">Field</th>
+            <th class="diff-current">Current (${esc(cName)})</th>
+            <th class="diff-proposed">Proposal (${esc(pName)})</th>
+          </tr></thead>
+          <tbody>${renderRows(showAll)}</tbody>
         </table>
+        <div style="margin-top:8px;text-align:right;">
+          <button onclick="__diffShowAll=!__diffShowAll;document.getElementById('diffModal').innerHTML=buildDiffModal(__diffShowAll)"
+            style="font-size:12px;color:#1a73e8;background:none;border:none;cursor:pointer;padding:4px 8px;">
+            ${showAll ? 'Hide equal fields' : 'Show all fields (' + rows.length + ')'}
+          </button>
+        </div>
       </div>
-      <div style="padding:14px 18px;border-top:1px solid #e0e0e0;display:flex;gap:10px;align-items:center;flex-shrink:0;">
+      <div style="padding:14px 18px;border-top:1px solid #e0e0e0;display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
         ${approveHtml}
+        ${editFromHtml}
         <span id="diffStatus" style="font-size:13px;flex:1;"></span>
       </div>
     </div>`;
+
+  window.__diffShowAll = false;
+  window.buildDiffModal = buildModal;
+  dm.innerHTML = buildModal(false);
   dm.style.display = 'flex';
 }
+
 
 async function approveProposal(slug, proposalEventId) {
   if (!loggedInPubkey) { requireLogin(() => approveProposal(slug, proposalEventId)); return; }
