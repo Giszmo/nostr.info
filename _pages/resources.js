@@ -1843,6 +1843,13 @@ function getSubmitModal() {
           </div>
           <label style="font-size:12px;">Tags (comma sep)<br><input id="sfTags" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="client, social, dm"></label>
           <label style="font-size:12px;">Platforms (comma sep)<br><input id="sfPlatforms" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="web, android, ios"></label>
+          <label style="font-size:12px;">NIPs (comma sep)<br><input id="sfNips" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="01, 05, 57"></label>
+          <label style="font-size:12px;">Programming languages (comma sep)<br><input id="sfProgLangs" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="Rust, TypeScript"></label>
+          <label style="font-size:12px;">License<br><input id="sfLicense" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="MIT, GPL-3.0…"></label>
+          <div style="grid-column:1/-1;font-size:12px;">
+            <div style="margin-bottom:3px;">Instances <span style="color:#888;font-weight:normal;">(one per line: <code>https://url</code> or <code>Name | https://url | comment</code>)</span></div>
+            <textarea id="sfInstances" rows="3" style="width:100%;padding:6px;margin-top:2px;font-family:monospace;font-size:11px;box-sizing:border-box;resize:vertical;" placeholder="https://relay.example.com&#10;My Instance | https://example.com | self-hosted"></textarea>
+          </div>
           <label style="grid-column:1/-1;font-size:12px;">Product author npub <span style="color:#888;font-weight:normal;">(optional — auto-added to zap split at weight 100)</span><br>
             <input id="sfAuthorNpub" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;font-family:monospace;font-size:11px;" placeholder="npub1…" oninput="onAuthorNpubInput(this.value)">
           </label>
@@ -1889,11 +1896,13 @@ function showSubmitForm() {
   document.getElementById('submitBoxTitle').textContent = 'Submit a Nostr Resource';
   const slugEl = document.getElementById('sfSlug');
   if (slugEl) slugEl.readOnly = false;
-  ['sfTitle','sfSlug','sfGit','sfWeb','sfDesc','sfTags','sfPlatforms','sfAuthorNpub'].forEach(id => {
+  ['sfTitle','sfSlug','sfGit','sfWeb','sfDesc','sfTags','sfPlatforms','sfNips','sfProgLangs','sfLicense','sfAuthorNpub'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const discEl = document.getElementById('sfDiscontinued');
   if (discEl) discEl.checked = false;
+  const instEl = document.getElementById('sfInstances');
+  if (instEl) instEl.value = '';
   document.getElementById('sfStatus').textContent = '';
   _editSplits = seedSplitWithSelf([]);
   renderSplitEditor(_editSplits);
@@ -1945,6 +1954,22 @@ function editResource(slug) {
   document.getElementById('sfDesc').value      = r.description || '';
   document.getElementById('sfTags').value      = r.tags.filter(t => t !== 'discontinued').join(', ');
   document.getElementById('sfPlatforms').value = r.platforms.join(', ');
+  // Populate newly-added fields from parsed resource + raw event
+  const srcEv = (slugVersions[slug] || []).find(v => v.id === r.eventId);
+  const srcTags = srcEv?.tags || [];
+  document.getElementById('sfNips').value      = srcTags.filter(t=>t[0]==='nip').map(t=>t[1]).join(', ');
+  document.getElementById('sfProgLangs').value = srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]).join(', ');
+  document.getElementById('sfLicense').value   = srcTags.find(t=>t[0]==='license')?.[1] || '';
+  // Instances: stringify each entry as "Name | url | comment" or just url
+  let srcContent = {}; try { srcContent = JSON.parse(srcEv?.content || '{}'); } catch(e) {}
+  const instLines = (srcContent.instances || []).map(i => {
+    if (typeof i === 'string') return i;
+    const parts = [i.url || ''];
+    if (i.name && i.name !== i.url) parts.unshift(i.name);
+    if (i.comment) parts.push(i.comment);
+    return parts.length > 1 ? parts.join(' | ') : parts[0];
+  });
+  document.getElementById('sfInstances').value = instLines.join('\n');
   const discEl = document.getElementById('sfDiscontinued');
   if (discEl) discEl.checked = r.discontinued || false;
   // Pre-fill the author npub field if we know it
@@ -2504,6 +2529,19 @@ async function submitResource() {
   const desc  = document.getElementById("sfDesc").value.trim();
   const tags  = document.getElementById("sfTags").value.split(",").map(s=>s.trim()).filter(Boolean);
   const plats = document.getElementById("sfPlatforms").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const nips  = document.getElementById("sfNips").value.split(",").map(s=>s.trim().replace(/^nip-?/i,'')).filter(Boolean);
+  const progLangs = document.getElementById("sfProgLangs").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const license = document.getElementById("sfLicense").value.trim();
+  // Parse instances from textarea (one per line: url OR "Name | url | comment")
+  const instances = document.getElementById("sfInstances").value.split("\n")
+    .map(l => l.trim()).filter(Boolean).map(l => {
+      const parts = l.split('|').map(p => p.trim());
+      if (parts.length === 1) return parts[0]; // plain url
+      const obj = { url: parts[1] || parts[0] };
+      if (parts[0] && parts[0] !== obj.url) obj.name = parts[0];
+      if (parts[2]) obj.comment = parts[2];
+      return obj;
+    });
   const isDiscontinued = document.getElementById("sfDiscontinued")?.checked || false;
 
   // ── Validation ──────────────────────────────────────────────────────────────
@@ -2515,13 +2553,29 @@ async function submitResource() {
   if (!tags.length && !plats.length) return set("Please add at least one tag or platform (e.g. client, web).","#c5221f");
   // ────────────────────────────────────────────────────────────────────────────
 
-  // In edit mode the slug is locked; for new entries use the form value.
-  const finalSlug = _editingSlug || slug;
+  // Always use the form slug; if it changed during edit, old slug gets retired.
+  const finalSlug = slug;
+  const oldSlug = _editingSlug;
 
   // Build zap-split tags from the editor state.
   // Only include entries with weight > 0.
   const activeSplits = _editSplits.filter(s => s.weight > 0);
   const splitTags = activeSplits.map(s => ['zap-split', s.pubkey, String(s.weight)]);
+
+  // When editing, carry forward any tags from the source event that we don't
+  // explicitly handle in the form (e.g. future custom tags). This prevents
+  // silent data loss when the form doesn't expose every tag type.
+  const HANDLED_TAG_KEYS = new Set(['d','t','platform','r','zap-split','nip','progLang','license']);
+  const passthroughTags = [];
+  if (oldSlug) {
+    const r = allResources.find(x => x.slug === oldSlug);
+    const srcEv = r ? (slugVersions[oldSlug] || []).find(v => v.id === r.eventId) : null;
+    if (srcEv) {
+      for (const t of (srcEv.tags || [])) {
+        if (!HANDLED_TAG_KEYS.has(t[0])) passthroughTags.push(t);
+      }
+    }
+  }
 
   const event = {
     kind: 30078,
@@ -2531,11 +2585,15 @@ async function submitResource() {
       ...tags.map(t=>['t',t]),
       ...(isDiscontinued ? [['t','discontinued']] : []),
       ...plats.map(p=>['platform',p]),
+      ...nips.map(n=>['nip',n]),
+      ...(license ? [['license',license]] : []),
+      ...progLangs.map(l=>['progLang',l]),
       ...(git?[['r',git]]:[]),
       ...(web?[['r',web]]:[]),
       ...splitTags,
+      ...passthroughTags,
     ],
-    content: JSON.stringify({title, description:desc, git, web, instances:[]}),
+    content: JSON.stringify({title, description:desc, git, web, instances}),
   };
 
   // nostr-login handles ALL signer types transparently:
