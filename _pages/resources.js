@@ -6,6 +6,8 @@ permalink: /js/resources.js
 // nostr.info/resources/ - nostr-native resource directory
 // Loads from kind 30078 events, enriches with profiles, reactions, zaps
 
+console.log('[resources.js] version: 20260509k');
+
 const RELAYS = [
   'wss://relay.primal.net',
   'wss://relay.damus.io',
@@ -18,6 +20,7 @@ const RELAYS = [
 // Public key of the nostr.info curator account (npub form — no private keys in repo)
 const CURATOR_NPUB = 'npub1c4ptewkhdzhzqutt0tq60z44jzhw2pg9pj888m905pv3m23svcqska5c34';
 const NAMESPACE   = 'nostr.info/resource';
+const logR = (...a) => { try { console.log('[nostr.info]', ...a); } catch(e) {} };
 const FALLBACK_MS = 8000;
 
 let allResourceEvents = [];
@@ -1003,6 +1006,7 @@ function idbOpen() {
 
 async function idbLoadAll() {
   try {
+    logR("idb:loadAll:start");
     const db = await idbOpen();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(IDB_STORE, 'readonly');
@@ -1015,6 +1019,8 @@ async function idbLoadAll() {
 
 async function idbSaveAll(events) {
   try {
+    if (!events.length) return;
+    logR("idb:saveAll:", events.length);
     const db = await idbOpen();
     const tx = db.transaction(IDB_STORE, 'readwrite');
     const store = tx.objectStore(IDB_STORE);
@@ -1025,17 +1031,42 @@ async function idbSaveAll(events) {
 
 // ─── Loading ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 async function connectRelays() {
+  logR("connectRelays:start");
   // 1. Show IDB cache immediately so something renders while relays load
   const cached = await idbLoadAll();
   if (cached.length > 0) {
-    cached.forEach(ev => { if (!allResourceEvents.some(e => e.id === ev.id)) allResourceEvents.push(ev); });
+    logR("connectRelays:idb loaded", cached.length, "events");
+    // Route cached events by kind: entries first, then profiles, then reactions/zaps
+    const entryEvents = [];
+    const profileEvents = [];
+    const reactionEvents = [];
+    cached.forEach(ev => {
+      if (ev.kind === 30078) entryEvents.push(ev);
+      else if (ev.kind === 0) profileEvents.push(ev);
+      else if (ev.kind === 7 || ev.kind === 9735) reactionEvents.push(ev);
+    });
+    entryEvents.forEach(ev => { if (!allResourceEvents.some(e => e.id === ev.id)) allResourceEvents.push(ev); });
     loadedFrom = 'cache';
-    // Count unique slugs not raw events — that's what the user cares about
-    const cachedSlugs = new Set(cached.map(ev => ev.tags?.find(t=>t[0]==='d')?.[1]).filter(Boolean));
+    const cachedSlugs = new Set(entryEvents.map(ev => ev.tags?.find(t=>t[0]==='d')?.[1]).filter(Boolean));
     setStatus('⧳ Showing ' + cachedSlugs.size + ' cached resources — loading fresh from relays…');
     dedupAndRender();
+    // Now that eventIdToSlug is built, hydrate profiles and reactions from cache
+    profileEvents.forEach(ev => {
+      try {
+        const c = JSON.parse(ev.content);
+        profileCache[ev.pubkey] = {
+          name:    c.display_name || c.name || '',
+          picture: c.picture || '',
+          npub:    hexToNpub(ev.pubkey),
+          lud16:   c.lud16 || '',
+        };
+      } catch(e){}
+    });
+    reactionEvents.forEach(ev => handleReactionEv(ev));
+    render();
     loadSecondary();
   } else {
+    logR("connectRelays:idb empty");
     setStatus('⧳ Loading resources from nostr relays…');
   }
 
@@ -1050,6 +1081,7 @@ async function connectRelays() {
     if (relayDone) return;
     relayDone = true;
     loadedFrom = 'nostr';
+    logR("tryRender: relay load done, newEvents:", newEvents.length, "cached:", cached.length);
     if (newEvents.length > 0 || cached.length === 0) {
       // New events arrived or nothing was in cache — do a full render
       if (allResourceEvents.length > 0) idbSaveAll(allResourceEvents);
@@ -1063,10 +1095,14 @@ async function connectRelays() {
 
   RELAYS.forEach(url => {
     try {
+      logR("ws:creating", url);
       const ws = new WebSocket(url);
       let done = false;
       const finish = () => { if (done) return; done = true; if (++doneCount >= TOTAL) tryRender(); };
-      ws.onopen = () => ws.send(JSON.stringify(['REQ','r1',{kinds:[30078],'#t':[NAMESPACE],limit:1000}]));
+      ws.onopen = () => {
+        logR("ws:open", url);
+        ws.send(JSON.stringify(['REQ','r1',{kinds:[30078],'#t':[NAMESPACE],limit:1000}]));
+      };
       ws.onmessage = msg => {
         try {
           const d = JSON.parse(msg.data);
@@ -1074,27 +1110,29 @@ async function connectRelays() {
             seenIds.add(d[2].id);
             allResourceEvents.push(d[2]);
             newEvents.push(d[2]);
+            if (newEvents.length <= 3 || newEvents.length % 50 === 0) logR('ws:event', url, 'id:', d[2].id?.slice(0,8)+'…', 'slug:', d[2].tags?.find(t=>t[0]==='d')?.[1]||'?');
           }
-          if (d[0]==='EOSE') { ws.close(); finish(); }
+          if (d[0]==='EOSE') { logR('ws:eose', url, 'events:', newEvents.length); ws.close(); finish(); }
         } catch(e) {}
       };
-      ws.onclose = () => finish();
-      ws.onerror = () => finish();
-    } catch(e) { if (++doneCount >= TOTAL) tryRender(); }
+      ws.onclose = () => { logR("ws:close", url); finish(); };
+      ws.onerror = (err) => { logR("ws:error", url, err?.type || ''); finish(); };
+    } catch(e) { logR("ws:construct-error", url, e.message); if (++doneCount >= TOTAL) tryRender(); }
   });
 
   // Hard timeout — render whatever we have after FALLBACK_MS
-  setTimeout(() => { if (!relayDone) tryRender(); }, FALLBACK_MS);
+  setTimeout(() => { if (!relayDone) { logR("connectRelays:FALLBACK_MS timeout", FALLBACK_MS, "ms"); tryRender(); } }, FALLBACK_MS);
 }
 
 // ─── Live subscription for new events ────────────────────────────────────────
 function startLiveSubscription() {
+  logR("liveSub:start");
   const since = Math.floor(Date.now() / 1000);
   // Connect to a subset of reliable relays to avoid too many connections
   ['wss://relay.primal.net', 'wss://nos.lol', 'wss://nostr.oxtr.dev'].forEach(url => {
     try {
       const ws = new WebSocket(url);
-      ws.onopen = () => ws.send(JSON.stringify(['REQ','live',{kinds:[30078],'#t':[NAMESPACE],since,limit:0}]));
+      ws.onopen = () => { logR("liveSub:open", url); ws.send(JSON.stringify(['REQ','live',{kinds:[30078],'#t':[NAMESPACE],since,limit:0}])); };
       ws.onmessage = msg => {
         const d = JSON.parse(msg.data);
         if (d[0] !== 'EVENT') return;
@@ -1110,13 +1148,61 @@ function startLiveSubscription() {
           if (el) { el.classList.add('card-flash'); setTimeout(() => el.classList.remove('card-flash'), 1500); }
         }, 50);
       };
-      ws.onerror = ws.onclose = () => {};
+      ws.onerror = (e) => logR("liveSub:error", url, e?.type);
+      ws.onclose = () => logR("liveSub:close", url);
     } catch(e) {}
   });
 }
 
+// ─── Reaction / Zap event processor (used for fresh AND cached events) ────────
+function handleReactionEv(ev) {
+  // Try #a tag first (stable address)
+  const aTag = ev.tags.find(t => t[0] === 'a')?.[1];
+  let slug = null;
+  if (aTag) {
+    slug = aTag.split(':').slice(2).join(':') || null;
+  }
+  // Fall back to #e tag — use eventIdToSlug reverse map which covers ALL versions
+  if (!slug) {
+    const eTag = ev.tags.find(t => t[0] === 'e')?.[1];
+    if (eTag) slug = eventIdToSlug[eTag] || null;
+  }
+  if (!slug) return;
+  if (!reactionCache[slug]) reactionCache[slug] = { byAuthor: {}, zapMsat: 0, zaps: [] };
+  const rc = reactionCache[slug];
+
+  if (ev.kind === 7) {
+    const emoji = ev.content || '+';
+    const prev = rc.byAuthor[ev.pubkey];
+    if (!prev || ev.created_at >= prev.created_at) {
+      rc.byAuthor[ev.pubkey] = { emoji, eventId: ev.id, created_at: ev.created_at };
+    }
+  }
+  if (ev.kind === 9735) {
+    try {
+      const desc = ev.tags.find(t => t[0] === 'description')?.[1];
+      const zapReq = JSON.parse(desc || '{}');
+      const amountTag = zapReq.tags?.find(t => t[0] === 'amount');
+      const msat = amountTag ? parseInt(amountTag[1] || 0) : 0;
+      rc.zaps = rc.zaps || [];
+      if (msat > 0 && !rc.zaps.find(z => z.eventId === ev.id)) {
+        rc.zapMsat += msat;
+        rc.zaps.push({
+          senderHex: zapReq.pubkey || ev.pubkey,
+          msat,
+          created_at: ev.created_at,
+          eventId: ev.id,
+        });
+      }
+    } catch(e) {}
+  }
+}
+
 // ─── Secondary: profiles, reactions, zaps ────────────────────────────────────
 async function loadSecondary() {
+  const secondaryEvents = []; // collect for IDB cache
+  const trackEv = (ev) => { secondaryEvents.push(ev); };
+
   // Profiles: submitters + everyone in zap-split lists (NOT the curator pubkey)
   const pubkeys = [...new Set([
     ...allResources.map(r => r.submitterPubkey || r.pubkeyHex).filter(Boolean),
@@ -1127,6 +1213,7 @@ async function loadSecondary() {
     await queryAll(RELAYS.slice(0,3), {kinds:[0], authors: pubkeys}, ev => {
       if (seen.has(ev.pubkey)) return;
       seen.add(ev.pubkey);
+      trackEv(ev);
       try {
         const c = JSON.parse(ev.content);
         profileCache[ev.pubkey] = {
@@ -1140,73 +1227,33 @@ async function loadSecondary() {
   }
 
   // Reactions (kind 7) and zap receipts (kind 9735)
-  // Query by #a (stable address) AND #e for ALL known event ids of each slug.
-  // This catches reactions from Amethyst which uses #e on any version's event id.
   const addrs = allResources
     .filter(r => r.pubkeyHex && r.slug)
     .map(r => slugToAddr(r.slug, r.pubkeyHex));
 
-  // Collect ALL event ids across all versions of all slugs, filter out empty strings
   const allVersionEventIds = Object.values(slugEventIds)
     .flatMap(s => [...s])
     .filter(id => id && id.length === 64);
-
-  const handleReactionEv = (ev) => {
-    // Try #a tag first (stable address)
-    const aTag = ev.tags.find(t => t[0] === 'a')?.[1];
-    let slug = null;
-    if (aTag) {
-      slug = aTag.split(':').slice(2).join(':') || null;
-    }
-    // Fall back to #e tag — use eventIdToSlug reverse map which covers ALL versions
-    if (!slug) {
-      const eTag = ev.tags.find(t => t[0] === 'e')?.[1];
-      if (eTag) slug = eventIdToSlug[eTag] || null;
-    }
-    if (!slug) return;
-    if (!reactionCache[slug]) reactionCache[slug] = { byAuthor: {}, zapMsat: 0, zaps: [] };
-    const rc = reactionCache[slug];
-
-    if (ev.kind === 7) {
-      const emoji = ev.content || '+';
-      const prev = rc.byAuthor[ev.pubkey];
-      if (!prev || ev.created_at >= prev.created_at) {
-        rc.byAuthor[ev.pubkey] = { emoji, eventId: ev.id, created_at: ev.created_at };
-      }
-    }
-    if (ev.kind === 9735) {
-      try {
-        const desc = ev.tags.find(t => t[0] === 'description')?.[1];
-        const zapReq = JSON.parse(desc || '{}');
-        const amountTag = zapReq.tags?.find(t => t[0] === 'amount');
-        const msat = amountTag ? parseInt(amountTag[1] || 0) : 0;
-        rc.zaps = rc.zaps || [];
-        if (msat > 0 && !rc.zaps.find(z => z.eventId === ev.id)) {
-          rc.zapMsat += msat;
-          rc.zaps.push({
-            senderHex: zapReq.pubkey || ev.pubkey,
-            msat,
-            created_at: ev.created_at,
-            eventId: ev.id,
-          });
-        }
-      } catch(e) {}
-    }
-  };
 
   const chunks = (arr) => { const r = []; for (let i=0;i<arr.length;i+=200) r.push(arr.slice(i,i+200)); return r; };
   const promises = [];
   if (addrs.length > 0) {
     for (const chunk of chunks(addrs)) {
-      promises.push(queryAll(RELAYS, { kinds:[7,9735], '#a': chunk }, handleReactionEv, 8000));
+      promises.push(queryAll(RELAYS, { kinds:[7,9735], '#a': chunk }, ev => { trackEv(ev); handleReactionEv(ev); }, 8000));
     }
   }
   if (allVersionEventIds.length > 0) {
     for (const chunk of chunks(allVersionEventIds)) {
-      promises.push(queryAll(RELAYS, { kinds:[7,9735], '#e': chunk }, handleReactionEv, 8000));
+      promises.push(queryAll(RELAYS, { kinds:[7,9735], '#e': chunk }, ev => { trackEv(ev); handleReactionEv(ev); }, 8000));
     }
   }
   await Promise.all(promises);
+
+  // Cache all secondary events (profiles, reactions, zaps) to IDB
+  if (secondaryEvents.length > 0) {
+    logR("loadSecondary:cache", secondaryEvents.length, "events");
+    idbSaveAll(secondaryEvents);
+  }
 
   // Re-render with enriched data — reset order so reactions/zaps affect ranking
   renderOrder = null;
@@ -1297,7 +1344,9 @@ const eventIdToSlug = {};
 let slugVersions = {};  // mutable, rebuilt each time
 
 function dedupAndRender() {
+  logR("dedupAndRender:allResourceEvents:", allResourceEvents.length);
   const byD = {};
+  const tallies = {};
   allResourceEvents.forEach(ev => {
     const d = ev.tags?.find(t=>t[0]==='d')?.[1];
     if (!d) return;
@@ -1413,6 +1462,7 @@ function setStatus(msg) {
 
 function render() {
   const pool = curatedOnly ? curatedResources : allResources;
+  logR("render:pool:", pool.length, "curatedOnly:", curatedOnly, "allResources:", allResources.length);
   const q = searchQuery.toLowerCase();
   const filtered = pool.filter(r => {
     if (activeTags.length) {
@@ -1430,7 +1480,7 @@ function render() {
   // renderOrder is set here and preserved across user interactions (like/reply)
   // so cards don't jump around when you click something.
   if (renderOrder === null) {
-    // First render or filter/search change — compute fresh order
+    logR("render:computing sort...");
     const scored = filtered.map(r => {
       const ra = reactionCache[r.slug] || {};
       const zapSats = Math.floor((ra.zapMsat || 0) / 1000);
@@ -1484,6 +1534,7 @@ function render() {
 }
 
 function renderCard(r) {
+  // (no per-card logging to avoid flooding)
   const rc   = reactionCache[r.slug]    || { byAuthor: {}, zapMsat: 0 };
 
   // Determine which pubkey to show as the author/provider of this resource.
@@ -2627,6 +2678,7 @@ async function submitResource() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener("load", async () => {
+  logR("init:start");
   startLiveSubscription();
   document.getElementById("curatedCb")?.addEventListener("change", e => {
     curatedOnly = e.target.checked; renderOrder = null; render();
@@ -2653,39 +2705,73 @@ window.addEventListener("load", async () => {
     updateLoginUI();
   });
 
-  // Wait for the silent session restore to finish before checking state.
-  // nostr-auth sets window.nostr._ready which resolves once restore is done.
-  if (window.nostr?._ready) {
-    await window.nostr._ready;
+  const sessionType = window.nostr?._getSessionType?.();
+  logR("init:sessionType", sessionType);
+  if (!sessionType) {
+    logR("init:no saved session");
   }
   // Also give late-injecting extensions a moment
   await new Promise(r => setTimeout(r, 100));
 
+  logR("init:followsPromise:begin");
   // Start connectRelays immediately so IDB cache shows something fast.
   // loadAnchorFollows runs in parallel; when it finishes, re-render with correct WoT.
-  // This avoids a blank 5-11s wait when relay connections are slow.
+  // Session resolution happens in the background: fast signers resolve before any UI
+  // appears, slow bunkers show progressive feedback ("It\'s taking longer than expected…").
   const followsPromise = (async () => {
+    let resolvedPubkey = null;
     if (window.nostr) {
+      const start = performance.now();
+      let statusTimer = null;
+      let longWaitTimer = null;
+      // Show feedback only if session takes longer than expected
+      statusTimer = setTimeout(() => {
+        setStatus('⧳ Connecting to your signer…');
+      }, 1500);
+      longWaitTimer = setTimeout(() => {
+        setStatus('⧳ It\'s taking longer than expected to talk to your bunker…');
+      }, 5000);
       try {
-        loggedInPubkey = await window.nostr.getPublicKey();
-        await fetchOwnProfile();
-        anchorPubkey = loggedInPubkey;
-        updateLoginUI();
-        updateAnchorUI();
-        await loadAnchorFollows(loggedInPubkey);
+        resolvedPubkey = await Promise.race([
+          window.nostr.getPublicKey(),
+          new Promise((_, reject) => setTimeout(
+            () => reject(new Error('Signer connection timeout')), 30000))
+        ]);
+        clearTimeout(statusTimer);
+        clearTimeout(longWaitTimer);
+        const elapsed = Math.round(performance.now() - start);
+        logR("init:pubkey resolved", elapsed, "ms");
+        if (elapsed > 1500) {
+          setStatus('✓ Signer connected.');
+          setTimeout(() => setStatus(''), 2500);
+        }
       } catch(e) {
-        await loadAnchorFollows(CURATOR);
+        clearTimeout(statusTimer);
+        clearTimeout(longWaitTimer);
+        logR("init:session failed", e.message);
+        setStatus('⚠ Could not reach your signer. Login actions are unavailable.');
       }
+    }
+    if (resolvedPubkey) {
+      loggedInPubkey = resolvedPubkey;
+      try { await fetchOwnProfile(); } catch(e){}
+      anchorPubkey = loggedInPubkey;
+      updateLoginUI();
+      updateAnchorUI();
+      await loadAnchorFollows(loggedInPubkey);
     } else {
       await loadAnchorFollows(CURATOR);
     }
     // Re-render with correct WoT once follows are loaded
+    logR("init:followsPromise:done", anchorPubkey?.slice(0,16)+'…');
     renderOrder = null;
     dedupAndRender();
   })();
 
   // Show empty state + submit card immediately (before any relay data)
+  logR("init:render");
   render();
   // Kick off relay loading immediately (shows IDB cache right away)
+  logR("init:call connectRelays");
   connectRelays();
 });
