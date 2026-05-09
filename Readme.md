@@ -10,8 +10,8 @@ If you see issues, please [report them](https://github.com/Giszmo/nostr.info/iss
   relays, streams events, and lets you filter by kind (90+ mapped), pubkey, and
   follow-degree. Deep-linkable via URL params.
 * **[/resources/](https://nostr.info/resources/)** — Curated catalog of Nostr
-  tools, clients, libraries, and relays (from the
-  [nostrResources](https://github.com/Giszmo/nostrResources) submodule).
+  tools, clients, libraries, and relays (loaded live from nostr as kind-30078
+  events).
 * **[/njump/](https://nostr.info/njump/)** — Nostr-to-web gateway
   ([njump](https://github.com/fiatjaf/njump)) for browsing profiles, notes, and
   relays via HTTP with OpenGraph previews.
@@ -27,7 +27,6 @@ resource submodule data).
 ```bash
 git clone https://github.com/Giszmo/nostr.info.git
 cd nostr.info
-git submodule update --init --recursive
 bundle install
 bundle exec jekyll serve
 ```

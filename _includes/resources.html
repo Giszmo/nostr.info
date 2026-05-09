@@ -13,33 +13,7 @@
 
 <div id="toggles" class="tags"></div>
 
-<div id="results">
-  {%- for p in site.nostrResources -%}
-    {%- if p.tags -%}
-      {%- assign url = p.git | default: p.web -%}
-      <div class="result {{ p.tags | join: " " }} {{ p.platforms | join: " " }} {{ p.nips | join: " " }}">
-        <div class="name"><a href="{{ url }}">{{ p.title }}</a></div>
-        <div class="details"></div>
-        <div class="instances">{% if p.instances %}Instances:<ul>{%- for i in p.instances -%}
-          <li><a href="{{ i.url | default: i }}">{{ i.name | default: i }}</a>{%- if i.comment -%}: {{ i.comment }}{%- endif -%}</li>
-          {%- endfor -%}</ul>{%- endif -%}</div>
-        <div class="dev">
-          {% if p.license %}License: {{ p.license }}<br>{%- endif -%}
-          {% if p.progLang %}Implemented with {{ p.progLang | join: ", " }}{%- endif -%}
-          {% if p.authorNPub %} by <a href="https://snort.social/p/{{ p.authorNPub }}">
-            <img class="avatar" src="/images/nostrich.webp"></a>
-          {%- endif -%}
-        </div>
-        <div class="tags">
-          {%- for t in p.platforms -%}{% include tag.html tag=t type="platform" %}{%- endfor -%}
-          {%- for t in p.tags -%}{% include tag.html tag=t type="tag" %}{%- endfor -%}
-          {%- for t in p.nips -%}{% include tag.html tag=t type="nip" %}{%- endfor -%}
-        </div>
-        <div class="details">{%- if p.content.size > 20 -%}<a href="{{ p.url }}">🔍</a>{%- endif -%}</div>
-      </div>
-    {%- endif -%}
-  {%- endfor -%}
-</div>
+<div id="results"></div>
 
-<script src="/js/resources.js?v=20260509k"></script>
-<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css?v=20260509f" />
+<script src="/js/resources.js?v=20260510a"></script>
+<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css?v=20260510a" />

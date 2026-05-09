@@ -800,8 +800,11 @@ const replyCache = {};
 async function loadReplies(slug, authorHex) {
   if (replyCache[slug]) return;
   replyCache[slug] = [];
+  const seen = new Set();
   const addr = slugToAddr(slug, authorHex);
   await queryAll(RELAYS.slice(0, 2), { kinds: [1], '#a': [addr], limit: 50 }, ev => {
+    if (seen.has(ev.id)) return;
+    seen.add(ev.id);
     replyCache[slug].push({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at });
     if (!profileCache[ev.pubkey]) {
       queryAll(RELAYS.slice(0, 1), { kinds: [0], authors: [ev.pubkey] }, pev => {
@@ -813,6 +816,7 @@ async function loadReplies(slug, authorHex) {
     }
   }, 6000);
   replyCache[slug].sort((a, b) => a.created_at - b.created_at);
+  patchReplyCount(slug);
 }
 
 function toggleReplies(slug, authorHex) {
@@ -852,6 +856,20 @@ function renderReplies(slug, authorHex) {
     </div>`;
 }
 
+function patchReplyCount(slug) {
+  const wrap = document.getElementById('replies-' + slug);
+  if (!wrap) return;
+  let actionsDiv = wrap.previousElementSibling;
+  if (actionsDiv && actionsDiv.classList.contains('resource-proposals')) {
+    actionsDiv = actionsDiv.previousElementSibling;
+  }
+  if (!actionsDiv || !actionsDiv.classList.contains('resource-actions')) return;
+  const btns = actionsDiv.querySelectorAll('.action-btn');
+  if (btns.length < 3) return;
+  const n = (replyCache[slug] || []).length;
+  btns[2].textContent = '💬 Replies' + (n ? ' ' + n : '');
+}
+
 async function postReply(slug, authorHex) {
   requireLogin(async () => {
     const ta = document.getElementById('reply-text-' + slug);
@@ -871,9 +889,12 @@ async function postReply(slug, authorHex) {
       const signed = await window.nostr.signEvent(ev);
       await publishEvent(signed);
       if (!replyCache[slug]) replyCache[slug] = [];
-      replyCache[slug].push({ id: signed.id, pubkey: signed.pubkey, content, created_at: signed.created_at });
+      if (!replyCache[slug].find(r => r.id === signed.id)) {
+        replyCache[slug].push({ id: signed.id, pubkey: signed.pubkey, content, created_at: signed.created_at });
+      }
       if (ta) ta.value = '';
       renderReplies(slug, authorHex);
+      patchReplyCount(slug);
     } catch(e) { alert('Reply failed: ' + (e.message||e)); }
   });
 }
@@ -1671,11 +1692,12 @@ function renderCard(r) {
   const myVote = loggedInPubkey ? rc.byAuthor[loggedInPubkey]?.emoji : null;
   const likeN  = counts['+'] || 0;
   const dislikeN = counts['-'] || 0;
+  const replyN = (replyCache[r.slug] || []).length;
   const actionBar = r.slug ? `
     <div class="resource-actions">
       <button class="action-btn${myVote==='+'?' action-active':''}" onclick="requireLogin(()=>reactToResource('${slug_}','${aHex}','+'))" title="${myVote==='+'?'Remove like':'Like'}">👍${likeN?' '+likeN:''}</button>
       <button class="action-btn${myVote==='-'?' action-active':''}" onclick="requireLogin(()=>reactToResource('${slug_}','${aHex}','-'))" title="${myVote==='-'?'Remove dislike':'Dislike'}">👎${dislikeN?' '+dislikeN:''}</button>
-      <button class="action-btn" onclick="toggleReplies('${slug_}','${aHex}')" title="Replies">💬 Replies</button>
+      <button class="action-btn" onclick="toggleReplies('${slug_}','${aHex}')" title="Replies">💬 Replies${replyN?' '+replyN:''}</button>
       ${zapBtn}
       ${proposalBadge}${reviewBtn}
     </div>
