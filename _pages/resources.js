@@ -798,13 +798,13 @@ async function reactToResource(slug, authorHex, emoji) {
 const replyCache = {};
 
 async function loadReplies(slug, authorHex) {
-  if (replyCache[slug]) return;
-  replyCache[slug] = [];
+  if (!replyCache[slug]) replyCache[slug] = [];
   const seen = new Set();
   const addr = slugToAddr(slug, authorHex);
   await queryAll(RELAYS.slice(0, 2), { kinds: [1], '#a': [addr], limit: 50 }, ev => {
     if (seen.has(ev.id)) return;
     seen.add(ev.id);
+    if (replyCache[slug].find(r => r.id === ev.id)) return;
     replyCache[slug].push({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at });
     if (!profileCache[ev.pubkey]) {
       queryAll(RELAYS.slice(0, 1), { kinds: [0], authors: [ev.pubkey] }, pev => {
@@ -1064,7 +1064,7 @@ async function connectRelays() {
     cached.forEach(ev => {
       if (ev.kind === 30078) entryEvents.push(ev);
       else if (ev.kind === 0) profileEvents.push(ev);
-      else if (ev.kind === 7 || ev.kind === 9735) reactionEvents.push(ev);
+      else if (ev.kind === 7 || ev.kind === 9735 || ev.kind === 1) reactionEvents.push(ev);
     });
     entryEvents.forEach(ev => { if (!allResourceEvents.some(e => e.id === ev.id)) allResourceEvents.push(ev); });
     loadedFrom = 'cache';
@@ -1083,7 +1083,10 @@ async function connectRelays() {
         };
       } catch(e){}
     });
-    reactionEvents.forEach(ev => handleReactionEv(ev));
+    reactionEvents.forEach(ev => {
+      if (ev.kind === 1) handleReplyEv(ev);
+      else handleReactionEv(ev);
+    });
     render();
     loadSecondary();
   } else {
@@ -1176,6 +1179,18 @@ function startLiveSubscription() {
 }
 
 // ─── Reaction / Zap event processor (used for fresh AND cached events) ────────
+function handleReplyEv(ev) {
+  const aTag = ev.tags.find(t => t[0] === 'a')?.[1];
+  if (!aTag) return;
+  const slug = aTag.split(':').slice(2).join(':') || null;
+  if (!slug) return;
+  if (!replyCache[slug]) replyCache[slug] = [];
+  if (!replyCache[slug].find(r => r.id === ev.id)) {
+    replyCache[slug].push({ id: ev.id, pubkey: ev.pubkey, content: ev.content, created_at: ev.created_at });
+    replyCache[slug].sort((a, b) => a.created_at - b.created_at);
+  }
+}
+
 function handleReactionEv(ev) {
   // Try #a tag first (stable address)
   const aTag = ev.tags.find(t => t[0] === 'a')?.[1];
@@ -1247,7 +1262,7 @@ async function loadSecondary() {
     }, 6000);
   }
 
-  // Reactions (kind 7) and zap receipts (kind 9735)
+  // Reactions (kind 7), zap receipts (kind 9735), and replies (kind 1)
   const addrs = allResources
     .filter(r => r.pubkeyHex && r.slug)
     .map(r => slugToAddr(r.slug, r.pubkeyHex));
@@ -1260,7 +1275,11 @@ async function loadSecondary() {
   const promises = [];
   if (addrs.length > 0) {
     for (const chunk of chunks(addrs)) {
-      promises.push(queryAll(RELAYS, { kinds:[7,9735], '#a': chunk }, ev => { trackEv(ev); handleReactionEv(ev); }, 8000));
+      promises.push(queryAll(RELAYS, { kinds:[1,7,9735], '#a': chunk }, ev => {
+        trackEv(ev);
+        if (ev.kind === 1) handleReplyEv(ev);
+        else handleReactionEv(ev);
+      }, 8000));
     }
   }
   if (allVersionEventIds.length > 0) {
