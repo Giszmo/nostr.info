@@ -692,14 +692,10 @@ function patchCardActions(slug) {
   const slug_   = esc(r.slug);
   const aHex    = esc(r.pubkeyHex || '');
 
-  // Patch the 👍 button
-  const likeBtn = document.querySelector(`#replies-${slug_}`)
-    ?.previousElementSibling   // resource-actions div
-    ?.querySelector('.action-btn:first-child');
-  // Simpler: query by onclick pattern — just find and patch the actions div
-  const actionsDiv = document.getElementById(`replies-${slug_}`)
-    ?.previousElementSibling;
-  if (!actionsDiv || !actionsDiv.classList.contains('resource-actions')) return;
+  // Patch the 👍/👎 buttons by finding the .resource-actions div inside the same card
+  const repliesDiv = document.getElementById(`replies-${slug_}`);
+  const actionsDiv = repliesDiv?.closest('.resource-card,.resource-card-proposal')?.querySelector('.resource-actions');
+  if (!actionsDiv) return;
 
   const btns = actionsDiv.querySelectorAll('.action-btn');
   if (btns.length < 2) return;
@@ -1962,7 +1958,9 @@ function getSubmitModal() {
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeSubmitModal(); });
+  let mdOnOverlay = false;
+  overlay.addEventListener('mousedown', e => { mdOnOverlay = (e.target === overlay); });
+  overlay.addEventListener('click', e => { if (e.target === overlay && mdOnOverlay) closeSubmitModal(); });
   // Ctrl+Enter anywhere in the modal submits the form
   overlay.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submitResource(); }
