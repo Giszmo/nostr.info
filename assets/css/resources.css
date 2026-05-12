@@ -73,6 +73,14 @@
 .filter-pill.available { background: #e8eaed; color: #444; border-color: #dadce0; }
 .filter-pill.available:hover { background: #d3d5d9; }
 .filter-pill.unavailable { background: #f1f3f4; color: #9aa0a6; border-color: #e8eaed; }
+.toggle-group-label {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  margin: 8px 0 2px;
+}
+.toggle-group-label:first-child { margin-top: 0; }
 
 /* ── Stats bar ────────────────────────────────────────────────────────── */
 .stats-bar {

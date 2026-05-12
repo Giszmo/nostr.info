@@ -28,6 +28,10 @@ let curatedResources  = [];
 let communityResources = [];
 let allResources      = [];
 let allTags           = [];
+let allPlatforms      = [];
+let allRegularTags    = [];
+let allNipsList       = [];
+let allLicenses       = [];
 let tagCounts         = {};
 let activeTags        = ['client'];
 let curatedOnly       = true;
@@ -1419,15 +1423,22 @@ function dedupAndRender() {
   allResources       = [...curatedResources, ...communityResources];
 
   const tagSet = new Set();
+  const platformSet = new Set();
+  const regularTagSet = new Set();
+  const nipSet = new Set();
+  const licenseSet = new Set();
   tagCounts = {};
   allResources.forEach(r => {
-    const uniq = new Set([...r.platforms, ...r.tags, ...r.nips, ...(r.license ? [r.license] : [])]);
-    uniq.forEach(t => {
-      tagSet.add(t);
-      tagCounts[t] = (tagCounts[t] || 0) + 1;
-    });
+    r.platforms.forEach(t => { tagSet.add(t); platformSet.add(t); tagCounts[t] = (tagCounts[t] || 0) + 1; });
+    r.tags.forEach(t => { tagSet.add(t); regularTagSet.add(t); tagCounts[t] = (tagCounts[t] || 0) + 1; });
+    r.nips.forEach(t => { tagSet.add(t); nipSet.add(t); tagCounts[t] = (tagCounts[t] || 0) + 1; });
+    if (r.license) { tagSet.add(r.license); licenseSet.add(r.license); tagCounts[r.license] = (tagCounts[r.license] || 0) + 1; }
   });
   allTags = Array.from(tagSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+  allPlatforms = Array.from(platformSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+  allRegularTags = Array.from(regularTagSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+  allNipsList = Array.from(nipSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+  allLicenses = Array.from(licenseSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
 
   // Corpus frequency maps for edit-modal suggestions
   window._corpusFreq = {
@@ -1744,8 +1755,7 @@ function renderCard(r) {
       </div>
     </div>
     ${bylineHtml}
-    ${r.license||r.progLangs.length ? `<div class="resource-meta">
-      ${r.license?`<span class="meta-item">License: ${esc(r.license)}</span>`:''}
+    ${r.progLangs.length ? `<div class="resource-meta">
       ${r.progLangs.length?`<span class="meta-item">with ${esc(r.progLangs.join(', '))}</span>`:''}
     </div>` : ''}
     ${instHtml}
@@ -1807,23 +1817,37 @@ function renderToggles(pool) {
   const toggles = document.getElementById('toggles');
   if (!toggles) return;
   toggles.innerHTML = '';
-  activeTags.forEach(t => {
-    const b = document.createElement('span');
-    b.className='filter-pill active'; b.textContent='✓ '+t+' ('+(tagCounts[t]||0)+')';
-    b.onclick=()=>clickTag(t); toggles.appendChild(b);
-  });
-  Array.from(available).sort((a,b)=>(tagCounts[b]||0)-(tagCounts[a]||0)||a.localeCompare(b)).forEach(t => {
-    if (activeTags.includes(t)) return;
-    const b = document.createElement('span');
-    b.className='filter-pill available'; b.textContent=t+' ('+(tagCounts[t]||0)+')';
-    b.onclick=()=>clickTag(t); toggles.appendChild(b);
-  });
-  new Set(allTags).forEach(t => {
-    if (activeTags.includes(t)||available.has(t)) return;
-    const b = document.createElement('span');
-    b.className='filter-pill unavailable'; b.textContent=t+' ('+(tagCounts[t]||0)+')';
-    b.onclick=()=>clickTag(t); toggles.appendChild(b);
-  });
+
+  function addGroup(label, items) {
+    const active = items.filter(t => activeTags.includes(t));
+    const avail  = items.filter(t => !activeTags.includes(t) && available.has(t));
+    const unavail = items.filter(t => !activeTags.includes(t) && !available.has(t));
+    if (!active.length && !avail.length && !unavail.length) return;
+    const heading = document.createElement('div');
+    heading.className = 'toggle-group-label';
+    heading.textContent = label + ':';
+    toggles.appendChild(heading);
+    active.forEach(t => {
+      const b = document.createElement('span');
+      b.className='filter-pill active'; b.textContent='✓ '+t+' ('+(tagCounts[t]||0)+')';
+      b.onclick=()=>clickTag(t); toggles.appendChild(b);
+    });
+    avail.forEach(t => {
+      const b = document.createElement('span');
+      b.className='filter-pill available'; b.textContent=t+' ('+(tagCounts[t]||0)+')';
+      b.onclick=()=>clickTag(t); toggles.appendChild(b);
+    });
+    unavail.forEach(t => {
+      const b = document.createElement('span');
+      b.className='filter-pill unavailable'; b.textContent=t+' ('+(tagCounts[t]||0)+')';
+      b.onclick=()=>clickTag(t); toggles.appendChild(b);
+    });
+  }
+
+  addGroup('Platforms', allPlatforms);
+  addGroup('Tags', allRegularTags);
+  addGroup('NIPs', allNipsList);
+  addGroup('Licenses', allLicenses);
 }
 
 function clickTag(t) {
