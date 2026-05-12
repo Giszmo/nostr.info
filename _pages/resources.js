@@ -6,7 +6,7 @@ permalink: /js/resources.js
 // nostr.info/resources/ - nostr-native resource directory
 // Loads from kind 30078 events, enriches with profiles, reactions, zaps
 
-console.log('[resources.js] version: 20260509k');
+console.log('[resources.js] version: 20260512j');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1421,13 +1421,26 @@ function dedupAndRender() {
   const tagSet = new Set();
   tagCounts = {};
   allResources.forEach(r => {
-    const uniq = new Set([...r.platforms, ...r.tags, ...r.nips]);
+    const uniq = new Set([...r.platforms, ...r.tags, ...r.nips, ...(r.license ? [r.license] : [])]);
     uniq.forEach(t => {
       tagSet.add(t);
       tagCounts[t] = (tagCounts[t] || 0) + 1;
     });
   });
   allTags = Array.from(tagSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+
+  // Corpus frequency maps for edit-modal suggestions
+  window._corpusFreq = {
+    tags: {}, platforms: {}, nips: {}, progLangs: {}, licenses: {}, splits: new Set()
+  };
+  allResources.forEach(r => {
+    r.tags.forEach(t => window._corpusFreq.tags[t] = (window._corpusFreq.tags[t] || 0) + 1);
+    r.platforms.forEach(t => window._corpusFreq.platforms[t] = (window._corpusFreq.platforms[t] || 0) + 1);
+    r.nips.forEach(t => window._corpusFreq.nips[t] = (window._corpusFreq.nips[t] || 0) + 1);
+    r.progLangs.forEach(t => window._corpusFreq.progLangs[t] = (window._corpusFreq.progLangs[t] || 0) + 1);
+    if (r.license) window._corpusFreq.licenses[r.license] = (window._corpusFreq.licenses[r.license] || 0) + 1;
+    (r.zapSplits || []).forEach(s => window._corpusFreq.splits.add(s.pubkey));
+  });
 
   render();
 }
@@ -1502,11 +1515,11 @@ function render() {
   const q = searchQuery.toLowerCase();
   const filtered = pool.filter(r => {
     if (activeTags.length) {
-      const all = [...r.tags, ...r.platforms, ...r.nips];
+      const all = [...r.tags, ...r.platforms, ...r.nips, ...(r.license ? [r.license] : [])];
       if (!activeTags.every(t => all.includes(t))) return false;
     }
     if (q) {
-      const haystack = [r.title, r.description, ...r.tags, ...r.platforms].join(' ').toLowerCase();
+      const haystack = [r.title, r.description, ...r.tags, ...r.platforms, ...(r.license ? [r.license] : [])].join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -1741,7 +1754,7 @@ function renderCard(r) {
       ${r.platforms.map(t=>`<span class="pill platform" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
       ${r.tags.filter(t=>t!=='discontinued').map(t=>`<span class="pill" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
       ${r.nips.map(t=>`<span class="pill nip" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
-      ${r.license?`<span class="pill license">${esc(r.license)}</span>`:''}
+      ${r.license?`<span class="pill license" onclick="clickTag('${esc(r.license)}')">${esc(r.license)}</span>`:''}
       ${reactionHtml}
     </div>
     ${descHtml}
@@ -1780,7 +1793,7 @@ function renderSubmitCard() {
 function renderToggles(pool) {
   const filtered = pool.filter(r => {
     if (!activeTags.length) return true;
-    const all = [...r.tags, ...r.platforms, ...r.nips];
+    const all = [...r.tags, ...r.platforms, ...r.nips, ...(r.license ? [r.license] : [])];
     return activeTags.every(t => all.includes(t));
   });
   const available = new Set();
@@ -1788,6 +1801,7 @@ function renderToggles(pool) {
     r.platforms.forEach(t=>available.add(t));
     r.tags.forEach(t=>available.add(t));
     r.nips.forEach(t=>available.add(t));
+    if (r.license) available.add(r.license);
   });
 
   const toggles = document.getElementById('toggles');
@@ -1904,10 +1918,19 @@ function getSubmitModal() {
   overlay.id = 'submitOverlay';
   overlay.innerHTML = `
     <div id="submitBox">
-      <div id="submitBoxHeader">
+      <div id="submitBoxHeader" style="position:relative;">
         <h3 id="submitBoxTitle" style="margin:0;font-size:16px;">Submit a Nostr Resource</h3>
+        <button type="button" id="helpToggleBtn" class="help-toggle" onclick="toggleHelpMode()" title="Toggle help hints">?</button>
       </div>
       <div id="submitBoxBody">
+        <div id="helpLegend" class="help-legend">
+          <div class="legend-row">
+            Colors:
+            <span><span class="legend-pill you">selected by you</span></span>
+            <span><span class="legend-pill other">selected by others</span></span>
+            <span><span class="legend-pill none">selected by nobody</span></span>
+          </div>
+        </div>
         <p style="font-size:12px;color:#666;margin:0 0 12px">
           Publishes a kind 30078 event. Anyone can submit; curation determines what surfaces by default.
         </p>
@@ -1927,13 +1950,43 @@ function getSubmitModal() {
               </span>
               <span style="font-size:11px;color:#aaa;margin-left:6px;">Markdown</span>
             </div>
+            <div id="sfDescTabs" class="desc-tabs"></div>
             <textarea id="sfDesc" rows="6" style="width:100%;padding:6px;margin-top:2px;min-height:120px;font-family:monospace;font-size:12px;box-sizing:border-box;resize:vertical;"></textarea>
+            <div id="sfDescPreview" class="desc-preview" style="display:none;"></div>
           </div>
-          <label style="font-size:12px;">Tags (comma sep)<br><input id="sfTags" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="client, social, dm"></label>
-          <label style="font-size:12px;">Platforms (comma sep)<br><input id="sfPlatforms" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="web, android, ios"></label>
-          <label style="font-size:12px;">NIPs (comma sep)<br><input id="sfNips" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="01, 05, 57"></label>
-          <label style="font-size:12px;">Programming languages (comma sep)<br><input id="sfProgLangs" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="Rust, TypeScript"></label>
-          <label style="font-size:12px;">License<br><input id="sfLicense" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;" placeholder="MIT, GPL-3.0…"></label>
+          <input type="hidden" id="sfTags">
+          <input type="hidden" id="sfPlatforms">
+          <input type="hidden" id="sfNips">
+          <input type="hidden" id="sfProgLangs">
+          <input type="hidden" id="sfLicense">
+          <div style="grid-column:1/-1;">
+            <div class="tag-section-label">Tags<span class="section-hint"> — click to toggle</span></div>
+            <div id="sfTagsWrap" class="tag-btn-grid"></div>
+            <div class="add-new-wrap"><input type="text" id="sfTagsAdd" placeholder="Add new tag..." oninput="filterTagButtons('sfTagsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfTagsWrap','sfTags',this.value,false);this.value='';filterTagButtons('sfTagsWrap','')}"><button type="button" onclick="addNewValue('sfTagsWrap','sfTags',document.getElementById('sfTagsAdd').value,false);document.getElementById('sfTagsAdd').value='';filterTagButtons('sfTagsWrap','')">+ Add</button></div>
+          </div>
+          <div style="grid-column:1/-1;">
+            <div class="tag-section-label">Platforms<span class="section-hint"> — click to toggle</span></div>
+            <div id="sfPlatformsWrap" class="tag-btn-grid"></div>
+            <div class="add-new-wrap"><input type="text" id="sfPlatformsAdd" placeholder="Add new platform..." oninput="filterTagButtons('sfPlatformsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfPlatformsWrap','sfPlatforms',this.value,false);this.value='';filterTagButtons('sfPlatformsWrap','')}"><button type="button" onclick="addNewValue('sfPlatformsWrap','sfPlatforms',document.getElementById('sfPlatformsAdd').value,false);document.getElementById('sfPlatformsAdd').value='';filterTagButtons('sfPlatformsWrap','')">+ Add</button></div>
+          </div>
+          <div style="grid-column:1/-1;">
+            <div class="tag-section-label">NIPs<span class="section-hint"> — click to toggle</span></div>
+            <div class="help-only" style="font-size:11px;color:#888;margin-bottom:4px;">
+              <a href="https://github.com/nostr-protocol/nips" target="_blank" rel="noopener" style="color:#888;">NIP repository →</a>
+            </div>
+            <div id="sfNipsWrap" class="tag-btn-grid"></div>
+            <div class="add-new-wrap"><input type="text" id="sfNipsAdd" placeholder="NIP number (e.g. 23)..." oninput="filterTagButtons('sfNipsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfNipsWrap','sfNips',this.value,false);this.value='';filterTagButtons('sfNipsWrap','')}"><button type="button" onclick="addNewValue('sfNipsWrap','sfNips',document.getElementById('sfNipsAdd').value,false);document.getElementById('sfNipsAdd').value='';filterTagButtons('sfNipsWrap','')">+ Add</button></div>
+          </div>
+          <div style="grid-column:1/-1;">
+            <div class="tag-section-label">Programming languages<span class="section-hint"> — click to toggle</span></div>
+            <div id="sfProgLangsWrap" class="tag-btn-grid"></div>
+            <div class="add-new-wrap"><input type="text" id="sfProgLangsAdd" placeholder="Add new language..." oninput="filterTagButtons('sfProgLangsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfProgLangsWrap','sfProgLangs',this.value,false);this.value='';filterTagButtons('sfProgLangsWrap','')}"><button type="button" onclick="addNewValue('sfProgLangsWrap','sfProgLangs',document.getElementById('sfProgLangsAdd').value,false);document.getElementById('sfProgLangsAdd').value='';filterTagButtons('sfProgLangsWrap','')">+ Add</button></div>
+          </div>
+          <div style="grid-column:1/-1;">
+            <div class="tag-section-label">License<span class="section-hint"> — click one</span></div>
+            <div id="sfLicenseWrap" class="tag-btn-grid"></div>
+            <div class="add-new-wrap"><input type="text" id="sfLicenseAdd" placeholder="Add new license..." oninput="filterTagButtons('sfLicenseWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfLicenseWrap','sfLicense',this.value,true);this.value='';filterTagButtons('sfLicenseWrap','')}"><button type="button" onclick="addNewValue('sfLicenseWrap','sfLicense',document.getElementById('sfLicenseAdd').value,true);document.getElementById('sfLicenseAdd').value='';filterTagButtons('sfLicenseWrap','')">+ Add</button></div>
+          </div>
           <div style="grid-column:1/-1;font-size:12px;">
             <div style="margin-bottom:3px;">Instances <span style="color:#888;font-weight:normal;">(one per line: <code>https://url</code> or <code>Name | https://url | comment</code>)</span></div>
             <textarea id="sfInstances" rows="3" style="width:100%;padding:6px;margin-top:2px;font-family:monospace;font-size:11px;box-sizing:border-box;resize:vertical;" placeholder="https://relay.example.com&#10;My Instance | https://example.com | self-hosted"></textarea>
@@ -1996,7 +2049,25 @@ function showSubmitForm() {
   document.getElementById('sfStatus').textContent = '';
   _editSplits = seedSplitWithSelf([]);
   renderSplitEditor(_editSplits);
-  buildTagDatalist();
+  updateSplitSuggestions(null);
+  // Clear button grids and description tabs
+  const emptySets = { tags:{}, platforms:{}, nips:{}, progLangs:{}, licenses:{} };
+  const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].sort();
+  const corpusPlats = [...new Set(allResources.flatMap(r => r.platforms))].sort();
+  const corpusNips = [...new Set(allResources.flatMap(r => r.nips))].sort();
+  const corpusLangs = [...new Set(allResources.flatMap(r => r.progLangs))].sort();
+  const corpusLicenses = [...new Set(allResources.flatMap(r => r.license ? [r.license] : []))].sort();
+  renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, [], emptySets.tags, false);
+  renderTagButtons('sfPlatformsWrap', 'sfPlatforms', corpusPlats, [], emptySets.platforms, false);
+  renderTagButtons('sfNipsWrap', 'sfNips', corpusNips, [], emptySets.nips, false);
+  renderTagButtons('sfProgLangsWrap', 'sfProgLangs', corpusLangs, [], emptySets.progLangs, false);
+  renderTagButtons('sfLicenseWrap', 'sfLicense', corpusLicenses, [], emptySets.licenses, true);
+  const tabsWrap = document.getElementById('sfDescTabs');
+  const preview = document.getElementById('sfDescPreview');
+  if (tabsWrap) tabsWrap.innerHTML = '';
+  if (preview) preview.style.display = 'none';
+  const ta = document.getElementById('sfDesc');
+  if (ta) ta.style.display = '';
 }
 
 // Called when product author npub is typed in — resolve profile and add to split
@@ -2074,7 +2145,43 @@ function editResource(slug) {
   }
   document.getElementById('sfStatus').textContent = '';
   renderSplitEditor(_editSplits);
-  buildTagDatalist();
+  updateSplitSuggestions(slug);
+
+  // Build corpus value sets for button grids
+  const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].sort();
+  const corpusPlats = [...new Set(allResources.flatMap(r => r.platforms))].sort();
+  const corpusNips = [...new Set(allResources.flatMap(r => r.nips))].sort();
+  const corpusLangs = [...new Set(allResources.flatMap(r => r.progLangs))].sort();
+  const corpusLicenses = [...new Set(allResources.flatMap(r => r.license ? [r.license] : []))].sort();
+
+  const suggestions = gatherSlugSuggestions(slug);
+  renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags.filter(t => t !== 'discontinued'), suggestions.tags, false);
+  renderTagButtons('sfPlatformsWrap', 'sfPlatforms', corpusPlats, r.platforms, suggestions.platforms, false);
+  renderTagButtons('sfNipsWrap', 'sfNips', corpusNips, srcTags.filter(t=>t[0]==='nip').map(t=>'NIP-'+t[1]), suggestions.nips, false);
+  renderTagButtons('sfProgLangsWrap', 'sfProgLangs', corpusLangs, srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]), suggestions.progLangs, false);
+  const currentLicense = srcTags.find(t=>t[0]==='license')?.[1] || '';
+  renderTagButtons('sfLicenseWrap', 'sfLicense', corpusLicenses, currentLicense ? [currentLicense] : [], suggestions.licenses, true);
+
+  // Suggested instances as commented lines
+  const instEl = document.getElementById('sfInstances');
+  if (instEl) {
+    const suggestedInstances = Object.entries(suggestions.instances || {});
+    if (suggestedInstances.length) {
+      const allInstAuthors = new Set();
+      suggestedInstances.forEach(([_, meta]) => meta.authors.forEach(a => allInstAuthors.add(a)));
+      const instAuthorList = Array.from(allInstAuthors).slice(0,3).join(', ') + (allInstAuthors.size > 3 ? ` +${allInstAuthors.size-3} more` : '');
+      const commentLines = [`# Suggested instances by ${instAuthorList}:`];
+      suggestedInstances.forEach(([val, meta]) => {
+        commentLines.push(`# ${val}  // ${meta.authors.slice(0,2).join(', ')}${meta.authors.length>2?'...':''}`);
+      });
+      commentLines.push('#');
+      const existing = instEl.value.trim();
+      instEl.value = commentLines.join('\n') + (existing ? '\n\n' + existing : '');
+    }
+  }
+
+  // Description tabs for other authors
+  renderDescTabs(slug, r.description || '');
 
   // Fetch own profile if needed so the split editor shows our name/avatar
   if (loggedInPubkey && !profileCache[loggedInPubkey]) {
@@ -2083,7 +2190,7 @@ function editResource(slug) {
         const c = JSON.parse(ev.content);
         profileCache[loggedInPubkey] = { name: c.display_name||c.name||'', picture: c.picture||'', lud16: c.lud16||'', npub: hexToNpub(loggedInPubkey) };
       } catch(e) {}
-    }, 4000).then(() => renderSplitEditor(_editSplits));
+    }, 4000).then(() => { renderSplitEditor(_editSplits); updateSplitSuggestions(slug); });
   }
 }
 
@@ -2312,33 +2419,304 @@ async function approveProposal(slug, proposalEventId) {
   } catch(e) { set('Error: '+(e.message||e), '#c5221f'); }
 }
 
-// ─── Tag autocomplete datalists ───────────────────────────────────────────────
-function buildTagDatalist() {
-  // Build unique sorted lists of known tags and platforms
-  const knownTags = [...new Set(allResources.flatMap(r => r.tags))].sort();
-  const knownPlats = [...new Set(allResources.flatMap(r => r.platforms))].sort();
-
-  for (const [dlId, items] of [['sfTagsList', knownTags], ['sfPlatformsList', knownPlats]]) {
-    let dl = document.getElementById(dlId);
-    if (!dl) {
-      dl = document.createElement('datalist');
-      dl.id = dlId;
-      document.body.appendChild(dl);
+// ─── Tag / Platform / NIP / ProgLang / License button grids ─────────────────
+function gatherSlugSuggestions(slug) {
+  const versions = (slugVersions[slug] || []);
+  const currentPubkey = loggedInPubkey;
+  const suggestions = {
+    tags: {}, platforms: {}, nips: {}, progLangs: {}, licenses: {},
+    splits: {}, instances: {}, descriptions: {}
+  };
+  versions.forEach(ev => {
+    if (ev.pubkey === currentPubkey) return;
+    const p = profileCache[ev.pubkey] || {};
+    const name = p.name || (hexToNpub(ev.pubkey).slice(0,10)+'…');
+    const add = (bucket, val) => {
+      if (!val) return;
+      if (!bucket[val]) bucket[val] = { authors: new Set(), authorHexes: new Set() };
+      bucket[val].authors.add(name);
+      bucket[val].authorHexes.add(ev.pubkey);
+    };
+    (ev.tags || []).forEach(t => {
+      if (t[0] === 't' && t[1] !== NAMESPACE) add(suggestions.tags, t[1]);
+      if (t[0] === 'platform') add(suggestions.platforms, t[1]);
+      if (t[0] === 'nip') add(suggestions.nips, 'NIP-' + t[1]);
+      if (t[0] === 'progLang') add(suggestions.progLangs, t[1]);
+      if (t[0] === 'license') add(suggestions.licenses, t[1]);
+    });
+    // zap splits
+    (ev.tags || []).filter(t => t[0] === 'zap-split' && t[1]).forEach(t => {
+      const pk = normalizePubkey(t[1]);
+      if (!pk) return;
+      if (!suggestions.splits[pk]) suggestions.splits[pk] = { authors: new Set(), authorHexes: new Set(), weight: parseInt(t[2]||'1',10)||1 };
+      suggestions.splits[pk].authors.add(name);
+      suggestions.splits[pk].authorHexes.add(ev.pubkey);
+    });
+    // instances from content
+    let content = {}; try { content = JSON.parse(ev.content); } catch(e){}
+    (content.instances || []).forEach(inst => {
+      const line = typeof inst === 'string' ? inst : [inst.name, inst.url, inst.comment].filter(Boolean).join(' | ');
+      add(suggestions.instances, line);
+    });
+    // description
+    if (content.description) {
+      if (!suggestions.descriptions[ev.pubkey]) suggestions.descriptions[ev.pubkey] = { name, text: content.description, hex: ev.pubkey };
     }
-    dl.innerHTML = items.map(t => `<option value="${esc(t)}">`).join('');
-  }
+  });
+  // convert Sets to Arrays
+  Object.values(suggestions.tags).forEach(v => v.authors = Array.from(v.authors));
+  Object.values(suggestions.platforms).forEach(v => v.authors = Array.from(v.authors));
+  Object.values(suggestions.nips).forEach(v => v.authors = Array.from(v.authors));
+  Object.values(suggestions.progLangs).forEach(v => v.authors = Array.from(v.authors));
+  Object.values(suggestions.licenses).forEach(v => v.authors = Array.from(v.authors));
+  Object.values(suggestions.instances).forEach(v => v.authors = Array.from(v.authors));
+  Object.values(suggestions.splits).forEach(v => v.authors = Array.from(v.authors));
+  return suggestions;
+}
 
-  // Wire up the inputs if not already done
-  const tagsInput = document.getElementById('sfTags');
-  if (tagsInput && !tagsInput.dataset.dlwired) {
-    tagsInput.setAttribute('list', 'sfTagsList');
-    tagsInput.dataset.dlwired = '1';
+let _helpMode = false;
+
+function toggleHelpMode() {
+  _helpMode = !_helpMode;
+  const btn = document.getElementById('helpToggleBtn');
+  const legend = document.getElementById('helpLegend');
+  const box = document.getElementById('submitBox');
+  if (btn) btn.classList.toggle('on', _helpMode);
+  if (legend) legend.classList.toggle('on', _helpMode);
+  if (box) box.classList.toggle('help-on', _helpMode);
+  // Re-render all button grids to show/hide inline author hints
+  if (_editingSlug) {
+    const r = allResources.find(x => x.slug === _editingSlug);
+    if (r) {
+      const suggestions = gatherSlugSuggestions(_editingSlug);
+      const srcEv = (slugVersions[_editingSlug] || []).find(v => v.id === r.eventId);
+      const srcTags = srcEv?.tags || [];
+      const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].sort();
+      const corpusPlats = [...new Set(allResources.flatMap(r => r.platforms))].sort();
+      const corpusNips = [...new Set(allResources.flatMap(r => r.nips))].sort();
+      const corpusLangs = [...new Set(allResources.flatMap(r => r.progLangs))].sort();
+      const corpusLicenses = [...new Set(allResources.flatMap(r => r.license ? [r.license] : []))].sort();
+      renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags.filter(t => t !== 'discontinued'), suggestions.tags, false);
+      renderTagButtons('sfPlatformsWrap', 'sfPlatforms', corpusPlats, r.platforms, suggestions.platforms, false);
+      renderTagButtons('sfNipsWrap', 'sfNips', corpusNips, srcTags.filter(t=>t[0]==='nip').map(t=>'NIP-'+t[1]), suggestions.nips, false);
+      renderTagButtons('sfProgLangsWrap', 'sfProgLangs', corpusLangs, srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]), suggestions.progLangs, false);
+      const currentLicense = srcTags.find(t=>t[0]==='license')?.[1] || '';
+      renderTagButtons('sfLicenseWrap', 'sfLicense', corpusLicenses, currentLicense ? [currentLicense] : [], suggestions.licenses, true);
+    }
   }
-  const platsInput = document.getElementById('sfPlatforms');
-  if (platsInput && !platsInput.dataset.dlwired) {
-    platsInput.setAttribute('list', 'sfPlatformsList');
-    platsInput.dataset.dlwired = '1';
+}
+
+function filterTagButtons(containerId, query) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  const q = query.trim().toLowerCase();
+  wrap.querySelectorAll('.tag-btn').forEach(btn => {
+    const val = (btn.dataset.val || '').toLowerCase();
+    btn.style.display = (!q || val.includes(q)) ? '' : 'none';
+  });
+}
+
+function addNewValue(containerId, hiddenInputId, rawVal, singleSelect) {
+  let val = rawVal.trim();
+  if (!val) return;
+  // NIP normalization: strip prefix, keep digits only, reformat as NIP-NN with leading zero
+  if (containerId.includes('Nips')) {
+    val = val.replace(/^nip-?/i, '').replace(/\D/g, '');
+    if (!val) return;
+    val = 'NIP-' + String(parseInt(val, 10)).padStart(2, '0');
   }
+  const wrap = document.getElementById(containerId);
+  const input = document.getElementById(hiddenInputId);
+  if (!wrap || !input) return;
+  // Check if already exists as a button
+  if (wrap.querySelector(`button[data-val="${CSS.escape(val)}"]`)) {
+    // Just activate it
+    const btn = wrap.querySelector(`button[data-val="${CSS.escape(val)}"]`);
+    if (btn) {
+      if (singleSelect) {
+        wrap.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+      }
+      btn.classList.add('active');
+    }
+  } else {
+    // Create new button and append
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tag-btn active';
+    btn.dataset.val = val;
+    btn.textContent = val;
+    btn.onclick = () => toggleTagBtn(btn, hiddenInputId, singleSelect);
+    wrap.appendChild(btn);
+  }
+  // Update hidden input
+  if (singleSelect) {
+    input.value = val;
+  } else {
+    const active = Array.from(wrap.querySelectorAll('.tag-btn.active')).map(b => b.dataset.val);
+    input.value = active.join(', ');
+  }
+}
+
+function renderTagButtons(containerId, hiddenInputId, allValues, selectedValues, suggestions, singleSelect) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  const selSet = new Set(selectedValues);
+  // Build ordered list: suggestions first, then by frequency
+  const ordered = [];
+  const seen = new Set();
+  // 1. suggestions (highlighted)
+  Object.entries(suggestions || {}).forEach(([val, meta]) => {
+    if (seen.has(val)) return;
+    seen.add(val);
+    ordered.push({ val, active: selSet.has(val), suggested: true, authors: meta.authors || [] });
+  });
+  // 2. corpus frequency rest
+  const freq = window._corpusFreq || {};
+  const bucketFreq = (() => {
+    if (containerId.includes('Tags')) return freq.tags;
+    if (containerId.includes('Platforms')) return freq.platforms;
+    if (containerId.includes('Nips')) return freq.nips;
+    if (containerId.includes('ProgLangs')) return freq.progLangs;
+    if (containerId.includes('License')) return freq.licenses;
+    return {};
+  })();
+  allValues.forEach(val => {
+    if (seen.has(val)) return;
+    seen.add(val);
+    ordered.push({ val, active: selSet.has(val), suggested: false, authors: [] });
+  });
+  // sort: active first, then suggested, then by freq
+  ordered.sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    if (a.suggested !== b.suggested) return a.suggested ? -1 : 1;
+    const fa = bucketFreq[a.val] || 0;
+    const fb = bucketFreq[b.val] || 0;
+    return fb - fa || a.val.localeCompare(b.val);
+  });
+
+  wrap.innerHTML = ordered.map(o => {
+    const cls = ['tag-btn', o.active ? 'active' : '', o.suggested ? 'suggested' : ''].join(' ');
+    const authorHint = o.authors.length ? `<span class="suggest-authors" title="Suggested by ${esc(o.authors.join(', '))}">👤${o.authors.length}</span>` : '';
+    const authorInline = o.authors.length ? `<span class="suggest-authors-inline">by ${esc(o.authors.slice(0,2).join(', '))}${o.authors.length>2?'...':''}</span>` : '';
+    return `<button type="button" class="${cls}" onclick="toggleTagBtn(this,'${hiddenInputId}',${singleSelect})" data-val="${esc(o.val)}">${esc(o.val)}${authorHint}${authorInline}</button>`;
+  }).join('');
+}
+
+function toggleTagBtn(el, hiddenInputId, singleSelect) {
+  const wrap = el.closest('.tag-btn-grid');
+  const input = document.getElementById(hiddenInputId);
+  if (!input) return;
+  const val = el.dataset.val;
+  if (singleSelect) {
+    // Only one can be active
+    wrap.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    input.value = val;
+  } else {
+    el.classList.toggle('active');
+    const active = Array.from(wrap.querySelectorAll('.tag-btn.active')).map(b => b.dataset.val);
+    input.value = active.join(', ');
+  }
+}
+
+function renderDescTabs(slug, currentDesc) {
+  const tabsWrap = document.getElementById('sfDescTabs');
+  const preview = document.getElementById('sfDescPreview');
+  const ta = document.getElementById('sfDesc');
+  if (!tabsWrap) return;
+  const suggestions = gatherSlugSuggestions(slug);
+  const others = Object.values(suggestions.descriptions || {});
+  if (!others.length) { tabsWrap.innerHTML = ''; preview.style.display = 'none'; ta.style.display = ''; return; }
+
+  let html = `<button type="button" class="desc-tab active" onclick="showDescTab('self','${esc(slug)}')" data-tab="self">✎ Your version</button>`;
+  others.forEach(o => {
+    const avatar = profileCache[o.hex]?.picture ? `<img class="tab-avatar" src="${esc(profileCache[o.hex].picture)}" onerror="this.style.display='none'">` : '';
+    html += `<button type="button" class="desc-tab" onclick="showDescTab('${esc(o.hex)}','${esc(slug)}')" data-tab="${esc(o.hex)}">${avatar}${esc(o.name)}</button>`;
+  });
+  tabsWrap.innerHTML = html;
+  preview.style.display = 'none';
+  ta.style.display = '';
+}
+
+function showDescTab(tabKey, slug) {
+  const tabsWrap = document.getElementById('sfDescTabs');
+  const preview = document.getElementById('sfDescPreview');
+  const ta = document.getElementById('sfDesc');
+  if (!tabsWrap || !preview || !ta) return;
+  tabsWrap.querySelectorAll('.desc-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabKey));
+  if (tabKey === 'self') {
+    preview.style.display = 'none';
+    ta.style.display = '';
+    return;
+  }
+  const suggestions = gatherSlugSuggestions(slug);
+  const desc = suggestions.descriptions[tabKey];
+  if (!desc) return;
+  ta.style.display = 'none';
+  preview.style.display = '';
+  // Diff highlighting: split into paragraphs, compare to current text
+  const currentParas = (ta.value || '').split(/\n+/).filter(Boolean);
+  const otherParas = (desc.text || '').split(/\n+/).filter(Boolean);
+  const currentSet = new Set(currentParas);
+  const html = otherParas.map(p => {
+    if (currentSet.has(p)) return `<div>${esc(p)}</div>`;
+    const partial = currentParas.some(cp => cp.includes(p) || p.includes(cp));
+    const cls = partial ? 'desc-para-diff' : 'desc-para-added';
+    return `<div class="${cls}">${esc(p)}</div>`;
+  }).join('\n');
+  preview.innerHTML = html;
+}
+
+function updateSplitSuggestions(slug) {
+  const wrap = document.getElementById('sfSplits');
+  if (!wrap) return;
+  const suggestions = gatherSlugSuggestions(slug);
+  const existingHexes = new Set(_editSplits.map(s => s.pubkey));
+  const suggestedSplits = Object.entries(suggestions.splits || {}).filter(([pk]) => !existingHexes.has(pk));
+  if (!suggestedSplits.length) return;
+  // Build suggestion headline
+  const allAuthors = new Set();
+  suggestedSplits.forEach(([_, meta]) => meta.authors.forEach(a => allAuthors.add(a)));
+  const authorList = Array.from(allAuthors).slice(0,3).join(', ') + (allAuthors.size > 3 ? ` +${allAuthors.size-3} more` : '');
+  const headline = `<div class="split-suggestion-headline">⚡ Contributors mentioned by ${esc(authorList)}:</div>`;
+  const rows = suggestedSplits.map(([pk, meta]) => {
+    const p = profileCache[pk] || {};
+    const npub = hexToNpub(pk);
+    const name = p.name || (npub.slice(0, 14) + '…');
+    const avatar = p.picture ? `<img class="avatar" src="${esc(p.picture)}" onerror="this.src='/images/nostrich.webp'">` : '<span class="avatar-placeholder">👤</span>';
+    return `<div class="split-row suggested" data-pubkey="${esc(pk)}">
+      <span class="split-avatar">${avatar}</span>
+      <span class="split-name"><a href="https://njump.me/${npub}" target="_blank">${esc(name)}</a></span>
+      <span style="font-size:11px;color:#888;margin-left:auto;">Suggested by ${esc(meta.authors.join(', '))}</span>
+      <button type="button" class="split-add-btn" onclick="adoptSplitSuggestion('${esc(pk)}',${meta.weight})" style="margin-left:8px;">+ Add</button>
+    </div>`;
+  }).join('');
+  // Append after the normal split rows
+  let existing = wrap.querySelector('.split-suggestions');
+  if (existing) existing.remove();
+  const div = document.createElement('div');
+  div.className = 'split-suggestions';
+  div.innerHTML = headline + rows;
+  wrap.appendChild(div);
+}
+
+function adoptSplitSuggestion(pubkey, weight) {
+  if (_editSplits.find(s => s.pubkey === pubkey)) return;
+  _editSplits.push({ pubkey, weight: weight || 1 });
+  renderSplitEditor(_editSplits);
+  updateSplitSuggestions(_editingSlug);
+  if (!profileCache[pubkey]) {
+    queryAll(RELAYS.slice(0,2), { kinds:[0], authors:[pubkey] }, ev => {
+      try {
+        const c = JSON.parse(ev.content);
+        profileCache[pubkey] = { name: c.display_name||c.name||'', picture: c.picture||'', npub: hexToNpub(pubkey), lud16: c.lud16||'' };
+      } catch(e){}
+    }, 4000).then(() => { renderSplitEditor(_editSplits); updateSplitSuggestions(_editingSlug); });
+  }
+}
+
+function buildTagDatalist() {
+  // Legacy no-op — replaced by button grids
 }
 
 // ─── Split editor ───────────────────────────────────────────────────────────
@@ -2376,6 +2754,8 @@ function renderSplitEditor(splits) {
       <button type="button" class="split-add-btn" onclick="addSplitRow()">+ Add contributor</button>
       <span class="split-hint">0 = excluded on publish · 100 = full share · relative weights (50+50 = equal split)</span>
     </div>`;
+  // Re-attach split suggestions if we're editing
+  if (_editingSlug) updateSplitSuggestions(_editingSlug);
 }
 
 function addSplitRow() {

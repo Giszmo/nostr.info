@@ -156,7 +156,7 @@
 .pill.platform:hover { background: #ceead6; }
 .pill.nip { background: #fef3e8; color: #b06000; }
 .pill.nip:hover { background: #fde7cd; }
-.pill.license { background: #fce8e6; color: #c5221f; cursor: default; }
+.pill.license { background: #fce8e6; color: #c5221f; }
 .pill.reaction { background: #f3e8fd; color: #7b3fb5; cursor: default; font-size: 12px; }
 .pill.zap { background: #fffbe6; color: #c5a500; font-size: 12px; }
 .pill.zap-btn { cursor: pointer; }
@@ -565,3 +565,70 @@ pre.diff-pre {
   background: #fffbe6;
   border-left: 3px solid #f59e0b;
 }
+
+/* ── Tag / Platform / NIP / ProgLang / License button grids ─────────────── */
+.tag-btn-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 4px; max-height: 160px; overflow-y: auto;
+}
+.tag-btn {
+  font-size: 11px; padding: 3px 10px; border-radius: 12px;
+  border: 1px solid #dadce0; background: #fff; color: #555;
+  cursor: pointer; user-select: none;
+}
+.tag-btn:hover { background: #f1f3f4; }
+.tag-btn.active { background: #137333; color: #fff; border-color: #137333; }
+.tag-btn.suggested { border-color: #f59e0b; background: #fff8e1; color: #b06000; }
+.tag-btn.suggested.active { background: #137333; color: #fff; border-color: #137333; }
+.tag-btn .suggest-authors { font-size: 10px; color: #888; margin-left: 3px; }
+.tag-btn.suggested .suggest-authors { color: #d97706; }
+.tag-section-label { font-size: 12px; color: #555; margin-bottom: 3px; }
+.help-toggle { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid #dadce0; background: #fff; color: #666; font-size: 14px; font-weight: 700; cursor: pointer; line-height: 1; display: flex; align-items: center; justify-content: center; z-index: 10; }
+.help-toggle:hover { background: #f1f3f4; border-color: #aaa; }
+.help-toggle.on { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+.help-legend { font-size: 11px; color: #666; background: #f8f9fa; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #e8eaed; display: none; }
+.help-legend.on { display: block; }
+.help-legend .legend-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.help-legend .legend-pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; border: 1px solid #dadce0; }
+.help-legend .legend-pill.you { background: #137333; color: #fff; border-color: #137333; }
+.help-legend .legend-pill.none { background: #fff; color: #555; }
+.help-legend .legend-pill.other { background: #fff8e1; color: #b06000; border-color: #f59e0b; }
+.tag-btn-grid .add-new-wrap { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+.tag-btn-grid .add-new-wrap input { flex: 1; padding: 4px 8px; font-size: 12px; border: 1px solid #dadce0; border-radius: 4px; min-width: 80px; }
+.tag-btn-grid .add-new-wrap button { padding: 4px 10px; font-size: 11px; border: 1px solid #dadce0; border-radius: 4px; background: #fff; cursor: pointer; }
+.tag-btn-grid .add-new-wrap button:hover { background: #f1f3f4; }
+.tag-btn .suggest-authors-inline { font-size: 9px; color: #888; margin-left: 3px; display: none; }
+.tag-btn.suggested .suggest-authors-inline { color: #d97706; }
+.help-on .tag-btn .suggest-authors-inline { display: inline; }
+.help-on .tag-btn .suggest-authors { display: none; }
+.section-hint { font-size: 11px; color: #888; font-weight: normal; margin-left: 4px; display: none; }
+.help-on .section-hint { display: inline; }
+.help-only { display: none; }
+.help-on .help-only { display: block; }
+.tag-section { margin-bottom: 8px; }
+
+/* ── Description tabs ───────────────────────────────────────────────────── */
+.desc-tabs { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
+.desc-tab {
+  font-size: 11px; padding: 3px 10px; border-radius: 6px;
+  border: 1px solid #dadce0; background: #f8f9fa; color: #555;
+  cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;
+}
+.desc-tab.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+.desc-tab .tab-avatar { width: 14px; height: 14px; border-radius: 50%; }
+.desc-preview {
+  width: 100%; padding: 6px; margin-top: 2px;
+  min-height: 120px; font-family: monospace; font-size: 12px;
+  box-sizing: border-box; resize: vertical;
+  border: 1px solid #dadce0; border-radius: 6px;
+  background: #fafafa; white-space: pre-wrap;
+}
+.desc-para-diff { background: #e8f0fe; padding: 2px 0; }
+.desc-para-added { background: #e6f4ea; padding: 2px 0; }
+
+/* ── Suggested split rows ───────────────────────────────────────────────── */
+.split-suggestion-headline {
+  font-size: 11px; color: #888; margin: 8px 0 4px;
+}
+.split-row.suggested { background: #fff8e1; border-color: #f9c74f; opacity: 0.85; }
+.split-row.suggested .split-add-btn { margin-left: auto; }

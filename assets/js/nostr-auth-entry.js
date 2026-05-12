@@ -241,8 +241,11 @@ function showModal() {
     } catch(e) { setFooter('Invalid nsec: ' + e.message); }
   };
 
-  generateQR();
+    generateQR();
 }
+
+// Expose globally so inline HTML onclick="launchLogin()" survives minification
+window.launchLogin = showModal;
 
 function hideModal() { if (modal) modal.style.display = 'none'; }
 function setFooter(txt) { const f = modal?.querySelector('#na-footer'); if (f) f.textContent = txt; }
@@ -262,7 +265,19 @@ async function generateQR() {
     wrap.innerHTML = `<img src="${qr.createDataURL(4,0)}" alt="nostrconnect QR" style="display:block;max-width:220px;" />`;
 
     abortCtrl = new AbortController();
-    const s = await BunkerSigner.fromURI(sk, uri, {}, abortCtrl.signal);
+    // Pass a 2-minute maxWait so the subscription stays open long enough for
+    // Amber to scan the QR and publish the response.  nostr-tools' fromURI
+    // uses the 4th argument for EITHER maxWait (number) OR abort (signal);
+    // when a signal is passed maxWait becomes undefined and the EOSE timeout
+    // falls back to the default ~4.4 s, which is too short.
+    const s = await Promise.race([
+      BunkerSigner.fromURI(sk, uri, {}, 120000),
+      new Promise((_, reject) => {
+        abortCtrl.signal.addEventListener('abort', () => {
+          reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+        });
+      })
+    ]);
     signer = s;
     _sessionType = 'bunker';
     // Save sk + bp so we can reconnect without re-handshake on reload
