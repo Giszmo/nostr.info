@@ -6,7 +6,7 @@ permalink: /js/resources.js
 // nostr.info/resources/ - nostr-native resource directory
 // Loads from kind 30078 events, enriches with profiles, reactions, zaps
 
-console.log('[resources.js] version: 20260512j');
+console.log('[resources.js] version: 20260512r');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -34,7 +34,7 @@ let allNipsList       = [];
 let allLicenses       = [];
 let tagCounts         = {};
 let activeTags        = ['client'];
-let curatedOnly       = true;
+let viewMode          = 0;  // 0 = WoT only, 1 = all, 2 = proposals only
 let searchQuery       = '';
 let loadedFrom        = '…';
 let profileCache      = {};   // pubkey hex → {name, picture, npub, lud16}
@@ -1436,7 +1436,9 @@ function dedupAndRender() {
   });
   allTags = Array.from(tagSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
   allPlatforms = Array.from(platformSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
-  allRegularTags = Array.from(regularTagSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+  // Subtract platforms from regular tags so an item isn't both (e.g. "web" is a platform, not a tag)
+  const platformDedupedTags = new Set(allPlatforms);
+  allRegularTags = Array.from(regularTagSet).filter(t => !platformDedupedTags.has(t)).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
   allNipsList = Array.from(nipSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
   allLicenses = Array.from(licenseSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
 
@@ -1521,8 +1523,14 @@ function setStatus(msg) {
 }
 
 function render() {
-  const pool = curatedOnly ? curatedResources : allResources;
-  logR("render:pool:", pool.length, "curatedOnly:", curatedOnly, "allResources:", allResources.length);
+  // viewMode: 0 = WoT only, 1 = all, 2 = proposals only
+  let pool;
+  if (viewMode === 2) {
+    pool = communityResources;
+  } else {
+    pool = viewMode === 0 ? curatedResources : allResources;
+  }
+  logR("render:pool:", pool.length, "viewMode:", viewMode, "allResources:", allResources.length);
   const q = searchQuery.toLowerCase();
   const filtered = pool.filter(r => {
     if (activeTags.length) {
@@ -1568,18 +1576,20 @@ function render() {
     return ia - ib;
   });
 
-  const sourceIcon = loadedFrom==='nostr' ? '📡 nostr' : loadedFrom==='cache' ? '💾 cache' : '…';
-  const communityNote = (!curatedOnly && communityResources.length > 0)
-    ? `<div class="community-notice">👥 Showing ${communityResources.length} community entr${communityResources.length===1?'y':'ies'}</div>`
-    : (curatedOnly && communityResources.length > 0)
-    ? `<div class="community-notice community-notice--hidden">👥 ${communityResources.length} community entr${communityResources.length===1?'y':'ies'} hidden — <a href="javascript:void(0)" onclick="document.getElementById('curatedCb').checked=false;document.getElementById('curatedCb').dispatchEvent(new Event('change'))">show all</a></div>`
+  const hasFilters = activeTags.length || searchQuery;
+  const clearBtn   = hasFilters
+    ? `<button class="action-btn" onclick="activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="margin-left:auto;font-size:12px;">✕ Clear ${activeTags.map(t=>'#'+t).join(' ')}${searchQuery?' search':''}</button>`
+    : '';
+  const filterNote = hasFilters
+    ? ` (filtered from ${pool.length})`
     : '';
   let html = `<div class="stats-bar">
-    <span class="stat curated">🔭 In WoT: ${curatedResources.length}</span>
-    <span class="stat community">👥 Outside WoT: ${communityResources.length}</span>
-    <span class="stat source">${sourceIcon}</span>
-    <span class="stat filtered">Showing ${filtered.length} of ${pool.length}</span>
-  </div>${communityNote}`;
+    <span class="stat curated ${viewMode===0?'stat--active':''}" onclick="viewMode=0;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show WoT only">🔭 In WoT: ${curatedResources.length}</span>
+    <span class="stat all ${viewMode===1?'stat--active':''}" onclick="viewMode=1;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show all entries">🌐 All: ${allResources.length}</span>
+    <span class="stat community ${viewMode===2?'stat--active':''}" onclick="viewMode=2;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show outside-WoT entries only">👥 Outside WoT: ${communityResources.length}</span>
+    <span class="stat filtered">${filtered.length}${filterNote}${clearBtn ? ' — ' : ''}</span>
+    ${clearBtn}
+  </div>`;
 
   html += filtered.map(r => renderCard(r)).join('');
 
@@ -2038,6 +2048,17 @@ function getSubmitModal() {
   let mdOnOverlay = false;
   overlay.addEventListener('mousedown', e => { mdOnOverlay = (e.target === overlay); });
   overlay.addEventListener('click', e => { if (e.target === overlay && mdOnOverlay) closeSubmitModal(); });
+  // Sync discontinued checkbox ↔ tag button in the tags grid
+  const discCb = document.getElementById('sfDiscontinued');
+  if (discCb) {
+    discCb.addEventListener('change', function() {
+      const btn = document.querySelector('#sfTagsWrap .tag-btn[data-val="discontinued"]');
+      if (btn) {
+        const isActive = btn.classList.contains('active');
+        if (this.checked !== isActive) toggleTagBtn(btn, 'sfTags', false);
+      }
+    });
+  }
   // Ctrl+Enter anywhere in the modal submits the form
   overlay.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submitResource(); }
@@ -2137,7 +2158,7 @@ function editResource(slug) {
   document.getElementById('sfGit').value       = r.git || '';
   document.getElementById('sfWeb').value       = r.web || '';
   document.getElementById('sfDesc').value      = r.description || '';
-  document.getElementById('sfTags').value      = r.tags.filter(t => t !== 'discontinued').join(', ');
+  document.getElementById('sfTags').value      = r.tags.join(', ');
   document.getElementById('sfPlatforms').value = r.platforms.join(', ');
   // Populate newly-added fields from parsed resource + raw event
   const srcEv = (slugVersions[slug] || []).find(v => v.id === r.eventId);
@@ -2179,28 +2200,41 @@ function editResource(slug) {
   const corpusLicenses = [...new Set(allResources.flatMap(r => r.license ? [r.license] : []))].sort();
 
   const suggestions = gatherSlugSuggestions(slug);
-  renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags.filter(t => t !== 'discontinued'), suggestions.tags, false);
+  renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags, suggestions.tags, false);
   renderTagButtons('sfPlatformsWrap', 'sfPlatforms', corpusPlats, r.platforms, suggestions.platforms, false);
   renderTagButtons('sfNipsWrap', 'sfNips', corpusNips, srcTags.filter(t=>t[0]==='nip').map(t=>'NIP-'+t[1]), suggestions.nips, false);
   renderTagButtons('sfProgLangsWrap', 'sfProgLangs', corpusLangs, srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]), suggestions.progLangs, false);
   const currentLicense = srcTags.find(t=>t[0]==='license')?.[1] || '';
   renderTagButtons('sfLicenseWrap', 'sfLicense', corpusLicenses, currentLicense ? [currentLicense] : [], suggestions.licenses, true);
 
-  // Suggested instances as commented lines
+  // Suggested instances as commented lines (only show ones not already present)
   const instEl = document.getElementById('sfInstances');
   if (instEl) {
     const suggestedInstances = Object.entries(suggestions.instances || {});
     if (suggestedInstances.length) {
-      const allInstAuthors = new Set();
-      suggestedInstances.forEach(([_, meta]) => meta.authors.forEach(a => allInstAuthors.add(a)));
-      const instAuthorList = Array.from(allInstAuthors).slice(0,3).join(', ') + (allInstAuthors.size > 3 ? ` +${allInstAuthors.size-3} more` : '');
-      const commentLines = [`# Suggested instances by ${instAuthorList}:`];
-      suggestedInstances.forEach(([val, meta]) => {
-        commentLines.push(`# ${val}  // ${meta.authors.slice(0,2).join(', ')}${meta.authors.length>2?'...':''}`);
+      // Collect URLs already in the textarea to avoid duplicate suggestions
+      const existingUrls = new Set(
+        instEl.value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+          const parts = l.split('|').map(p => p.trim());
+          return parts.length > 1 ? parts[1] : parts[0];
+        })
+      );
+      const missing = suggestedInstances.filter(([val]) => {
+        const parts = val.split('|').map(p => p.trim());
+        const url = parts.length > 1 ? parts[1] : parts[0];
+        return !existingUrls.has(url);
       });
-      commentLines.push('#');
-      const existing = instEl.value.trim();
-      instEl.value = commentLines.join('\n') + (existing ? '\n\n' + existing : '');
+      if (missing.length) {
+        const allInstAuthors = new Set();
+        missing.forEach(([_, meta]) => meta.authors.forEach(a => allInstAuthors.add(a)));
+        const instAuthorList = Array.from(allInstAuthors).slice(0,3).join(', ') + (allInstAuthors.size > 3 ? ` +${allInstAuthors.size-3} more` : '');
+        const commentLines = [`# Missing instances from ${instAuthorList}:`];
+        missing.forEach(([val]) => {
+          commentLines.push(`# ${val}`);
+        });
+        const existing = instEl.value.trim();
+        instEl.value = commentLines.join('\n') + (existing ? '\n\n' + existing : '');
+      }
     }
   }
 
@@ -2520,7 +2554,7 @@ function toggleHelpMode() {
       const corpusNips = [...new Set(allResources.flatMap(r => r.nips))].sort();
       const corpusLangs = [...new Set(allResources.flatMap(r => r.progLangs))].sort();
       const corpusLicenses = [...new Set(allResources.flatMap(r => r.license ? [r.license] : []))].sort();
-      renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags.filter(t => t !== 'discontinued'), suggestions.tags, false);
+      renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags, suggestions.tags, false);
       renderTagButtons('sfPlatformsWrap', 'sfPlatforms', corpusPlats, r.platforms, suggestions.platforms, false);
       renderTagButtons('sfNipsWrap', 'sfNips', corpusNips, srcTags.filter(t=>t[0]==='nip').map(t=>'NIP-'+t[1]), suggestions.nips, false);
       renderTagButtons('sfProgLangsWrap', 'sfProgLangs', corpusLangs, srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]), suggestions.progLangs, false);
@@ -2640,6 +2674,11 @@ function toggleTagBtn(el, hiddenInputId, singleSelect) {
     el.classList.toggle('active');
     const active = Array.from(wrap.querySelectorAll('.tag-btn.active')).map(b => b.dataset.val);
     input.value = active.join(', ');
+  }
+  // Sync discontinued checkbox with the tags grid
+  if (hiddenInputId === 'sfTags' && val === 'discontinued') {
+    const discCb = document.getElementById('sfDiscontinued');
+    if (discCb) discCb.checked = el.classList.contains('active');
   }
 }
 
@@ -3027,9 +3066,15 @@ async function submitResource() {
   const progLangs = document.getElementById("sfProgLangs").value.split(",").map(s=>s.trim()).filter(Boolean);
   const license = document.getElementById("sfLicense").value.trim();
   // Parse instances from textarea (one per line: url OR "Name | url | comment")
+  // Lines starting with # are comments (suggestions — filtered out).
   const instances = document.getElementById("sfInstances").value.split("\n")
-    .map(l => l.trim()).filter(Boolean).map(l => {
-      const parts = l.split('|').map(p => p.trim());
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#'))
+    .map(l => {
+      // Strip inline // comments in case the user copy-pasted suggested lines
+      const commentIdx = l.indexOf(' //');
+      const line = commentIdx >= 0 ? l.slice(0, commentIdx).trim() : l;
+      const parts = line.split('|').map(p => p.trim());
       if (parts.length === 1) return parts[0]; // plain url
       const obj = { url: parts[1] || parts[0] };
       if (parts[0] && parts[0] !== obj.url) obj.name = parts[0];
@@ -3123,9 +3168,6 @@ async function submitResource() {
 window.addEventListener("load", async () => {
   logR("init:start");
   startLiveSubscription();
-  document.getElementById("curatedCb")?.addEventListener("change", e => {
-    curatedOnly = e.target.checked; renderOrder = null; render();
-  });
   document.getElementById("searchInput")?.addEventListener("input", e => {
     searchQuery = e.target.value; renderOrder = null; render();
   });

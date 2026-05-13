@@ -1,11 +1,8 @@
 <!-- nostr-auth: provides window.nostr for NIP-07 extensions, NIP-46 bunkers, Amber, nsec local -->
-<script src="/assets/js/nostr-auth.js?v=20260512p"></script>
+<script src="/assets/js/nostr-auth.js?v=20260512r"></script>
 
 <div class="controls" style="margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
-  <label style="cursor: pointer; user-select: none; font-size: 14px;">
-    <input type="checkbox" id="curatedCb" checked="" style="cursor: pointer; margin-right: 6px;" />
-    WoT only
-  </label>
+  <span id="viewModeInfo" style="font-size: 14px; color: #666;"></span>
   <input type="text" id="searchInput" placeholder="Search resources…" style="padding: 6px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 14px; min-width: 180px;" />
 </div>
 
@@ -15,5 +12,5 @@
 
 <div id="results"></div>
 
-<script src="/js/resources.js?v=20260512p" defer></script>
-<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css?v=20260512p" />
+<script src="/js/resources.js?v=20260512r" defer></script>
+<link rel="stylesheet" href="{{ base_path }}/assets/css/resources.css?v=20260512r" />

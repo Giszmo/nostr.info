@@ -94,8 +94,12 @@
 }
 .stat.curated   { color: #137333; border-color: #ceead6; }
 .stat.community { color: #b06000; border-color: #fde7cd; }
+.stat.proposal  { color: #2563eb; border-color: #dbeafe; }
+.stat.all      { color: #6b7280; border-color: #e5e7eb; }
 .stat.source    { color: #555; }
 .stat.filtered  { color: #888; margin-left: auto; }
+.stat--active   { background: #e8f0fe; border-color: #8ab4f8; font-weight: 600; }
+.stat:hover:not(.stat--active) { background: #f0f4f8; }
 .community-notice {
   padding: 7px 14px; margin-bottom: 10px; border-radius: 8px;
   background: #fff8e1; border: 1px solid #f9c74f; font-size: 13px; color: #7a5800;
