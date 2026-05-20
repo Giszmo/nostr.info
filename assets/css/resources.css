@@ -260,25 +260,53 @@
   transition: max-height 0.25s ease;
 }
 .resource-desc-inner.expanded {
-  max-height: 2000px;
+  max-height: 99999px;
 }
 .desc-expand {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 6px 0 0;
+  padding: 3px 10px;
+  border: 1px solid #dadce0;
+  border-radius: 20px;
+  background: #f8f9fa;
+  color: #444;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.5;
+  white-space: nowrap;
 }
 .desc-expand--hidden {
   display: none !important;
 }
-/* desc-expand--show is unused, .desc-expand is default visible */
-  margin: 6px auto 0;
-  padding: 4px 12px;
-  border: 1px solid #dadce0;
-  border-radius: 12px;
-  background: #f8f9fa;
-  color: #666;
-  font-size: 12px;
-  cursor: pointer;
+.desc-expand:hover { background: #e8f0fe; border-color: #2563eb; color: #2563eb; }
+.desc-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
 }
-.desc-expand:hover { background: #e8eaed; }
+.desc-actions .action-btn,
+.desc-actions .desc-expand { margin: 0; }
+.nip-card { padding: 12px 16px; }
+.nip-header {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 10px;
+  margin-bottom: 4px;
+}
+.nip-header-right {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.nip-number {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px; font-weight: 600; color: #555;
+  letter-spacing: 0.03em;
+}
+.nip-title {
+  font-size: 16px; font-weight: 600;
+  color: #111; margin-bottom: 4px;
+}
 
 /* ── Zap split editor ─────────────────────────────────────────────────────── */
 .split-section { margin: 14px 0 4px; }

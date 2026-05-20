@@ -1,0 +1,26 @@
+<!-- nostr-auth: provides window.nostr for NIP-07 extensions, NIP-46 bunkers, Amber, nsec local -->
+<script src="/assets/js/nostr-auth.js?v=20260519"></script>
+
+<script>
+  window.NAMESPACE = 'nips';
+  window.CURATOR_NPUB  = 'npub18w5jq3wht59s5wf4rvg0wfjx80wxmkn0pjga2s2q6kpdgtu2y2qsaduygt';
+  window.APP_NAME = 'NIP Curator';
+  window.RELAY_HINTS = ['wss://relay.primal.net','wss://relay.damus.io','wss://nos.lol'];
+  window.DEFAULT_TAGS = [];
+  // Dev nsec: nsec1234...              // ← local dev override (leave empty for prod)
+</script>
+
+<div class="controls" style="margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+  <span id="viewModeInfo" style="font-size: 14px; color: #666;"></span>
+  <input type="text" id="searchInput" placeholder="Search NIPs…" style="padding: 6px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 14px; min-width: 180px;" />
+</div>
+
+<h2>NIPs</h2>
+
+<div id="toggles" class="tags"></div>
+
+<div id="results"></div>
+
+<script src="/assets/js/djot-0.3.2.js?v=20260517b"></script>
+<script src="/js/new-resources.js?v=20260519" defer></script>
+<link rel="stylesheet" href="{{ base_path }}/assets/css/new-resources.css?v=20260517b" />

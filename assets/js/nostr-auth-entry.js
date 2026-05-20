@@ -33,7 +33,7 @@ if (window.nostr && !window.nostr._nostrAuth) extNostr = window.nostr;
 let resolveReady;
 const _ready = new Promise(r => { resolveReady = r; });
 
-window.nostr = {
+const _shim = {
   _nostrAuth: true,
   _ready,
   _getSessionType() { return _sessionType; },
@@ -49,6 +49,24 @@ window.nostr = {
   },
   logout() { logout(); },
 };
+
+// Defend window.nostr against late-injecting NIP-07 extensions (e.g. nos2x).
+// Without this, the extension's content script runs after our shim installs
+// and overwrites window.nostr — turning every subsequent call into an extension
+// permission popup, even when the user is logged in via bunker/nsec.
+// The setter captures incoming extensions as extNostr but keeps the shim in place.
+try {
+  Object.defineProperty(window, 'nostr', {
+    configurable: true,
+    get() { return _shim; },
+    set(v) {
+      if (v && !v._nostrAuth && typeof v.getPublicKey === 'function') extNostr = v;
+    },
+  });
+} catch (e) {
+  // Fallback for environments where defineProperty is blocked
+  window.nostr = _shim;
+}
 
 document.addEventListener('nlLaunch',  () => showModal());
 document.addEventListener('nlLogout',  () => logout());
@@ -75,36 +93,41 @@ function logout() {
   document.dispatchEvent(new CustomEvent('nlAuth', { detail: { type: 'logout' } }));
 }
 
-function emitLogin() {
-  document.dispatchEvent(new CustomEvent('nlAuth', { detail: { type: 'login' } }));
+function emitLogin(pubkey) {
+  document.dispatchEvent(new CustomEvent('nlAuth', { detail: { type: 'login', pubkey } }));
 }
 
-// ── Silent session restore ────────────────────────────────────────────────────
+// ── Silent session restore ───────────────────────────────────────────────────
+// NIP-07 extension login is NEVER auto-probed on page load. The user must
+// explicitly click "Use Browser Extension" in the login modal. This prevents
+// unsolicited extension popups and keeps bunker/nsec flows clean.
+// For previously-logged-in ext sessions we use the saved pubkey instead of
+// calling ext.getPublicKey() — the latter triggers a permission popup that
+// the user did not initiate. The real popup happens later, at signEvent time.
 (async function restoreSession() {
   try {
-    // 1. Browser extension — preferred, no secrets to store
-    if (extNostr) {
-      try {
-        await extNostr.getPublicKey();
-        signer = { _isExt: true, getPublicKey: () => extNostr.getPublicKey() };
-        _sessionType = 'ext';
-        resolveReady(true); emitLogin(); return;
-      } catch(e) {}
-    }
-
-    // 2. localStorage session
+    // 1. localStorage session
     let saved;
     try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch(e) {}
     if (!saved) { resolveReady(false); return; }
 
-    if (saved.type === 'nsec') {
+    if (saved.type === 'ext') {
+      if (!saved.pubkey) { clearSession(); resolveReady(false); return; }
+      const pk = saved.pubkey;
+      // extNostr is set by the defineProperty setter when the extension injects;
+      // signEvent will route to it the first time it's needed (explicit popup).
+      signer = { _isExt: true, getPublicKey: () => Promise.resolve(pk) };
+      _sessionType = 'ext';
+      resolveReady(true); emitLogin(pk);
+
+    } else if (saved.type === 'nsec') {
       try {
         const decoded = nip19decode(saved.data);
         if (decoded.type !== 'nsec') throw new Error();
         const sk = decoded.data, pk = getPublicKey(sk);
         signer = { _isLocal: true, secretKey: sk, getPublicKey: () => Promise.resolve(pk) };
         _sessionType = 'nsec';
-        resolveReady(true); emitLogin();
+        resolveReady(true); emitLogin(pk);
       } catch(e) { clearSession(); resolveReady(false); }
 
     } else if (saved.type === 'bunker') {
@@ -112,10 +135,10 @@ function emitLogin() {
         const sk = hexToBytes(saved.sk);
         const s  = BunkerSigner.fromBunker(sk, saved.bp);
         await s.connect();
-        await s.getPublicKey();
+        const pk = await s.getPublicKey();
         signer = s;
         _sessionType = 'bunker';
-        resolveReady(true); emitLogin();
+        resolveReady(true); emitLogin(pk);
       } catch(e) { clearSession(); resolveReady(false); }
 
     } else { resolveReady(false); }
@@ -143,9 +166,6 @@ function showModal() {
           <button id="na-close" title="Close">×</button>
         </div>
         <div id="na-body">
-          <div class="na-section" id="na-ext-section" style="display:none">
-            <button class="na-btn na-primary" id="na-ext-btn">🧩 Use Browser Extension</button>
-          </div>
           <div class="na-section">
             <p class="na-label">📱 Mobile signer (Amber, etc.)</p>
             <div id="na-qr-wrap"></div>
@@ -161,6 +181,11 @@ function showModal() {
             <p class="na-hint" style="margin:0 0 6px;">Stored in localStorage. Use only on a trusted device.</p>
             <input type="password" id="na-nsec-in" placeholder="nsec1..." />
             <button class="na-btn" id="na-nsec-btn">Login</button>
+          </div>
+          <div class="na-section" id="na-ext-section">
+            <p class="na-label">🧩 Browser Extension</p>
+            <button class="na-btn" id="na-ext-btn">Use Browser Extension</button>
+            <p class="na-hint" id="na-ext-hint" style="display:none;margin-top:4px;color:#e57373">No NIP-07 extension detected.</p>
           </div>
         </div>
         <div id="na-footer"></div>
@@ -198,17 +223,25 @@ function showModal() {
   d.querySelector('#na-close').onclick = hideModal;
   d.onclick = (e) => { if (e.target === d) hideModal(); };
 
-  if (extNostr) {
-    d.querySelector('#na-ext-section').style.display = 'block';
-    d.querySelector('#na-ext-btn').onclick = async () => {
-      try {
-        await extNostr.getPublicKey();
-        signer = { _isExt: true, getPublicKey: () => extNostr.getPublicKey() };
-        _sessionType = 'ext';
-        hideModal(); emitLogin();
-      } catch(e) { setFooter('Extension rejected: ' + e.message); }
-    };
-  }
+  d.querySelector('#na-ext-btn').onclick = async () => {
+    // Detect extension dynamically: anything on window.nostr that is NOT our shim
+    // and has getPublicKey is an NIP-07 extension.
+    const ext = (window.nostr && !window.nostr._nostrAuth && typeof window.nostr.getPublicKey === 'function')
+      ? window.nostr
+      : null;
+    if (!ext) {
+      d.querySelector('#na-ext-hint').style.display = 'block';
+      return;
+    }
+    try {
+      const pk = await ext.getPublicKey();
+      extNostr = ext; // capture for signEvent routing
+      signer = { _isExt: true, getPublicKey: () => Promise.resolve(pk) };
+      _sessionType = 'ext';
+      saveSession({ type: 'ext', pubkey: pk });
+      hideModal(); emitLogin(pk);
+    } catch(e) { setFooter('Extension rejected: ' + e.message); }
+  };
 
   d.querySelector('#na-bunker-btn').onclick = async () => {
     const val = d.querySelector('#na-bunker-in').value.trim();
@@ -220,10 +253,11 @@ function showModal() {
       const sk = generateSecretKey();
       const s  = BunkerSigner.fromBunker(sk, bp);
       await s.connect();
+      const pk = await s.getPublicKey();
       signer = s;
       _sessionType = 'bunker';
       saveSession({ type: 'bunker', sk: bytesToHex(sk), bp: s.bp });
-      hideModal(); emitLogin();
+      hideModal(); emitLogin(pk);
     } catch(e) { setFooter('Bunker error: ' + e.message); }
   };
 
@@ -237,7 +271,7 @@ function showModal() {
       signer = { _isLocal: true, secretKey: sk, getPublicKey: () => Promise.resolve(pk) };
       _sessionType = 'nsec';
       saveSession({ type: 'nsec', data: val });
-      hideModal(); emitLogin();
+      hideModal(); emitLogin(pk);
     } catch(e) { setFooter('Invalid nsec: ' + e.message); }
   };
 
@@ -280,9 +314,10 @@ async function generateQR() {
     ]);
     signer = s;
     _sessionType = 'bunker';
+    const bunkerPk = await s.getPublicKey();
     // Save sk + bp so we can reconnect without re-handshake on reload
     saveSession({ type: 'bunker', sk: bytesToHex(sk), bp: s.bp });
-    hideModal(); emitLogin();
+    hideModal(); emitLogin(bunkerPk);
   } catch(e) {
     if (e.name !== 'AbortError') { console.error('nostrconnect:', e); setFooter('Connection failed: ' + e.message); }
   }

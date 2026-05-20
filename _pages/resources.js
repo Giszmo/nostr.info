@@ -6,7 +6,7 @@ permalink: /js/resources.js
 // nostr.info/resources/ - nostr-native resource directory
 // Loads from kind 30078 events, enriches with profiles, reactions, zaps
 
-console.log('[resources.js] version: 20260512r');
+console.log('[resources.js] version: 20260513b');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -15,11 +15,13 @@ const RELAYS = [
   'wss://relay.mostr.pub',
   'wss://nostr.oxtr.dev',
   'wss://relay.snort.social',
+  'wss://nostr.mom',
 ];
 
 // Public key of the nostr.info curator account (npub form — no private keys in repo)
-const CURATOR_NPUB = 'npub1c4ptewkhdzhzqutt0tq60z44jzhw2pg9pj888m905pv3m23svcqska5c34';
-const NAMESPACE   = 'nostr.info/resource';
+// Override before loading the script via window.CURATOR_NPUB / window.NAMESPACE
+const CURATOR_NPUB = window.CURATOR_NPUB || 'npub1c4ptewkhdzhzqutt0tq60z44jzhw2pg9pj888m905pv3m23svcqska5c34';
+const NAMESPACE   = window.NAMESPACE || 'nostr.info/resource';
 const logR = (...a) => { try { console.log('[nostr.info]', ...a); } catch(e) {} };
 const FALLBACK_MS = 8000;
 
@@ -32,8 +34,10 @@ let allPlatforms      = [];
 let allRegularTags    = [];
 let allNipsList       = [];
 let allLicenses       = [];
+let allStatuses       = [];   // NIP-only: ['draft', 'final', ...]
+let allNipCategories  = [];   // NIP-only: ['relay', 'client', ...]
 let tagCounts         = {};
-let activeTags        = ['client'];
+let activeTags        = window.DEFAULT_TAGS || ['client'];
 let viewMode          = 0;  // 0 = WoT only, 1 = all, 2 = proposals only
 let searchQuery       = '';
 let loadedFrom        = '…';
@@ -901,83 +905,16 @@ async function postReply(slug, authorHex) {
 
 // ─── Markdown → HTML (blockquotes, bold, links, code) ─────────────────────────
 function mdToHtml(raw) {
+  // Use marked (loaded via CDN) for proper GFM rendering.
+  // Fallback to a tiny plain-text sanitizer if marked is not available.
   if (!raw) return '';
-  const lines = raw.split('\n');
-  const out = [];
-  let inUl = false, inOl = false;
-
-  const closeLists = () => {
-    if (inUl) { out.push('</ul>'); inUl = false; }
-    if (inOl) { out.push('</ol>'); inOl = false; }
-  };
-
-  const parseInline = (text) => {
-    const tokens = [];
-    const save = (html) => {
-      tokens.push(html);
-      return '§§T' + (tokens.length - 1) + '§§';
-    };
-    let s = text;
-    s = s.replace(/`([^`]+)`/g, (m, code) => save('<code>' + esc(code) + '</code>'));
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, txt, url) => save('<a href="' + esc(url) + '" target="_blank">' + esc(txt) + '</a>'));
-    s = s.replace(/\*\*(.+?)\*\*/g, (m, inner) => save('<strong>' + esc(inner) + '</strong>'));
-    s = s.replace(/__(.+?)__/g, (m, inner) => save('<strong>' + esc(inner) + '</strong>'));
-    s = s.replace(/\*(.+?)\*/g, (m, inner) => save('<em>' + esc(inner) + '</em>'));
-    s = s.replace(/_(.+?)_/g, (m, inner) => save('<em>' + esc(inner) + '</em>'));
-    s = s.replace(/~~(.+?)~~/g, (m, inner) => save('<del>' + esc(inner) + '</del>'));
-    const d = document.createElement('div');
-    d.textContent = s;
-    s = d.innerHTML;
-    s = s.replace(/§§T(\d+)§§/g, (m, i) => tokens[+i]);
-    return s;
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Blockquotes: collect consecutive lines and recursively parse inner content
-    if (/^\s*>/.test(line)) {
-      closeLists();
-      const bqLines = [];
-      while (i < lines.length && /^\s*>/.test(lines[i])) {
-        bqLines.push(lines[i].replace(/^\s*>\s?/, ''));
-        i++;
-      }
-      i--; // step back so outer loop increments correctly
-      const innerHtml = mdToHtml(bqLines.join('\n'));
-      out.push('<blockquote>' + innerHtml + '</blockquote>');
-      continue;
-    }
-
-    // Headings (# ## ###)
-    if (/^#{1,3}\s+/.test(trimmed)) {
-      closeLists();
-      const level = trimmed.match(/^(#{1,3})\s+/)[1].length;
-      const text = trimmed.replace(/^#{1,3}\s+/, '');
-      out.push('<h' + level + '>' + parseInline(text) + '</h' + level + '>');
-      continue;
-    }
-
-    if (/^[-+*]\s+/.test(trimmed)) {
-      const item = trimmed.replace(/^[-+*]\s+/, '');
-      if (!inUl) { out.push('<ul>'); inUl = true; }
-      out.push('<li>' + parseInline(item) + '</li>');
-      continue;
-    }
-    if (/^\d+\.\s+/.test(trimmed)) {
-      const item = trimmed.replace(/^\d+\.\s+/, '');
-      if (!inOl) { out.push('<ol>'); inOl = true; }
-      out.push('<li>' + parseInline(item) + '</li>');
-      continue;
-    }
-    closeLists();
-    if (trimmed) {
-      out.push('<p>' + parseInline(trimmed) + '</p>');
-    }
+  if (typeof marked !== 'undefined' && marked.parse) {
+    return marked.parse(raw, { gfm: true, breaks: false });
   }
-  closeLists();
-  return out.join('');
+  // Fallback: escape HTML, preserve line breaks
+  const d = document.createElement('div');
+  d.textContent = raw;
+  return d.innerHTML.replace(/\n/g, '<br>');
 }
 
 // ─── Relay helpers ────────────────────────────────────────────────────────────
@@ -1007,7 +944,7 @@ async function queryAll(relays, filter, onEvent, timeoutMs=8000) {
 }
 
 // ─── IDB cache ────────────────────────────────────────────────────────────────────────────────
-const IDB_NAME    = 'nostr-resources';
+const IDB_NAME    = 'nostr-resources-' + (NAMESPACE.replace(/[^a-z0-9_-]/gi, '-'));
 const IDB_STORE   = 'events';
 const IDB_VERSION = 1;
 
@@ -1313,7 +1250,7 @@ async function loadAnchorFollows(pubkey) {
   anchorFollows = new Set();
   anchorFollowsLoaded = false;
   try {
-    await queryAll(RELAYS.slice(0, 3), { kinds: [3], authors: [pubkey], limit: 1 }, ev => {
+    await queryAll(RELAYS, { kinds: [3], authors: [pubkey], limit: 1 }, ev => {
       const ptags = ev.tags?.filter(t => t[0] === 'p') || [];
       ptags.forEach(t => anchorFollows.add(t[1]));
     }, 3000);
@@ -1326,7 +1263,7 @@ async function loadAnchorFollows(pubkey) {
     const hop1 = Array.from(anchorFollows).filter(pk => pk !== pubkey);
     if (hop1.length > 0) {
       try {
-        await queryAll(RELAYS.slice(0, 3), { kinds: [3], authors: hop1 }, ev => {
+        await queryAll(RELAYS, { kinds: [3], authors: hop1 }, ev => {
           const ptags = ev.tags?.filter(t => t[0] === 'p') || [];
           ptags.forEach(t => anchorFollows.add(t[1]));
         }, 4000);
@@ -1409,6 +1346,8 @@ function dedupAndRender() {
   Object.values(byD).forEach(group => {
     group.sort((a,b) => b.created_at - a.created_at);
     const { winner, submitterPubkey } = pickWinner(group);
+    // Community-deleted: if the winning version carries a 'deleted' tag, hide the entry entirely.
+    if (winner.tags?.some(t => (t[0] === 'deleted') || (t[0] === 't' && t[1] === 'deleted'))) return;
     const trust = wotTrust(winner.pubkey);
     if (trust >= 2) {
       inWoT.push({ ev: winner, submitterPubkey });
@@ -1427,12 +1366,18 @@ function dedupAndRender() {
   const regularTagSet = new Set();
   const nipSet = new Set();
   const licenseSet = new Set();
+  const statusSet = new Set();
+  const nipCatSet = new Set();
   tagCounts = {};
+  const STATUS_WORDS = new Set(['draft','final','deprecated','mandatory','optional','recommended']);
   allResources.forEach(r => {
     r.platforms.forEach(t => { tagSet.add(t); platformSet.add(t); tagCounts[t] = (tagCounts[t] || 0) + 1; });
     r.tags.forEach(t => { tagSet.add(t); regularTagSet.add(t); tagCounts[t] = (tagCounts[t] || 0) + 1; });
     r.nips.forEach(t => { tagSet.add(t); nipSet.add(t); tagCounts[t] = (tagCounts[t] || 0) + 1; });
     if (r.license) { tagSet.add(r.license); licenseSet.add(r.license); tagCounts[r.license] = (tagCounts[r.license] || 0) + 1; }
+    // NIP-specific corpus
+    (r.status || []).forEach(s => { statusSet.add(s); tagCounts[s] = (tagCounts[s] || 0) + 1; });
+    r.tags.forEach(t => { if (STATUS_WORDS.has(t)) { statusSet.add(t); tagCounts[t] = (tagCounts[t] || 0) + 1; } else { nipCatSet.add(t); } });
   });
   allTags = Array.from(tagSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
   allPlatforms = Array.from(platformSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
@@ -1441,6 +1386,8 @@ function dedupAndRender() {
   allRegularTags = Array.from(regularTagSet).filter(t => !platformDedupedTags.has(t)).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
   allNipsList = Array.from(nipSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
   allLicenses = Array.from(licenseSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+  allStatuses = Array.from(statusSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
+  allNipCategories = Array.from(nipCatSet).sort((a, b) => (tagCounts[b]||0)-(tagCounts[a]||0) || a.localeCompare(b));
 
   // Corpus frequency maps for edit-modal suggestions
   window._corpusFreq = {
@@ -1458,6 +1405,25 @@ function dedupAndRender() {
   render();
 }
 
+// ─── Event parsing ──────────────────────────────────────────────────────────────
+// Two ontologies share kind 30078:
+//   1. nostr.info/resource  → JSON content {title, description, git, web, instances}
+//   2. nips                 → tag-based    {title, summary, status, r}  (content empty)
+//
+// NIP tag schema (the standard we establish):
+//   ["d", "nip-XX"]                → slug
+//   ["t", "nips"]                  → namespace
+//   ["title", "..."]               → human title (no prefix)
+//   ["summary", "..."]             → abstract / first paragraph
+//   ["r", "https://..."]           → canonical URL
+//   ["status", "draft"]            → draft | final | deprecated
+//   ["status", "mandatory"]        → mandatory | optional | recommended
+//   ["t", "relay"]                 → category (relay, client, signer, ...)
+//
+// parseEvent reads BOTH formats for backward compat:
+//   - New tag-based NIP events → tags win
+//   - Old JSON-based events    → JSON fallback
+
 function parseEvent(ev, submitterPubkey = null) {
   const tags = ev.tags || [];
   let content = {};
@@ -1469,17 +1435,56 @@ function parseEvent(ev, submitterPubkey = null) {
   const license = tags.find(t=>t[0]==='license')?.[1] || '';
   const progLangs = tags.filter(t=>t[0]==='progLang').map(t=>t[1]);
   const refs    = tags.filter(t=>t[0]==='r').map(t=>t[1]);
+
+  // ── NIP ontology: tag-based ────────────────────────────────────────────────
+  const tagTitle    = tags.find(t => t[0] === 'title')?.[1];
+  const tagSummary  = tags.find(t => t[0] === 'summary')?.[1];
+  const tagStatus   = [...new Set(tags.filter(t => t[0] === 'status').map(t => t[1]))];
+
+  // For NIPs: content field carries the FULL markdown article (new format).
+  // Old JSON-based events still parse as fallback.
+  let nipContent = '';
+  if (NAMESPACE === 'nips' && ev.content) {
+    try {
+      const c = JSON.parse(ev.content);
+      nipContent = c.description || '';
+    } catch(e) {
+      // Raw markdown — strip the redundant setext title block (NIP-XX / ====== / Title / ------- / `status`...)
+      let md = ev.content;
+      const lines = md.split('\n');
+      let i = 0;
+      // Skip leading warning block
+      while (i < lines.length && (lines[i].trim().startsWith('>') || !lines[i].trim())) i++;
+      // Skip NIP-XX
+      if (/^NIP-\d+\s*$/i.test(lines[i]?.trim())) i++;
+      // Skip ====== and blank lines
+      while (i < lines.length && (/^=+$/.test(lines[i].trim()) || !lines[i].trim())) i++;
+      // Skip title
+      if (lines[i]?.trim()) i++;
+      // Skip ------- and blank lines
+      while (i < lines.length && (/^-+$/.test(lines[i].trim()) || !lines[i].trim())) i++;
+      // Skip backtick status line
+      if (lines[i]?.trim().startsWith('`')) i++;
+      // Skip trailing blank lines after title block
+      while (i < lines.length && !lines[i].trim()) i++;
+      nipContent = lines.slice(i).join('\n');
+    }
+  }
+
+  // Fallback to JSON content for legacy events
+  const title       = tagTitle   || content.title       || d;
+  const description = (NAMESPACE === 'nips' ? nipContent : '') || tagSummary || content.description || '';
+  const status      = tagStatus.length ? tagStatus : [];
+
   const git     = content.git || refs.find(r=>r.includes('github.com')) || '';
   const web     = content.web || refs.find(r=>!r.includes('github.com')) || '';
+
   // zap-split: [{pubkey, weight, label}, ...]
-  // Each tag: ["zap-split", "<hex>", "<weight>", "<label>"]
-  // Backward compat: old "submitter" tag becomes a single-entry split.
   let zapSplits = tags
     .filter(t => t[0] === 'zap-split' && t[1])
     .map(t => ({ pubkey: normalizePubkey(t[1]), weight: parseInt(t[2] || '1', 10) || 1, label: t[3] || '' }))
     .filter(s => s.pubkey);
   if (!zapSplits.length) {
-    // Legacy: migrate old submitter tag into a two-entry split
     const legacySub = normalizePubkey(tags.find(t => t[0] === 'submitter')?.[1]);
     if (legacySub && legacySub !== ev.pubkey) {
       zapSplits = [
@@ -1488,23 +1493,26 @@ function parseEvent(ev, submitterPubkey = null) {
       ];
     }
   }
+
   return {
     eventId:      ev.id,
     createdAt:    ev.created_at,
     pubkeyHex:    ev.pubkey,
-    isCurated:    wotTrust(ev.pubkey) === 3, // published by the current anchor themselves
-    isWoT:        wotTrust(ev.pubkey) >= 2,  // published by anchor or a direct follow
-    submitterPubkey, // non-null when anchor curated someone else's submission
-    title:        content.title || d,
+    isCurated:    wotTrust(ev.pubkey) === 3,
+    isWoT:        wotTrust(ev.pubkey) >= 2,
+    submitterPubkey,
+    title,
     slug:         d,
-    url:          git || web || '#',
+    url:          git || web || (refs[0] || '#'),
     web, git,
-    description:  content.description || '',
+    description,
     instances:    content.instances || [],
     tags:         catTags, platforms, nips, license, progLangs,
+    status,                       // NIP-only: ['draft', 'mandatory', 'relay']
     zapSplits,
     authorNPub:   wotTrust(ev.pubkey) === 3 ? '' : hexToNpub(ev.pubkey),
     discontinued: catTags.includes('discontinued') || tags.some(t => t[0] === 'discontinued'),
+    deleted:      catTags.includes('deleted')     || tags.some(t => t[0] === 'deleted'),
   };
 }
 
@@ -1534,11 +1542,11 @@ function render() {
   const q = searchQuery.toLowerCase();
   const filtered = pool.filter(r => {
     if (activeTags.length) {
-      const all = [...r.tags, ...r.platforms, ...r.nips, ...(r.license ? [r.license] : [])];
+      const all = [...r.tags, ...r.platforms, ...r.nips, ...(r.license ? [r.license] : []), ...(r.status || [])];
       if (!activeTags.every(t => all.includes(t))) return false;
     }
     if (q) {
-      const haystack = [r.title, r.description, ...r.tags, ...r.platforms, ...(r.license ? [r.license] : [])].join(' ').toLowerCase();
+      const haystack = [r.title, r.description, ...r.tags, ...r.platforms, ...(r.license ? [r.license] : []), ...(r.status || [])].join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -1603,7 +1611,7 @@ function render() {
   requestAnimationFrame(checkAllDescOverflows);
 }
 
-function renderCard(r) {
+function renderResourceCard(r) {
   // (no per-card logging to avoid flooding)
   const rc   = reactionCache[r.slug]    || { byAuthor: {}, zapMsat: 0 };
 
@@ -1772,7 +1780,7 @@ function renderCard(r) {
     <div class="resource-tags">
       ${discontinuedBadge}
       ${r.platforms.map(t=>`<span class="pill platform" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
-      ${r.tags.filter(t=>t!=='discontinued').map(t=>`<span class="pill" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
+      ${r.tags.filter(t=>t!=='discontinued'&&t!=='deleted').map(t=>`<span class="pill" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
       ${r.nips.map(t=>`<span class="pill nip" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
       ${r.license?`<span class="pill license" onclick="clickTag('${esc(r.license)}')">${esc(r.license)}</span>`:''}
       ${reactionHtml}
@@ -1780,6 +1788,131 @@ function renderCard(r) {
     ${descHtml}
     ${actionBar}
   </div>`;
+}
+
+// ─── NIP Card ────────────────────────────────────────────────────────────────────────────
+// Clean, information-dense card for NIP entries. No GitHub stars, no repo icons,
+// no programming languages, no instances. Just number, title, status, abstract,
+// category tags, and actions.
+
+function renderNipCard(r) {
+  const rc = reactionCache[r.slug] || { byAuthor: {}, zapMsat: 0 };
+  const counts = reactionCounts(rc);
+  const slug_  = esc(r.slug);
+
+  const zapSats  = rc.zapMsat > 0 ? Math.floor(rc.zapMsat / 1000) : 0;
+  const zapLabel = zapSats >= 1000 ? (zapSats/1000).toFixed(1)+'k' : (zapSats || '');
+  const splitCount = r.zapSplits.length;
+  const zapTitle = splitCount > 1 ? `Zap (split between ${splitCount} contributors)` : 'Zap this NIP';
+  const splitsAttr = esc(JSON.stringify(splitCount ? r.zapSplits : [{ pubkey: r.pubkeyHex, weight: 1 }]));
+  const hasZaps = zapSats > 0;
+  const zapBtn = hasZaps
+    ? `<span class="zap-btn-group"><button class="action-btn zap-action-btn" title="${esc(zapTitle)}" data-eventid="${esc(r.eventId)}" data-splits='${splitsAttr}' onclick="triggerZapFromBtn(this)">⚡</button><button class="action-btn zap-count-btn" title="View zap details" onclick="showZapDetails('${esc(r.slug)}')">${zapLabel}</button></span>`
+    : `<button class="action-btn zap-action-btn" title="${esc(zapTitle)}" data-eventid="${esc(r.eventId)}" data-splits='${splitsAttr}' onclick="triggerZapFromBtn(this)">⚡</button>`;
+
+  // Status badges: draft/final/deprecated + mandatory/optional/recommended
+  // All tags — status included — are clickable filter pills.
+  const STATUS_META = { draft:'#f59e0b', final:'#137333', deprecated:'#80868b', mandatory:'#c5221f', optional:'#2563eb', recommended:'#7b3fb5' };
+  const allTagsClickable = [...r.status, ...r.tags].map(t => {
+    const col = STATUS_META[t] || '#666';
+    return `<span class="pill" style="background:${col}15;color:${col};border:1px solid ${col}40;" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`;
+  }).join('');
+
+  const editBtn = `<button class="edit-btn" onclick="requireLogin(()=>editResource('${esc(r.slug)}'))" title="Suggest an edit">✎ Edit</button>`;
+  const deleteBtn = (loggedInPubkey && loggedInPubkey === r.pubkeyHex)
+    ? `<button class="delete-btn" onclick="deleteResource('${esc(r.slug)}','${esc(r.eventId)}')" title="Delete this entry">🗑</button>`
+    : '';
+
+  const tsAgo = (() => {
+    const secs = Math.floor(Date.now()/1000) - r.createdAt;
+    if (secs < 60)   return 'just now';
+    if (secs < 3600) return Math.floor(secs/60) + 'm ago';
+    if (secs < 86400) return Math.floor(secs/3600) + 'h ago';
+    if (secs < 86400*30) return Math.floor(secs/86400) + 'd ago';
+    if (secs < 86400*365) return Math.floor(secs/86400/30) + 'mo ago';
+    return Math.floor(secs/86400/365) + 'y ago';
+  })();
+
+  const pubProf = profileCache[r.pubkeyHex] || {};
+  const pubNpub = hexToNpub(r.pubkeyHex);
+  const pubName = pubProf.name || (pubNpub.slice(0,12)+'…');
+  const pubAvatar = `<img class="byline-avatar" src="${pubProf.picture ? esc(pubProf.picture) : '/images/nostrich.webp'}" onerror="this.src='/images/nostrich.webp'">`;
+  const pubLink = `<a href="https://njump.me/${pubNpub}" target="_blank" class="byline-publisher">${pubAvatar}<span>${esc(pubName)}</span></a>`;
+
+  const bylineHtml = `<div class="byline">
+    ${pubLink}
+    <span class="byline-ts" title="${new Date(r.createdAt*1000).toLocaleString()}">published ${tsAgo}</span>
+  </div>`;
+
+  const discontinuedBadge = r.discontinued ? `<span class="pill discontinued" title="This NIP appears to be discontinued">🪦 discontinued</span>` : '';
+  const cardClass = r.discontinued ? 'resource-card resource-card--discontinued nip-card' : 'resource-card nip-card';
+
+  // NIP description with raw toggle
+  const descHtml = r.description ? `<div class="resource-desc" id="desc-${slug_}">
+    <div class="resource-desc-inner desc-rendered" id="rendered-${slug_}">${mdToHtml(r.description)}</div>
+    <div class="resource-desc-inner desc-raw" id="raw-${slug_}" style="display:none;">
+      <pre style="white-space:pre-wrap;font-size:13px;background:#f8f9fa;padding:12px;border-radius:6px;overflow:auto;">${esc(r.description)}</pre>
+    </div>
+    <div class="desc-actions">
+      <button class="action-btn raw-toggle-btn" id="rawbtn-${slug_}" onclick="toggleNipRaw('${slug_}')" title="Toggle raw view">📄 Raw</button>
+      <button class="desc-expand desc-expand--hidden" id="expand-${slug_}" onclick="toggleDesc(this)">more…</button>
+    </div>
+  </div>` : '';
+
+  // Proposals
+  const versions = slugVersions[r.slug] || [];
+  const winnerCreatedAt = versions.find(v => v.id === r.eventId)?.created_at ?? 0;
+  const pendingProposals = versions.filter(v => v.pubkey !== r.pubkeyHex && wotTrust(v.pubkey) < 2 && v.created_at >= winnerCreatedAt);
+  const mySuperseded = loggedInPubkey && loggedInPubkey !== r.pubkeyHex && wotTrust(loggedInPubkey) >= 2
+    ? versions.find(v => v.pubkey === loggedInPubkey && !pendingProposals.includes(v))
+    : null;
+  const totalProposals = pendingProposals.length + (mySuperseded ? 1 : 0);
+  const mySupersededLabel = mySuperseded ? ' (incl. yours)' : '';
+  const proposalBadge = totalProposals > 0
+    ? `<button class="action-btn proposals-btn" onclick="toggleProposals('${esc(r.slug)}')" title="See ${totalProposals} proposal${totalProposals>1?'s':''}">${totalProposals} proposal${totalProposals>1?'s':''}${mySupersededLabel}</button>`
+    : '';
+  const reviewBtn = (loggedInPubkey && totalProposals > 0)
+    ? `<button class="action-btn approve-btn" onclick="showProposalDiff('${esc(r.slug)}')" title="Review proposals">📋 Review</button>`
+    : '';
+
+  const aHex   = esc(r.pubkeyHex || '');
+  const myVote = loggedInPubkey ? rc.byAuthor[loggedInPubkey]?.emoji : null;
+  const likeN  = counts['+'] || 0;
+  const dislikeN = counts['-'] || 0;
+  const replyN = (replyCache[r.slug] || []).length;
+  const actionBar = r.slug ? `
+    <div class="resource-actions">
+      <button class="action-btn${myVote==='+'?' action-active':''}" onclick="requireLogin(()=>reactToResource('${slug_}','${aHex}','+'))" title="${myVote==='+'?'Remove like':'Like'}">👍${likeN?' '+likeN:''}</button>
+      <button class="action-btn${myVote==='-'?' action-active':''}" onclick="requireLogin(()=>reactToResource('${slug_}','${aHex}','-'))" title="${myVote==='-'?'Remove dislike':'Dislike'}">👎${dislikeN?' '+dislikeN:''}</button>
+      <button class="action-btn" onclick="toggleReplies('${slug_}','${aHex}')" title="Replies">💬 Replies${replyN?' '+replyN:''}</button>
+      ${zapBtn}
+      ${proposalBadge}${reviewBtn}
+    </div>
+    <div class="resource-proposals" id="proposals-${slug_}" style="display:none;"></div>
+    <div class="resource-replies" id="replies-${slug_}" data-open="0"></div>` : '';
+
+  return `<div class="${cardClass}" data-slug="${slug_}">
+    <div class="nip-header">
+      <div class="nip-number">${esc(r.slug.toUpperCase())}</div>
+      <div class="nip-header-right">
+        ${deleteBtn}
+        ${editBtn}
+      </div>
+    </div>
+    <div class="nip-title">${esc(r.title)}</div>
+    <div class="resource-tags" style="margin-top:2px;">
+      ${allTagsClickable}
+      ${discontinuedBadge}
+    </div>
+    ${bylineHtml}
+    ${descHtml}
+    ${actionBar}
+  </div>`;
+}
+
+// ─── Card dispatcher ────────────────────────────────────────────────────────────────────────────
+function renderCard(r) {
+  return NAMESPACE === 'nips' ? renderNipCard(r) : renderResourceCard(r);
 }
 
 function renderSubmitCard() {
@@ -1822,6 +1955,7 @@ function renderToggles(pool) {
     r.tags.forEach(t=>available.add(t));
     r.nips.forEach(t=>available.add(t));
     if (r.license) available.add(r.license);
+    (r.status || []).forEach(s => available.add(s));
   });
 
   const toggles = document.getElementById('toggles');
@@ -1854,10 +1988,14 @@ function renderToggles(pool) {
     });
   }
 
-  addGroup('Platforms', allPlatforms);
-  addGroup('Tags', allRegularTags);
-  addGroup('NIPs', allNipsList);
-  addGroup('Licenses', allLicenses);
+  if (NAMESPACE === 'nips') {
+    addGroup('Tags', allTags);
+  } else {
+    addGroup('Platforms', allPlatforms);
+    addGroup('Tags', allRegularTags);
+    addGroup('NIPs', allNipsList);
+    addGroup('Licenses', allLicenses);
+  }
 }
 
 function clickTag(t) {
@@ -1867,7 +2005,10 @@ function clickTag(t) {
   render();
 }
 function toggleDesc(btn) {
-  const inner = btn.previousElementSibling;
+  const parent = btn.closest('.resource-desc');
+  if (!parent) return;
+  // Find the visible .resource-desc-inner (rendered or raw)
+  const inner = Array.from(parent.querySelectorAll('.resource-desc-inner')).find(el => el.style.display !== 'none');
   if (!inner) return;
   const expanded = inner.classList.toggle('expanded');
   btn.textContent = expanded ? 'less…' : 'more…';
@@ -1876,33 +2017,58 @@ function toggleDesc(btn) {
 // and only show the "more…" button for those.
 function checkAllDescOverflows() {
   document.querySelectorAll('.resource-desc-inner').forEach(inner => {
-    const btn = inner.nextElementSibling;
-    if (!btn || !btn.classList.contains('desc-expand')) return;
+    // Only check the currently visible inner (skip hidden raw view)
+    if (inner.style.display === 'none') return;
+    const parent = inner.closest('.resource-desc');
+    const btn = parent ? parent.querySelector('.desc-expand') : null;
+    if (!btn) return;
     if (inner.scrollHeight > inner.clientHeight + 4) {
       btn.classList.remove('desc-expand--hidden');
     } else {
       btn.classList.add('desc-expand--hidden');
     }
+    // Sync button text to the visible inner's expansion state
+    btn.textContent = inner.classList.contains('expanded') ? 'less…' : 'more…';
   });
+}
+
+function toggleNipRaw(slug) {
+  const rendered = document.getElementById('rendered-' + slug);
+  const raw      = document.getElementById('raw-' + slug);
+  const rawBtn   = document.getElementById('rawbtn-' + slug);
+  if (!rendered || !raw) return;
+  if (rendered.style.display !== 'none') {
+    rendered.style.display = 'none';
+    raw.style.display = '';
+    if (rawBtn) rawBtn.textContent = '📝 Rendered';
+  } else {
+    raw.style.display = 'none';
+    rendered.style.display = '';
+    if (rawBtn) rawBtn.textContent = '📄 Raw';
+  }
+  checkAllDescOverflows();
 }
 
 async function deleteResource(slug, eventId) {
   if (!loggedInPubkey) return;
-  if (!confirm(`Delete "${slug}"? This publishes a NIP-09 deletion event. Other users' copies are not affected.`)) return;
+  if (!confirm(`Mark "${slug}" as deleted? This publishes a kind 30078 version with a 'deleted' tag so the community can curate removals.`)) return;
   try {
     const ev = {
-      kind: 5,
-      content: 'deleted',
+      kind: 30078,
+      content: JSON.stringify({title: '(deleted)', description: ''}),
       created_at: Math.floor(Date.now() / 1000),
       tags: [
-        ['e', eventId],
-        ['a', `30078:${loggedInPubkey}:${slug}`],
+        ['d', slug],
+        ['t', NAMESPACE],
+        ['t', 'deleted'],
       ],
     };
     const signed = await window.nostr.signEvent(ev);
     await publishEvent(signed);
-    // Remove from local cache so card disappears immediately
-    allResourceEvents = allResourceEvents.filter(e => e.id !== eventId && !(e.pubkey === loggedInPubkey && e.tags?.find(t=>t[0]==='d')?.[1] === slug));
+    // Inject the tombstone so the card disappears immediately without reload
+    if (!allResourceEvents.some(e => e.id === signed.id)) {
+      allResourceEvents.push(signed);
+    }
     renderOrder = null;
     dedupAndRender();
   } catch(e) {
@@ -1953,8 +2119,9 @@ function getSubmitModal() {
   overlay.innerHTML = `
     <div id="submitBox">
       <div id="submitBoxHeader" style="position:relative;">
-        <h3 id="submitBoxTitle" style="margin:0;font-size:16px;">Submit a Nostr Resource</h3>
-        <button type="button" id="helpToggleBtn" class="help-toggle" onclick="toggleHelpMode()" title="Toggle help hints">?</button>
+        <h3 id="submitBoxTitle" style="margin:0;font-size:16px;padding-right:40px;">Submit a Nostr Resource</h3>
+        <button type="button" class="modal-close-btn" onclick="closeSubmitModal()" title="Close" style="position:absolute;right:0;top:0;background:none;border:none;font-size:22px;cursor:pointer;line-height:1;padding:4px 8px;color:#666;">&times;</button>
+        <button type="button" id="helpToggleBtn" class="help-toggle" onclick="toggleHelpMode()" title="Toggle help hints" style="right:36px;">?</button>
       </div>
       <div id="submitBoxBody">
         <div id="helpLegend" class="help-legend">
@@ -1971,10 +2138,10 @@ function getSubmitModal() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <label style="font-size:12px;">Title<br><input id="sfTitle" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
           <label style="font-size:12px;">Slug (d-tag) <span style="color:#888;font-weight:normal;font-size:11px;">— same slug = propose edit · new slug = fork</span><br><input id="sfSlug" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;font-family:monospace;"></label>
-          <label style="font-size:12px;">Git URL<br><input id="sfGit" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
-          <label style="font-size:12px;">Web URL<br><input id="sfWeb" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
+          <label class="resource-only" style="font-size:12px;">Git URL<br><input id="sfGit" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
+          <label class="resource-only" style="font-size:12px;">Web URL<br><input id="sfWeb" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
           <div style="grid-column:1/-1;">
-            <div style="font-size:12px;margin-bottom:3px;">Description
+            <div style="font-size:12px;margin-bottom:3px;"><span id="sfDescLabel">Description</span>
               <span class="md-toolbar" style="margin-left:8px;">
                 <button type="button" class="md-btn" title="Bold" onclick="mdWrap('sfDesc','**','**')"><b>B</b></button>
                 <button type="button" class="md-btn" title="Italic" onclick="mdWrap('sfDesc','_','_')"><i>I</i></button>
@@ -1998,12 +2165,12 @@ function getSubmitModal() {
             <div id="sfTagsWrap" class="tag-btn-grid"></div>
             <div class="add-new-wrap"><input type="text" id="sfTagsAdd" placeholder="Add new tag..." oninput="filterTagButtons('sfTagsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfTagsWrap','sfTags',this.value,false);this.value='';filterTagButtons('sfTagsWrap','')}"><button type="button" onclick="addNewValue('sfTagsWrap','sfTags',document.getElementById('sfTagsAdd').value,false);document.getElementById('sfTagsAdd').value='';filterTagButtons('sfTagsWrap','')">+ Add</button></div>
           </div>
-          <div style="grid-column:1/-1;">
+          <div class="resource-only" style="grid-column:1/-1;">
             <div class="tag-section-label">Platforms<span class="section-hint"> — click to toggle</span></div>
             <div id="sfPlatformsWrap" class="tag-btn-grid"></div>
             <div class="add-new-wrap"><input type="text" id="sfPlatformsAdd" placeholder="Add new platform..." oninput="filterTagButtons('sfPlatformsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfPlatformsWrap','sfPlatforms',this.value,false);this.value='';filterTagButtons('sfPlatformsWrap','')}"><button type="button" onclick="addNewValue('sfPlatformsWrap','sfPlatforms',document.getElementById('sfPlatformsAdd').value,false);document.getElementById('sfPlatformsAdd').value='';filterTagButtons('sfPlatformsWrap','')">+ Add</button></div>
           </div>
-          <div style="grid-column:1/-1;">
+          <div class="resource-only" style="grid-column:1/-1;">
             <div class="tag-section-label">NIPs<span class="section-hint"> — click to toggle</span></div>
             <div class="help-only" style="font-size:11px;color:#888;margin-bottom:4px;">
               <a href="https://github.com/nostr-protocol/nips" target="_blank" rel="noopener" style="color:#888;">NIP repository →</a>
@@ -2011,19 +2178,24 @@ function getSubmitModal() {
             <div id="sfNipsWrap" class="tag-btn-grid"></div>
             <div class="add-new-wrap"><input type="text" id="sfNipsAdd" placeholder="NIP number (e.g. 23)..." oninput="filterTagButtons('sfNipsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfNipsWrap','sfNips',this.value,false);this.value='';filterTagButtons('sfNipsWrap','')}"><button type="button" onclick="addNewValue('sfNipsWrap','sfNips',document.getElementById('sfNipsAdd').value,false);document.getElementById('sfNipsAdd').value='';filterTagButtons('sfNipsWrap','')">+ Add</button></div>
           </div>
-          <div style="grid-column:1/-1;">
+          <div class="resource-only" style="grid-column:1/-1;">
             <div class="tag-section-label">Programming languages<span class="section-hint"> — click to toggle</span></div>
             <div id="sfProgLangsWrap" class="tag-btn-grid"></div>
             <div class="add-new-wrap"><input type="text" id="sfProgLangsAdd" placeholder="Add new language..." oninput="filterTagButtons('sfProgLangsWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfProgLangsWrap','sfProgLangs',this.value,false);this.value='';filterTagButtons('sfProgLangsWrap','')}"><button type="button" onclick="addNewValue('sfProgLangsWrap','sfProgLangs',document.getElementById('sfProgLangsAdd').value,false);document.getElementById('sfProgLangsAdd').value='';filterTagButtons('sfProgLangsWrap','')">+ Add</button></div>
           </div>
-          <div style="grid-column:1/-1;">
+          <div class="resource-only" style="grid-column:1/-1;">
             <div class="tag-section-label">License<span class="section-hint"> — click one</span></div>
             <div id="sfLicenseWrap" class="tag-btn-grid"></div>
             <div class="add-new-wrap"><input type="text" id="sfLicenseAdd" placeholder="Add new license..." oninput="filterTagButtons('sfLicenseWrap',this.value)" onkeydown="if(event.key==='Enter'){addNewValue('sfLicenseWrap','sfLicense',this.value,true);this.value='';filterTagButtons('sfLicenseWrap','')}"><button type="button" onclick="addNewValue('sfLicenseWrap','sfLicense',document.getElementById('sfLicenseAdd').value,true);document.getElementById('sfLicenseAdd').value='';filterTagButtons('sfLicenseWrap','')">+ Add</button></div>
           </div>
-          <div style="grid-column:1/-1;font-size:12px;">
+          <div class="resource-only" style="grid-column:1/-1;font-size:12px;">
             <div style="margin-bottom:3px;">Instances <span style="color:#888;font-weight:normal;">(one per line: <code>https://url</code> or <code>Name | https://url | comment</code>)</span></div>
             <textarea id="sfInstances" rows="3" style="width:100%;padding:6px;margin-top:2px;font-family:monospace;font-size:11px;box-sizing:border-box;resize:vertical;" placeholder="https://relay.example.com&#10;My Instance | https://example.com | self-hosted"></textarea>
+          </div>
+          <div id="sfStatusSection" style="grid-column:1/-1;display:none;">
+            <div class="tag-section-label">Status<span class="section-hint"> — click to toggle</span></div>
+            <div id="sfStatusWrap" class="tag-btn-grid"></div>
+            <input type="hidden" id="sfStatusHidden" value="">
           </div>
           <label style="grid-column:1/-1;font-size:12px;">Product author npub <span style="color:#888;font-weight:normal;">(optional — auto-added to zap split at weight 100)</span><br>
             <input id="sfAuthorNpub" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;font-family:monospace;font-size:11px;" placeholder="npub1…" oninput="onAuthorNpubInput(this.value)">
@@ -2031,6 +2203,10 @@ function getSubmitModal() {
           <label style="grid-column:1/-1;font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
             <input type="checkbox" id="sfDiscontinued" style="cursor:pointer;">
             <span>🪦 Mark as discontinued (sorts behind active entries)</span>
+          </label>
+          <label style="grid-column:1/-1;font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="sfDeleted" style="cursor:pointer;">
+            <span>💀 Mark as deleted (hides entry via community curation)</span>
           </label>
         </div>
         <div class="split-section" style="margin:14px 0 4px;">
@@ -2059,6 +2235,17 @@ function getSubmitModal() {
       }
     });
   }
+  // Sync deleted checkbox ↔ tag button in the tags grid
+  const delCb = document.getElementById('sfDeleted');
+  if (delCb) {
+    delCb.addEventListener('change', function() {
+      const btn = document.querySelector('#sfTagsWrap .tag-btn[data-val="deleted"]');
+      if (btn) {
+        const isActive = btn.classList.contains('active');
+        if (this.checked !== isActive) toggleTagBtn(btn, 'sfTags', false);
+      }
+    });
+  }
   // Ctrl+Enter anywhere in the modal submits the form
   overlay.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submitResource(); }
@@ -2081,7 +2268,7 @@ function closeSubmitModal() {
 function showSubmitForm() {
   _editingSlug = null;
   openSubmitModal();
-  document.getElementById('submitBoxTitle').textContent = 'Submit a Nostr Resource';
+  document.getElementById('submitBoxTitle').textContent = NAMESPACE === 'nips' ? 'Submit a NIP Entry' : 'Submit a Nostr Resource';
   const slugEl = document.getElementById('sfSlug');
   if (slugEl) slugEl.readOnly = false;
   ['sfTitle','sfSlug','sfGit','sfWeb','sfDesc','sfTags','sfPlatforms','sfNips','sfProgLangs','sfLicense','sfAuthorNpub'].forEach(id => {
@@ -2089,6 +2276,8 @@ function showSubmitForm() {
   });
   const discEl = document.getElementById('sfDiscontinued');
   if (discEl) discEl.checked = false;
+  const delEl = document.getElementById('sfDeleted');
+  if (delEl) delEl.checked = false;
   const instEl = document.getElementById('sfInstances');
   if (instEl) instEl.value = '';
   document.getElementById('sfStatus').textContent = '';
@@ -2097,7 +2286,7 @@ function showSubmitForm() {
   updateSplitSuggestions(null);
   // Clear button grids and description tabs
   const emptySets = { tags:{}, platforms:{}, nips:{}, progLangs:{}, licenses:{} };
-  const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].sort();
+  const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].filter(t => t !== 'deleted' && t !== 'discontinued').sort();
   const corpusPlats = [...new Set(allResources.flatMap(r => r.platforms))].sort();
   const corpusNips = [...new Set(allResources.flatMap(r => r.nips))].sort();
   const corpusLangs = [...new Set(allResources.flatMap(r => r.progLangs))].sort();
@@ -2111,8 +2300,18 @@ function showSubmitForm() {
   const preview = document.getElementById('sfDescPreview');
   if (tabsWrap) tabsWrap.innerHTML = '';
   if (preview) preview.style.display = 'none';
-  const ta = document.getElementById('sfDesc');
-  if (ta) ta.style.display = '';
+  // NIP mode UI toggles
+  document.querySelectorAll('.resource-only').forEach(el => {
+    el.style.display = NAMESPACE === 'nips' ? 'none' : '';
+  });
+  const statusSec = document.getElementById('sfStatusSection');
+  if (statusSec) statusSec.style.display = NAMESPACE === 'nips' ? '' : 'none';
+  const descLabel = document.getElementById('sfDescLabel');
+  if (descLabel) descLabel.textContent = NAMESPACE === 'nips' ? 'Summary' : 'Description';
+  // Render status grid for NIPs
+  const STATUS_WORDS = new Set(['draft','final','deprecated','mandatory','optional','recommended']);
+  const corpusStatus = [...STATUS_WORDS];
+  renderTagButtons('sfStatusWrap', 'sfStatusHidden', corpusStatus, [], {}, false);
 }
 
 // Called when product author npub is typed in — resolve profile and add to split
@@ -2178,6 +2377,8 @@ function editResource(slug) {
   document.getElementById('sfInstances').value = instLines.join('\n');
   const discEl = document.getElementById('sfDiscontinued');
   if (discEl) discEl.checked = r.discontinued || false;
+  const delEl = document.getElementById('sfDeleted');
+  if (delEl) delEl.checked = r.deleted || false;
   // Pre-fill the author npub field if we know it
   const authorNpubEl = document.getElementById('sfAuthorNpub');
   if (authorNpubEl) {
@@ -2193,19 +2394,35 @@ function editResource(slug) {
   updateSplitSuggestions(slug);
 
   // Build corpus value sets for button grids
-  const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].sort();
+  const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].filter(t => t !== 'deleted' && t !== 'discontinued').sort();
   const corpusPlats = [...new Set(allResources.flatMap(r => r.platforms))].sort();
   const corpusNips = [...new Set(allResources.flatMap(r => r.nips))].sort();
   const corpusLangs = [...new Set(allResources.flatMap(r => r.progLangs))].sort();
   const corpusLicenses = [...new Set(allResources.flatMap(r => r.license ? [r.license] : []))].sort();
 
   const suggestions = gatherSlugSuggestions(slug);
-  renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags, suggestions.tags, false);
+  renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags.filter(t => t !== 'deleted'), suggestions.tags, false);
   renderTagButtons('sfPlatformsWrap', 'sfPlatforms', corpusPlats, r.platforms, suggestions.platforms, false);
   renderTagButtons('sfNipsWrap', 'sfNips', corpusNips, srcTags.filter(t=>t[0]==='nip').map(t=>'NIP-'+t[1]), suggestions.nips, false);
   renderTagButtons('sfProgLangsWrap', 'sfProgLangs', corpusLangs, srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]), suggestions.progLangs, false);
   const currentLicense = srcTags.find(t=>t[0]==='license')?.[1] || '';
   renderTagButtons('sfLicenseWrap', 'sfLicense', corpusLicenses, currentLicense ? [currentLicense] : [], suggestions.licenses, true);
+
+  // NIP mode UI toggles
+  document.querySelectorAll('.resource-only').forEach(el => {
+    el.style.display = NAMESPACE === 'nips' ? 'none' : '';
+  });
+  const statusSec = document.getElementById('sfStatusSection');
+  if (statusSec) statusSec.style.display = NAMESPACE === 'nips' ? '' : 'none';
+  const descLabel = document.getElementById('sfDescLabel');
+  if (descLabel) descLabel.textContent = NAMESPACE === 'nips' ? 'Summary' : 'Description';
+  // Render status grid for NIPs
+  const STATUS_WORDS = new Set(['draft','final','deprecated','mandatory','optional','recommended']);
+  const corpusStatus = [...STATUS_WORDS];
+  const activeStatus = (r.status || []).filter(s => STATUS_WORDS.has(s));
+  renderTagButtons('sfStatusWrap', 'sfStatusHidden', corpusStatus, activeStatus, {}, false);
+  const statusHidden = document.getElementById('sfStatusHidden');
+  if (statusHidden) statusHidden.value = activeStatus.join(', ');
 
   // Suggested instances as commented lines (only show ones not already present)
   const instEl = document.getElementById('sfInstances');
@@ -2549,12 +2766,12 @@ function toggleHelpMode() {
       const suggestions = gatherSlugSuggestions(_editingSlug);
       const srcEv = (slugVersions[_editingSlug] || []).find(v => v.id === r.eventId);
       const srcTags = srcEv?.tags || [];
-      const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].sort();
+      const corpusTags = [...new Set(allResources.flatMap(r => r.tags))].filter(t => t !== 'deleted' && t !== 'discontinued').sort();
       const corpusPlats = [...new Set(allResources.flatMap(r => r.platforms))].sort();
       const corpusNips = [...new Set(allResources.flatMap(r => r.nips))].sort();
       const corpusLangs = [...new Set(allResources.flatMap(r => r.progLangs))].sort();
       const corpusLicenses = [...new Set(allResources.flatMap(r => r.license ? [r.license] : []))].sort();
-      renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags, suggestions.tags, false);
+      renderTagButtons('sfTagsWrap', 'sfTags', corpusTags, r.tags.filter(t => t !== 'deleted'), suggestions.tags, false);
       renderTagButtons('sfPlatformsWrap', 'sfPlatforms', corpusPlats, r.platforms, suggestions.platforms, false);
       renderTagButtons('sfNipsWrap', 'sfNips', corpusNips, srcTags.filter(t=>t[0]==='nip').map(t=>'NIP-'+t[1]), suggestions.nips, false);
       renderTagButtons('sfProgLangsWrap', 'sfProgLangs', corpusLangs, srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]), suggestions.progLangs, false);
@@ -2679,6 +2896,11 @@ function toggleTagBtn(el, hiddenInputId, singleSelect) {
   if (hiddenInputId === 'sfTags' && val === 'discontinued') {
     const discCb = document.getElementById('sfDiscontinued');
     if (discCb) discCb.checked = el.classList.contains('active');
+  }
+  // Sync deleted checkbox with the tags grid
+  if (hiddenInputId === 'sfTags' && val === 'deleted') {
+    const delCb = document.getElementById('sfDeleted');
+    if (delCb) delCb.checked = el.classList.contains('active');
   }
 }
 
@@ -3082,15 +3304,18 @@ async function submitResource() {
       return obj;
     });
   const isDiscontinued = document.getElementById("sfDiscontinued")?.checked || false;
+  const isDeleted = document.getElementById("sfDeleted")?.checked || false;
 
-  // ── Validation ──────────────────────────────────────────────────────────────
+  // ── Validation ────────────────────────────────────────────────────────────────────────────────
   if (!slug)  return set("Slug is required (used as the event d-tag).","#c5221f");
   if (!title) return set("Title is required.","#c5221f");
-  if (!git && !web) return set("At least one URL (Git or Web) is required.","#c5221f");
+  if (NAMESPACE !== 'nips') {
+    if (!git && !web) return set("At least one URL (Git or Web) is required.","#c5221f");
+  }
   if (git  && !/^https?:\/\//.test(git))  return set("Git URL must start with https://","#c5221f");
   if (web  && !/^https?:\/\//.test(web))  return set("Web URL must start with https://","#c5221f");
-  if (!tags.length && !plats.length) return set("Please add at least one tag or platform (e.g. client, web).","#c5221f");
-  // ────────────────────────────────────────────────────────────────────────────
+  if (NAMESPACE !== 'nips' && !tags.length && !plats.length) return set("Please add at least one tag or platform (e.g. client, web).","#c5221f");
+  // ───────────────────────────────────────────────────────────────────────────────────────────────
 
   // Always use the form slug; if it changed during edit, old slug gets retired.
   const finalSlug = slug;
@@ -3104,7 +3329,7 @@ async function submitResource() {
   // When editing, carry forward any tags from the source event that we don't
   // explicitly handle in the form (e.g. future custom tags). This prevents
   // silent data loss when the form doesn't expose every tag type.
-  const HANDLED_TAG_KEYS = new Set(['d','t','platform','r','zap-split','nip','progLang','license']);
+  const HANDLED_TAG_KEYS = new Set(['d','t','platform','r','zap-split','nip','progLang','license','title','summary','status']);
   const passthroughTags = [];
   if (oldSlug) {
     const r = allResources.find(x => x.slug === oldSlug);
@@ -3116,24 +3341,52 @@ async function submitResource() {
     }
   }
 
-  const event = {
-    kind: 30078,
-    created_at: Math.floor(Date.now()/1000),
-    tags: [
-      ['d', finalSlug], ['t', NAMESPACE],
-      ...tags.map(t=>['t',t]),
-      ...(isDiscontinued ? [['t','discontinued']] : []),
-      ...plats.map(p=>['platform',p]),
-      ...nips.map(n=>['nip',n]),
-      ...(license ? [['license',license]] : []),
-      ...progLangs.map(l=>['progLang',l]),
-      ...(git?[['r',git]]:[]),
-      ...(web?[['r',web]]:[]),
-      ...splitTags,
-      ...passthroughTags,
-    ],
-    content: JSON.stringify({title, description:desc, git, web, instances}),
-  };
+  let event;
+  if (NAMESPACE === 'nips') {
+  // ── NIP ontology: tag-based, empty content
+    const nipUrl = web || git || '';
+    const rawStatus = document.getElementById('sfStatusHidden')?.value?.split(',').map(s=>s.trim()).filter(Boolean) || [];
+    const statusTags = rawStatus.filter(t => ['draft','final','deprecated','mandatory','optional','recommended'].includes(t));
+    const catTags    = tags.filter(t => !['draft','final','deprecated','mandatory','optional','recommended','discontinued','deleted'].includes(t));
+    event = {
+      kind: 30078,
+      created_at: Math.floor(Date.now()/1000),
+      tags: [
+        ['d', finalSlug], ['t', NAMESPACE],
+        ['title', title],
+        ['summary', desc],
+        ...(nipUrl ? [['r', nipUrl]] : []),
+        ...statusTags.map(t => ['status', t]),
+        ...catTags.map(t => ['t', t]),
+        ...(isDiscontinued ? [['t','discontinued']] : []),
+        ...(isDeleted ? [['t','deleted']] : []),
+        ...splitTags,
+        ...passthroughTags,
+      ],
+      content: '',
+    };
+  } else {
+    // Resource ontology: JSON content
+    event = {
+      kind: 30078,
+      created_at: Math.floor(Date.now()/1000),
+      tags: [
+        ['d', finalSlug], ['t', NAMESPACE],
+        ...tags.map(t=>['t',t]),
+        ...(isDiscontinued ? [['t','discontinued']] : []),
+        ...(isDeleted ? [['t','deleted']] : []),
+        ...plats.map(p=>['platform',p]),
+        ...nips.map(n=>['nip',n]),
+        ...(license ? [['license',license]] : []),
+        ...progLangs.map(l=>['progLang',l]),
+        ...(git?[['r',git]]:[]),
+        ...(web?[['r',web]]:[]),
+        ...splitTags,
+        ...passthroughTags,
+      ],
+      content: JSON.stringify({title, description:desc, git, web, instances}),
+    };
+  }
 
   // nostr-login handles ALL signer types transparently:
   // - NIP-07 browser extension (Alby, nos2x, Flamingo...)
@@ -3176,7 +3429,11 @@ window.addEventListener("load", async () => {
   document.addEventListener("nlAuth", async e => {
     if (e.detail.type === "login" || e.detail.type === "signup") {
       try {
-        loggedInPubkey = await window.nostr.getPublicKey();
+        // pubkey is always present on the login event (see nostr-auth-entry.js emitLogin).
+        // No fallback to window.nostr.getPublicKey() — that triggers a NIP-07 popup
+        // even when the user just logged in via bunker/nsec.
+        loggedInPubkey = e.detail.pubkey;
+        if (!loggedInPubkey) throw new Error('login event missing pubkey');
         await fetchOwnProfile();
         // When logged in, switch anchor to own pubkey so their WoT takes over
         setAnchor(loggedInPubkey);
@@ -3205,16 +3462,18 @@ window.addEventListener("load", async () => {
   // appears, slow bunkers show progressive feedback ("It\'s taking longer than expected…").
   const followsPromise = (async () => {
     let resolvedPubkey = null;
-    if (window.nostr) {
+    // Only probe getPublicKey if there's an active saved session (nsec/bunker/ext).
+    // This prevents NIP-07 extensions from showing unsolicited permission popups.
+    if (window.nostr?._getSessionType?.()) {
       const start = performance.now();
       let statusTimer = null;
       let longWaitTimer = null;
       // Show feedback only if session takes longer than expected
       statusTimer = setTimeout(() => {
-        setStatus('⧳ Connecting to your signer…');
+        setStatus('\u29f3 Connecting to your signer\u2026');
       }, 1500);
       longWaitTimer = setTimeout(() => {
-        setStatus('⧳ It\'s taking longer than expected to talk to your bunker…');
+        setStatus('\u29f3 It\'s taking longer than expected to talk to your bunker\u2026');
       }, 5000);
       try {
         resolvedPubkey = await Promise.race([
