@@ -106,38 +106,20 @@
   object-fit: cover;
 }
 
-/* ── Entry modal (#nip-05, #amethyst, etc.) ──────────────────────────────── */
-.entry-modal {
-  position: fixed; inset: 0; z-index: 9500;
-  display: flex; align-items: flex-start; justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 5vh 16px;
-  overflow-y: auto;
+/* ── Focused entry view (in place of the list when #slug is set) ─────────── */
+.focused-back {
+  display: inline-flex; align-items: center;
+  padding: 6px 12px; margin-bottom: 12px;
+  border: 1px solid #dadce0; border-radius: 20px;
+  background: #f8f9fa; color: #444;
+  font-size: 13px; cursor: pointer;
 }
-.entry-modal-inner {
-  position: relative;
-  background: #fff;
-  border-radius: 12px;
-  max-width: 760px; width: 100%;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-  padding: 8px;
-}
-.entry-modal-close {
-  position: fixed; top: 12px; right: 16px;
-  width: 28px; height: 28px;
-  border: none; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92); color: #444;
-  font-size: 13px; cursor: pointer; line-height: 1;
-  z-index: 9600;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-}
-.entry-modal-close:hover { background: #fff; color: #000; }
-.entry-modal-body { padding: 4px; }
-.entry-modal-body .resource-card { box-shadow: none; border: 0; padding: 16px; }
-/* Modals are a focused reading view — don't clip the description, and hide
-   the "more…"/raw toggles that only make sense in the list. */
-.entry-modal-body .resource-desc-inner { max-height: none !important; overflow: visible !important; }
-.entry-modal-body .desc-expand { display: none !important; }
+.focused-back:hover { background: #e8f0fe; border-color: #2563eb; color: #2563eb; }
+.focused-entry .resource-card { padding: 16px; }
+/* In the focused view the description is the whole point — don't clip,
+   and hide the "more…" toggle that only makes sense in the list. */
+.focused-entry .resource-desc-inner { max-height: none !important; overflow: visible !important; }
+.focused-entry .desc-expand { display: none !important; }
 
 .card-permalink {
   text-decoration: none;

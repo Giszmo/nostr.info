@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520g');
+console.log('[new-resources.js] version: 20260520h');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -626,7 +626,7 @@ function saveNwcConnection() {
 }
 // ─── Zap details modal (who zapped + who gets paid) ───────────────────────────
 function showZapDetails(slug) {
-  closeEntryModal();
+  closeFocusedEntry();
   const r = allResources.find(x => x.slug === slug);
   const rc = reactionCache[slug] || { byAuthor: {}, zapMsat: 0, zaps: [] };
   let dm = document.getElementById('zapDetailsModal');
@@ -1559,9 +1559,9 @@ function dedupAndRender() {
 
   render();
   // If a deep-link modal is showing the "Loading…" placeholder, fill it in now.
-  refreshOpenModalFromData();
-  // Open the initial modal if the page was loaded with #slug and we have data.
-  if (!_entryModalSlug) syncEntryModalToHash();
+  refreshFocusedFromData();
+  // Apply the initial #slug if the page was loaded with one and we now have data.
+  if (!_focusedSlug) syncFocusToHash();
 }
 
 // ─── Event parsing ─────────────────────────────────────────────────────────────────────
@@ -1675,6 +1675,16 @@ function renderAnchorPill(pubkey, isActive, count) {
 }
 
 function render() {
+  // When a slug is focused via #fragment, render the dedicated entry view in
+  // place of the list — normal document flow, no fixed positioning.
+  if (_focusedSlug) {
+    renderFocusedEntry();
+    return;
+  }
+  const toggles = document.getElementById('toggles');
+  if (toggles) toggles.style.display = '';
+  const controls = document.querySelector('.controls');
+  if (controls) controls.style.display = '';
   // viewMode: 0 = WoT only, 1 = all (non-deleted), 2 = outside WoT, 3 = deleted (cemetery view)
   let pool;
   if (viewMode === 3) {
@@ -2094,10 +2104,11 @@ function renderCard(r) {
   return NAMESPACE === 'nips' ? renderNipCard(r) : renderResourceCard(r);
 }
 
-// ─── Entry modal (fragment-linked deep view) ─────────────────────────────────
-// /newNips/#nip-05 opens NIP-05 in a modal even if it is filtered out of the list.
-// Internal links inside an article (`[NIP-05](#nip-05)`) trigger the same modal
-// via the hashchange listener — so reading an article never loses the list scroll.
+// ─── Focused entry view (fragment-linked, in-place page swap) ────────────────
+// /newNips/#nip-05 replaces the list with NIP-05's full card and a back button.
+// Internal links inside an article (`[NIP-05](#nip-05)`) trigger the same swap
+// via hashchange. Normal document flow — no position:fixed overlay, no mobile
+// Safari jitter. Browser back returns to the list; we restore the prior scroll.
 function slugSuffix(fullSlug) {
   const i = (fullSlug || '').indexOf('/');
   return i === -1 ? fullSlug : fullSlug.slice(i + 1);
@@ -2108,73 +2119,61 @@ function slugFromFragment() {
   return NAMESPACE + '/' + raw;
 }
 
-let _entryModal = null;
-let _entryModalSlug = null;
+let _focusedSlug = null;
+let _savedScrollY = 0;
 
-function ensureEntryModal() {
-  if (_entryModal) return _entryModal;
-  const m = document.createElement('div');
-  m.id = 'entryModal';
-  m.className = 'entry-modal';
-  m.style.display = 'none';
-  m.addEventListener('click', e => { if (e.target === m) closeEntryModal(); });
-  document.body.appendChild(m);
-  _entryModal = m;
-  return m;
-}
+function renderFocusedEntry() {
+  // Hide controls + toggles so the focused entry is the only thing on the page.
+  const toggles = document.getElementById('toggles');
+  if (toggles) toggles.style.display = 'none';
+  const controls = document.querySelector('.controls');
+  if (controls) controls.style.display = 'none';
 
-function showEntryModal(slug) {
-  if (!slug) return;
-  const m = ensureEntryModal();
-  _entryModalSlug = slug;
-  const r = allResources.find(x => x.slug === slug);
-  const suffix = slugSuffix(slug);
-  const closeBtn = `<button class="entry-modal-close" onclick="closeEntryModal()" aria-label="Close" title="Close (Esc)">✕</button>`;
+  const resultsEl = document.getElementById('results');
+  if (!resultsEl) return;
+  const r = allResources.find(x => x.slug === _focusedSlug);
+  const suffix = slugSuffix(_focusedSlug);
+  const back = `<button class="focused-back" onclick="closeFocusedEntry()" title="Back to list (Esc)">← Back to list</button>`;
   if (r) {
-    m.innerHTML = `
-      ${closeBtn}
-      <div class="entry-modal-inner" role="dialog" aria-modal="true" aria-label="${esc(r.title || suffix)}">
-        <div class="entry-modal-body">${renderCard(r)}</div>
-      </div>`;
+    resultsEl.innerHTML = back + `<div class="focused-entry">${renderCard(r)}</div>`;
   } else {
-    // Entry not loaded yet — show placeholder. dedupAndRender will retry.
-    m.innerHTML = `
-      ${closeBtn}
-      <div class="entry-modal-inner" role="dialog" aria-modal="true">
-        <div class="entry-modal-body" style="padding:24px;color:#888;text-align:center;">
-          Loading <strong>${esc(suffix)}</strong>…
-        </div>
-      </div>`;
+    resultsEl.innerHTML = back + `<div class="focused-entry"><p style="text-align:center;color:#888;padding:32px;">Loading <strong>${esc(suffix)}</strong>…</p></div>`;
   }
-  m.style.display = 'flex';
-  requestAnimationFrame(() => m.querySelector('.entry-modal-close')?.focus());
 }
 
-function closeEntryModal() {
-  if (_entryModal) _entryModal.style.display = 'none';
-  _entryModalSlug = null;
+function focusEntry(slug) {
+  if (!slug || slug === _focusedSlug) return;
+  if (!_focusedSlug) _savedScrollY = window.scrollY;
+  _focusedSlug = slug;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function closeFocusedEntry() {
+  if (!_focusedSlug) return;
+  _focusedSlug = null;
   if (location.hash) {
     history.replaceState(null, '', location.pathname + location.search);
   }
+  render();
+  window.scrollTo(0, _savedScrollY || 0);
 }
 
-function syncEntryModalToHash() {
+function syncFocusToHash() {
   const slug = slugFromFragment();
-  if (slug) showEntryModal(slug);
-  else closeEntryModal();
+  if (slug) focusEntry(slug);
+  else if (_focusedSlug) closeFocusedEntry();
 }
 
-// If the modal is open but the target entry has just been loaded, re-render it.
-function refreshOpenModalFromData() {
-  if (!_entryModalSlug || !_entryModal || _entryModal.style.display === 'none') return;
-  if (allResources.find(x => x.slug === _entryModalSlug)) {
-    showEntryModal(_entryModalSlug);
-  }
+// If we're showing a "Loading…" placeholder and the entry just arrived, re-render.
+function refreshFocusedFromData() {
+  if (!_focusedSlug) return;
+  if (allResources.find(x => x.slug === _focusedSlug)) render();
 }
 
-window.addEventListener('hashchange', syncEntryModalToHash);
+window.addEventListener('hashchange', syncFocusToHash);
 window.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && _entryModal && _entryModal.style.display !== 'none') closeEntryModal();
+  if (e.key === 'Escape' && _focusedSlug) closeFocusedEntry();
 });
 
 function renderSubmitCard() {
@@ -2525,7 +2524,7 @@ function getSubmitModal() {
 function openSubmitModal() {
   // If the user reached the edit/submit form from inside the entry modal,
   // close that one first so the form has unobstructed focus.
-  closeEntryModal();
+  closeFocusedEntry();
   const m = getSubmitModal();
   m.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -2793,7 +2792,7 @@ function toggleProposals(slug) {
 function showProposalDiff(slug, proposalEventId) {
   const r = allResources.find(x => x.slug === slug);
   if (!r) return;
-  closeEntryModal();
+  closeFocusedEntry();
   const versions = slugVersions[slug] || [];
   const currentEv = versions.find(v => v.id === r.eventId) || versions[0];
   const winnerTs = currentEv?.created_at ?? 0;
@@ -3787,7 +3786,7 @@ window.addEventListener("load", async () => {
   render();
   // If the URL has #slug, show a placeholder modal right away so deep-links don't
   // appear broken while we wait for relay data.
-  syncEntryModalToHash();
+  syncFocusToHash();
   // Kick off relay loading immediately (shows IDB cache right away)
   logR("init:call connectRelays");
   connectRelays();
