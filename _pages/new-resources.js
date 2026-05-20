@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520d');
+console.log('[new-resources.js] version: 20260520e');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -626,6 +626,7 @@ function saveNwcConnection() {
 }
 // ─── Zap details modal (who zapped + who gets paid) ───────────────────────────
 function showZapDetails(slug) {
+  closeEntryModal();
   const r = allResources.find(x => x.slug === slug);
   const rc = reactionCache[slug] || { byAuthor: {}, zapMsat: 0, zaps: [] };
   let dm = document.getElementById('zapDetailsModal');
@@ -2514,6 +2515,9 @@ function getSubmitModal() {
 }
 
 function openSubmitModal() {
+  // If the user reached the edit/submit form from inside the entry modal,
+  // close that one first so the form has unobstructed focus.
+  closeEntryModal();
   const m = getSubmitModal();
   m.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -2781,6 +2785,7 @@ function toggleProposals(slug) {
 function showProposalDiff(slug, proposalEventId) {
   const r = allResources.find(x => x.slug === slug);
   if (!r) return;
+  closeEntryModal();
   const versions = slugVersions[slug] || [];
   const currentEv = versions.find(v => v.id === r.eventId) || versions[0];
   const winnerTs = currentEv?.created_at ?? 0;
