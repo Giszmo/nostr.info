@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520h');
+console.log('[new-resources.js] version: 20260520i');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1876,13 +1876,14 @@ function renderResourceCard(r) {
     ${contentByHtml}
   </div>`;
 
-  // Instances
-  const instHtml = r.instances.length ? `<div class="resource-instances">Instances: ${r.instances.map(i=>{
-    const name = typeof i==='string' ? i : (i.name||i.url);
-    const url  = typeof i==='string' ? i : i.url;
-    const com  = typeof i==='string' ? '' : (i.comment ? ' — '+i.comment : '');
-    return `<a href="${esc(url)}" target="_blank">${esc(name)}</a>${esc(com)}`;
-  }).join(' · ')}</div>` : '';
+  // Instance/store/mirror links — events store them as either bare URL or
+  // "Name | url | comment" strings; legacy data may pre-parse into objects.
+  const instHtml = r.instances.length ? `<div class="resource-instances">${r.instances.map(i=>{
+    const inst = parseInstance(i);
+    if (!inst || !inst.url) return '';
+    const com = inst.comment ? ' — ' + esc(inst.comment) : '';
+    return `<a href="${esc(inst.url)}" target="_blank">${esc(inst.name || inst.url)}</a>${com}`;
+  }).filter(Boolean).join(' · ')}</div>` : '';
 
   const descHtml = r.description ? `<div class="resource-desc"><div class="resource-desc-inner" onload="checkDescOverflow(this)">${mdToHtml(r.description)}</div><button class="desc-expand desc-expand--hidden" onclick="toggleDesc(this)">more…</button></div>` : '';
   const discontinuedBadge = r.discontinued ? `<span class="pill discontinued" title="This project appears to be discontinued">🪦 discontinued</span>` : '';
@@ -2080,7 +2081,7 @@ function renderNipCard(r) {
 
   return `<div class="${cardClass}" data-slug="${slug_}">
     <div class="nip-header">
-      <div class="nip-number">${esc(r.slug.toUpperCase())}</div>
+      <div class="nip-number">${esc(slugSuffix(r.slug).toUpperCase())}</div>
       <div class="nip-header-right">
         <a class="card-permalink" href="#${esc(slugSuffix(r.slug))}" title="Permalink — opens this entry in a modal you can share">🔗</a>
         ${deleteBtn}
@@ -2112,6 +2113,16 @@ function renderCard(r) {
 function slugSuffix(fullSlug) {
   const i = (fullSlug || '').indexOf('/');
   return i === -1 ? fullSlug : fullSlug.slice(i + 1);
+}
+
+// "Name | url | comment" / "url" / {name,url,comment} → normalized object.
+// Used for both 'instance' tag values and legacy JSON-content instance arrays.
+function parseInstance(s) {
+  if (!s) return null;
+  if (typeof s !== 'string') return s;
+  const parts = s.split('|').map(p => p.trim()).filter(Boolean);
+  if (parts.length === 1) return { name: parts[0], url: parts[0], comment: '' };
+  return { name: parts[0], url: parts[1] || '', comment: parts[2] || '' };
 }
 function slugFromFragment() {
   const raw = (location.hash || '').replace(/^#/, '').trim().toLowerCase();
