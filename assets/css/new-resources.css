@@ -123,16 +123,31 @@
   padding: 8px;
 }
 .entry-modal-close {
-  position: absolute; top: 8px; right: 10px;
-  width: 32px; height: 32px;
+  position: fixed; top: 12px; right: 16px;
+  width: 28px; height: 28px;
   border: none; border-radius: 50%;
-  background: #f1f3f4; color: #333;
-  font-size: 16px; cursor: pointer; line-height: 1;
-  z-index: 2;
+  background: rgba(255, 255, 255, 0.92); color: #444;
+  font-size: 13px; cursor: pointer; line-height: 1;
+  z-index: 9600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
-.entry-modal-close:hover { background: #e5e7eb; }
-.entry-modal-body { padding: 8px 4px 4px; }
+.entry-modal-close:hover { background: #fff; color: #000; }
+.entry-modal-body { padding: 4px; }
 .entry-modal-body .resource-card { box-shadow: none; border: 0; padding: 16px; }
+/* Modals are a focused reading view — don't clip the description, and hide
+   the "more…"/raw toggles that only make sense in the list. */
+.entry-modal-body .resource-desc-inner { max-height: none !important; overflow: visible !important; }
+.entry-modal-body .desc-expand { display: none !important; }
+
+.card-permalink {
+  text-decoration: none;
+  font-size: 13px;
+  padding: 2px 4px;
+  opacity: 0.55;
+  filter: grayscale(0.4);
+  cursor: pointer;
+}
+.card-permalink:hover { opacity: 1; filter: none; }
 .community-notice {
   padding: 7px 14px; margin-bottom: 10px; border-radius: 8px;
   background: #fff8e1; border: 1px solid #f9c74f; font-size: 13px; color: #7a5800;

@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520f');
+console.log('[new-resources.js] version: 20260520g');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1935,6 +1935,7 @@ function renderResourceCard(r) {
     <div class="resource-header">
       <span class="resource-title">${esc(r.title)}</span>
       <div class="resource-header-right">
+        <a class="card-permalink" href="#${esc(slugSuffix(r.slug))}" title="Permalink — opens this entry in a modal you can share">🔗</a>
         ${r.web ? `<a href="${esc(r.web)}" target="_blank" class="card-link-icon" title="Website">🌐</a>` : ''}
         ${r.git ? `<a href="${esc(r.git)}" target="_blank" class="card-link-icon" title="Source">💻</a>` : ''}
         ${deleteBtn}
@@ -2071,6 +2072,7 @@ function renderNipCard(r) {
     <div class="nip-header">
       <div class="nip-number">${esc(r.slug.toUpperCase())}</div>
       <div class="nip-header-right">
+        <a class="card-permalink" href="#${esc(slugSuffix(r.slug))}" title="Permalink — opens this entry in a modal you can share">🔗</a>
         ${deleteBtn}
         ${editBtn}
       </div>
@@ -2127,17 +2129,18 @@ function showEntryModal(slug) {
   _entryModalSlug = slug;
   const r = allResources.find(x => x.slug === slug);
   const suffix = slugSuffix(slug);
+  const closeBtn = `<button class="entry-modal-close" onclick="closeEntryModal()" aria-label="Close" title="Close (Esc)">✕</button>`;
   if (r) {
     m.innerHTML = `
+      ${closeBtn}
       <div class="entry-modal-inner" role="dialog" aria-modal="true" aria-label="${esc(r.title || suffix)}">
-        <button class="entry-modal-close" onclick="closeEntryModal()" aria-label="Close">✕</button>
         <div class="entry-modal-body">${renderCard(r)}</div>
       </div>`;
   } else {
     // Entry not loaded yet — show placeholder. dedupAndRender will retry.
     m.innerHTML = `
+      ${closeBtn}
       <div class="entry-modal-inner" role="dialog" aria-modal="true">
-        <button class="entry-modal-close" onclick="closeEntryModal()" aria-label="Close">✕</button>
         <div class="entry-modal-body" style="padding:24px;color:#888;text-align:center;">
           Loading <strong>${esc(suffix)}</strong>…
         </div>
