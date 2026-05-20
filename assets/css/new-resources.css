@@ -157,6 +157,10 @@
 .resource-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.09); }
 .resource-card--discontinued { opacity: 0.65; }
 .resource-card--discontinued:hover { opacity: 0.85; }
+.resource-card--deleted { opacity: 0.6; background: repeating-linear-gradient(135deg, #fafafa, #fafafa 8px, #f0f0f0 8px, #f0f0f0 16px); }
+.resource-card--deleted .resource-title,
+.resource-card--deleted .nip-title { text-decoration: line-through; color: #888; }
+.resource-card--deleted:hover { opacity: 0.85; }
 
 .resource-header {
   display: flex; align-items: center;
@@ -207,6 +211,8 @@
 .pill.zap-btn { cursor: pointer; }
 .pill.zap-btn:hover { background: #fff3b0; }
 .pill.discontinued { background: #f1f3f4; color: #80868b; cursor: default; }
+.pill.deleted-badge { background: #fde7e9; color: #b30021; border: 1px solid #f5c2c7; cursor: help; }
+.stat.deleted { color: #b30021; border-color: #f5c2c7; }
 
 /* ── Edit button ─────────────────────────────────────────────────────────── */
 .edit-btn {

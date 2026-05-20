@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520c');
+console.log('[new-resources.js] version: 20260520d');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -28,6 +28,7 @@ const FALLBACK_MS = 8000;
 let allResourceEvents = [];
 let curatedResources  = [];
 let communityResources = [];
+let deletedResources   = [];
 let allResources      = [];
 let allTags           = [];
 let allPlatforms      = [];
@@ -1488,12 +1489,17 @@ function dedupAndRender() {
     slugVersions[d] = group;
   });
 
-  const inWoT = [], outsideWoT = [];
+  const inWoT = [], outsideWoT = [], deleted = [];
   Object.values(byD).forEach(group => {
     group.sort((a,b) => b.created_at - a.created_at);
     const { winner, submitterPubkey } = pickWinner(group);
-    // Community-deleted: if the winning version carries a 'deleted' tag, hide the entry entirely.
-    if (winner.tags?.some(t => (t[0] === 'deleted') || (t[0] === 't' && t[1] === 'deleted'))) return;
+    // Community-deleted: the winning version carries a 'deleted' tag. Keep the entry
+    // so a curator can find and undo an accidental tombstoning via the edit modal.
+    const isDeleted = winner.tags?.some(t => (t[0] === 'deleted') || (t[0] === 't' && t[1] === 'deleted'));
+    if (isDeleted) {
+      deleted.push({ ev: winner, submitterPubkey });
+      return;
+    }
     const trust = wotTrust(winner.pubkey);
     if (trust >= 2) {
       inWoT.push({ ev: winner, submitterPubkey });
@@ -1502,10 +1508,12 @@ function dedupAndRender() {
     }
   });
 
-  // "curated" = within anchor's WoT (anchor + follows); "community" = outside WoT
+  // "curated" = within anchor's WoT (anchor + follows); "community" = outside WoT;
+  // "deleted" = tombstoned entries from any author, shown only in the Deleted view-mode.
   curatedResources   = inWoT.map(({ev, submitterPubkey}) => parseEvent(ev, submitterPubkey));
   communityResources = outsideWoT.map(({ev, submitterPubkey}) => parseEvent(ev, submitterPubkey));
-  allResources       = [...curatedResources, ...communityResources];
+  deletedResources   = deleted.map(({ev, submitterPubkey}) => parseEvent(ev, submitterPubkey));
+  allResources       = [...curatedResources, ...communityResources, ...deletedResources];
 
   const tagSet = new Set();
   const platformSet = new Set();
@@ -1666,12 +1674,16 @@ function renderAnchorPill(pubkey, isActive, count) {
 }
 
 function render() {
-  // viewMode: 0 = WoT only, 1 = all, 2 = proposals only
+  // viewMode: 0 = WoT only, 1 = all (non-deleted), 2 = outside WoT, 3 = deleted (cemetery view)
   let pool;
-  if (viewMode === 2) {
+  if (viewMode === 3) {
+    pool = deletedResources;
+  } else if (viewMode === 2) {
     pool = communityResources;
+  } else if (viewMode === 1) {
+    pool = [...curatedResources, ...communityResources];
   } else {
-    pool = viewMode === 0 ? curatedResources : allResources;
+    pool = curatedResources;
   }
   logR("render:pool:", pool.length, "viewMode:", viewMode, "allResources:", allResources.length);
   const q = searchQuery.toLowerCase();
@@ -1738,10 +1750,15 @@ function render() {
     anchorPills += renderAnchorPill(anchorPubkey, viewMode===0, activeCount);
   }
 
+  const totalLive = curatedResources.length + communityResources.length;
+  const deletedPill = deletedResources.length
+    ? `<span class="stat deleted ${viewMode===3?'stat--active':''}" onclick="viewMode=3;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show entries tombstoned via community deletion — open one and uncheck 'deleted' in the edit form to restore">💀 Deleted: ${deletedResources.length}</span>`
+    : '';
   let html = `<div class="stats-bar">
     ${anchorPills}
-    <span class="stat all ${viewMode===1?'stat--active':''}" onclick="viewMode=1;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show all entries">🌐 All: ${allResources.length}</span>
+    <span class="stat all ${viewMode===1?'stat--active':''}" onclick="viewMode=1;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show all entries">🌐 All: ${totalLive}</span>
     <span class="stat community ${viewMode===2?'stat--active':''}" onclick="viewMode=2;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show outside-WoT entries only">👥 Outside WoT: ${communityResources.length}</span>
+    ${deletedPill}
     <span class="stat filtered">${filtered.length}${filterNote}${clearBtn ? ' — ' : ''}</span>
     ${clearBtn}
   </div>`;
@@ -1858,7 +1875,12 @@ function renderResourceCard(r) {
 
   const descHtml = r.description ? `<div class="resource-desc"><div class="resource-desc-inner" onload="checkDescOverflow(this)">${mdToHtml(r.description)}</div><button class="desc-expand desc-expand--hidden" onclick="toggleDesc(this)">more…</button></div>` : '';
   const discontinuedBadge = r.discontinued ? `<span class="pill discontinued" title="This project appears to be discontinued">🪦 discontinued</span>` : '';
-  const cardClass = r.discontinued ? 'resource-card resource-card--discontinued' : 'resource-card';
+  const deletedBadge = r.deleted ? `<span class="pill deleted-badge" title="Tombstoned via community curation. Edit and uncheck 'deleted' to restore.">💀 deleted</span>` : '';
+  const cardClass = [
+    'resource-card',
+    r.discontinued && 'resource-card--discontinued',
+    r.deleted && 'resource-card--deleted',
+  ].filter(Boolean).join(' ');
 
   // Proposals: versions from authors OUTSIDE the WoT.
   // WoT members all compete on newest-wins; a WoT member's version is never a proposal.
@@ -1925,6 +1947,7 @@ function renderResourceCard(r) {
     </div>` : ''}
     ${instHtml}
     <div class="resource-tags">
+      ${deletedBadge}
       ${discontinuedBadge}
       ${r.platforms.map(t=>`<span class="pill platform" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
       ${r.tags.filter(t=>t!=='discontinued'&&t!=='deleted').map(t=>`<span class="pill" onclick="clickTag('${esc(t)}')">${esc(t)}</span>`).join('')}
@@ -1992,7 +2015,12 @@ function renderNipCard(r) {
   </div>`;
 
   const discontinuedBadge = r.discontinued ? `<span class="pill discontinued" title="This NIP appears to be discontinued">🪦 discontinued</span>` : '';
-  const cardClass = r.discontinued ? 'resource-card resource-card--discontinued nip-card' : 'resource-card nip-card';
+  const deletedBadge = r.deleted ? `<span class="pill deleted-badge" title="Tombstoned via community curation. Edit and uncheck 'deleted' to restore.">💀 deleted</span>` : '';
+  const cardClass = [
+    'resource-card', 'nip-card',
+    r.discontinued && 'resource-card--discontinued',
+    r.deleted && 'resource-card--deleted',
+  ].filter(Boolean).join(' ');
 
   // NIP description with raw toggle
   const descHtml = r.description ? `<div class="resource-desc" id="desc-${slug_}">
@@ -2048,6 +2076,7 @@ function renderNipCard(r) {
     </div>
     <div class="nip-title">${esc(r.title)}</div>
     <div class="resource-tags" style="margin-top:2px;">
+      ${deletedBadge}
       ${allTagsClickable}
       ${discontinuedBadge}
     </div>
