@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520e');
+console.log('[new-resources.js] version: 20260520f');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -2397,7 +2397,12 @@ function getSubmitModal() {
         </p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <label style="font-size:12px;">Title<br><input id="sfTitle" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
-          <label style="font-size:12px;">Slug (d-tag) <span style="color:#888;font-weight:normal;font-size:11px;">— same slug = propose edit · new slug = fork</span><br><input id="sfSlug" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;font-family:monospace;"></label>
+          <label style="font-size:12px;">Slug (d-tag) <span style="color:#888;font-weight:normal;font-size:11px;">— same slug = propose edit · new slug = fork</span><br>
+            <span style="display:flex;align-items:stretch;margin-top:2px;">
+              <span style="padding:6px 8px;background:#f1f3f4;color:#80868b;border:1px solid #ccc;border-right:0;border-radius:4px 0 0 4px;font-family:monospace;user-select:none;" title="Namespace is fixed for this directory">${NAMESPACE}/</span>
+              <input id="sfSlug" style="flex:1;padding:6px;box-sizing:border-box;font-family:monospace;border-radius:0 4px 4px 0;">
+            </span>
+          </label>
           <label class="resource-only" style="font-size:12px;">Git URL<br><input id="sfGit" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
           <label class="resource-only" style="font-size:12px;">Web URL<br><input id="sfWeb" style="width:100%;padding:6px;margin-top:2px;box-sizing:border-box;"></label>
           <div style="grid-column:1/-1;">
@@ -2614,7 +2619,7 @@ function editResource(slug) {
 
   openSubmitModal();
   document.getElementById('submitBoxTitle').textContent = `Editing: ${r.title}`;
-  document.getElementById('sfSlug').value      = r.slug;
+  document.getElementById('sfSlug').value      = slugSuffix(r.slug);
   document.getElementById('sfSlug').readOnly   = false;  // editable: same slug = edit/proposal, new slug = fork
   document.getElementById('sfTitle').value     = r.title;
   document.getElementById('sfGit').value       = r.git || '';
@@ -3559,7 +3564,13 @@ async function submitResource() {
   }
 
   set("Preparing…");
-  const slug  = document.getElementById("sfSlug").value.trim().toLowerCase().replace(/[^a-z0-9.-]/g,"");
+  // Defensive: if the user pasted a fully-qualified d-tag like "nostrPr/habla",
+  // strip the namespace prefix before the regex eats the slash and concatenates
+  // it into "nostrPrhabla" — the original double-prefix bug this UI defends against.
+  let rawSlug = document.getElementById("sfSlug").value.trim().toLowerCase();
+  const nsPrefix = (NAMESPACE + '/').toLowerCase();
+  if (rawSlug.startsWith(nsPrefix)) rawSlug = rawSlug.slice(nsPrefix.length);
+  const slug = rawSlug.replace(/[^a-z0-9.-]/g,"");
   const title = document.getElementById("sfTitle").value.trim();
   const git   = document.getElementById("sfGit").value.trim();
   const web   = document.getElementById("sfWeb").value.trim();
