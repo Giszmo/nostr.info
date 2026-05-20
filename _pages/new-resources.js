@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520l');
+console.log('[new-resources.js] version: 20260520m');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -2126,8 +2126,10 @@ function parseInstance(s) {
   return { name: parts[0], url: parts[1] || '', comment: parts[2] || '' };
 }
 
-// The /newNips/ or /newResources/ page that owns the entry routes.
-const LIST_BASE_PATH = NAMESPACE === 'nips' ? '/newNips/' : '/newResources/';
+// The list page that owns the entry routes. Pages set window.LIST_BASE_PATH
+// in their include so nginx can map /<slug> back to <base>/index.html.
+const LIST_BASE_PATH = window.LIST_BASE_PATH
+  || (NAMESPACE === 'nips' ? '/nips/' : '/newResources/');
 
 // Returns {slug, anchor} | null based on current location.
 //   /nip-24          → {slug:'nips/nip-24', anchor:null}
