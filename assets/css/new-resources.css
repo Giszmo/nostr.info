@@ -105,6 +105,34 @@
   vertical-align: -3px; margin: 0 3px 0 4px;
   object-fit: cover;
 }
+
+/* ── Entry modal (#nip-05, #amethyst, etc.) ──────────────────────────────── */
+.entry-modal {
+  position: fixed; inset: 0; z-index: 9500;
+  display: flex; align-items: flex-start; justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 5vh 16px;
+  overflow-y: auto;
+}
+.entry-modal-inner {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  max-width: 760px; width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  padding: 8px;
+}
+.entry-modal-close {
+  position: absolute; top: 8px; right: 10px;
+  width: 32px; height: 32px;
+  border: none; border-radius: 50%;
+  background: #f1f3f4; color: #333;
+  font-size: 16px; cursor: pointer; line-height: 1;
+  z-index: 2;
+}
+.entry-modal-close:hover { background: #e5e7eb; }
+.entry-modal-body { padding: 8px 4px 4px; }
+.entry-modal-body .resource-card { box-shadow: none; border: 0; padding: 16px; }
 .community-notice {
   padding: 7px 14px; margin-bottom: 10px; border-radius: 8px;
   background: #fff8e1; border: 1px solid #f9c74f; font-size: 13px; color: #7a5800;

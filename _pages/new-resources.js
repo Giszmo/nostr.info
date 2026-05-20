@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520b');
+console.log('[new-resources.js] version: 20260520c');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1549,6 +1549,10 @@ function dedupAndRender() {
   });
 
   render();
+  // If a deep-link modal is showing the "Loading…" placeholder, fill it in now.
+  refreshOpenModalFromData();
+  // Open the initial modal if the page was loaded with #slug and we have data.
+  if (!_entryModalSlug) syncEntryModalToHash();
 }
 
 // ─── Event parsing ─────────────────────────────────────────────────────────────────────
@@ -2057,6 +2061,88 @@ function renderNipCard(r) {
 function renderCard(r) {
   return NAMESPACE === 'nips' ? renderNipCard(r) : renderResourceCard(r);
 }
+
+// ─── Entry modal (fragment-linked deep view) ─────────────────────────────────
+// /newNips/#nip-05 opens NIP-05 in a modal even if it is filtered out of the list.
+// Internal links inside an article (`[NIP-05](#nip-05)`) trigger the same modal
+// via the hashchange listener — so reading an article never loses the list scroll.
+function slugSuffix(fullSlug) {
+  const i = (fullSlug || '').indexOf('/');
+  return i === -1 ? fullSlug : fullSlug.slice(i + 1);
+}
+function slugFromFragment() {
+  const raw = (location.hash || '').replace(/^#/, '').trim().toLowerCase();
+  if (!raw) return null;
+  return NAMESPACE + '/' + raw;
+}
+
+let _entryModal = null;
+let _entryModalSlug = null;
+
+function ensureEntryModal() {
+  if (_entryModal) return _entryModal;
+  const m = document.createElement('div');
+  m.id = 'entryModal';
+  m.className = 'entry-modal';
+  m.style.display = 'none';
+  m.addEventListener('click', e => { if (e.target === m) closeEntryModal(); });
+  document.body.appendChild(m);
+  _entryModal = m;
+  return m;
+}
+
+function showEntryModal(slug) {
+  if (!slug) return;
+  const m = ensureEntryModal();
+  _entryModalSlug = slug;
+  const r = allResources.find(x => x.slug === slug);
+  const suffix = slugSuffix(slug);
+  if (r) {
+    m.innerHTML = `
+      <div class="entry-modal-inner" role="dialog" aria-modal="true" aria-label="${esc(r.title || suffix)}">
+        <button class="entry-modal-close" onclick="closeEntryModal()" aria-label="Close">✕</button>
+        <div class="entry-modal-body">${renderCard(r)}</div>
+      </div>`;
+  } else {
+    // Entry not loaded yet — show placeholder. dedupAndRender will retry.
+    m.innerHTML = `
+      <div class="entry-modal-inner" role="dialog" aria-modal="true">
+        <button class="entry-modal-close" onclick="closeEntryModal()" aria-label="Close">✕</button>
+        <div class="entry-modal-body" style="padding:24px;color:#888;text-align:center;">
+          Loading <strong>${esc(suffix)}</strong>…
+        </div>
+      </div>`;
+  }
+  m.style.display = 'flex';
+  requestAnimationFrame(() => m.querySelector('.entry-modal-close')?.focus());
+}
+
+function closeEntryModal() {
+  if (_entryModal) _entryModal.style.display = 'none';
+  _entryModalSlug = null;
+  if (location.hash) {
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+}
+
+function syncEntryModalToHash() {
+  const slug = slugFromFragment();
+  if (slug) showEntryModal(slug);
+  else closeEntryModal();
+}
+
+// If the modal is open but the target entry has just been loaded, re-render it.
+function refreshOpenModalFromData() {
+  if (!_entryModalSlug || !_entryModal || _entryModal.style.display === 'none') return;
+  if (allResources.find(x => x.slug === _entryModalSlug)) {
+    showEntryModal(_entryModalSlug);
+  }
+}
+
+window.addEventListener('hashchange', syncEntryModalToHash);
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && _entryModal && _entryModal.style.display !== 'none') closeEntryModal();
+});
 
 function renderSubmitCard() {
   const pubKey = loggedInPubkey;
@@ -3651,6 +3737,9 @@ window.addEventListener("load", async () => {
   // Show empty state + submit card immediately (before any relay data)
   logR("init:render");
   render();
+  // If the URL has #slug, show a placeholder modal right away so deep-links don't
+  // appear broken while we wait for relay data.
+  syncEntryModalToHash();
   // Kick off relay loading immediately (shows IDB cache right away)
   logR("init:call connectRelays");
   connectRelays();
