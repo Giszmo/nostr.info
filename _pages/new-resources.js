@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260519');
+console.log('[new-resources.js] version: 20260520');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1580,6 +1580,24 @@ function setStatus(msg) {
   el.textContent = msg;
 }
 
+function renderAnchorPill(pubkey, isActive, count) {
+  const p = profileCache[pubkey] || {};
+  const npub = hexToNpub(pubkey);
+  const name = p.name || (npub.slice(0, 12) + '…');
+  const avatar = p.picture
+    ? `<img src="${esc(p.picture)}" onerror="this.onerror=null;this.src='/images/nostrich.webp'" class="anchor-pill-avatar" alt="">`
+    : `<img src="/images/nostrich.webp" class="anchor-pill-avatar" alt="">`;
+  const countHtml = isActive ? `: ${count}` : '';
+  // Active pill: clicking re-asserts viewMode 0 + clears filters (legacy behavior).
+  // Inactive pill: clicking switches the anchor to this pubkey AND lands in WoT view.
+  const onclick = isActive
+    ? `viewMode=0;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';`
+    : `viewMode=0;pickAnchor('${esc(pubkey)}');`;
+  const cls = 'stat curated' + (isActive ? ' stat--active' : '');
+  const tip = isActive ? `Show ${esc(name)}'s WoT` : `Switch to ${esc(name)}'s WoT`;
+  return `<span class="${cls}" onclick="${onclick}" style="cursor:pointer" title="${tip}">🔭 In ${avatar}${esc(name)}'s WoT${countHtml}</span>`;
+}
+
 function render() {
   // viewMode: 0 = WoT only, 1 = all, 2 = proposals only
   let pool;
@@ -1641,8 +1659,20 @@ function render() {
   const filterNote = hasFilters
     ? ` (filtered from ${pool.length})`
     : '';
+  const isCuratorAnchor = anchorPubkey === CURATOR;
+  const isSelfAnchor    = loggedInPubkey && anchorPubkey === loggedInPubkey;
+  const isOtherAnchor   = !isCuratorAnchor && !isSelfAnchor;
+  const activeCount     = curatedResources.length;
+  let anchorPills = renderAnchorPill(CURATOR, isCuratorAnchor && viewMode===0, activeCount);
+  if (loggedInPubkey && loggedInPubkey !== CURATOR) {
+    anchorPills += renderAnchorPill(loggedInPubkey, isSelfAnchor && viewMode===0, activeCount);
+  }
+  if (isOtherAnchor) {
+    anchorPills += renderAnchorPill(anchorPubkey, viewMode===0, activeCount);
+  }
+
   let html = `<div class="stats-bar">
-    <span class="stat curated ${viewMode===0?'stat--active':''}" onclick="viewMode=0;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show WoT only">🔭 In WoT: ${curatedResources.length}</span>
+    ${anchorPills}
     <span class="stat all ${viewMode===1?'stat--active':''}" onclick="viewMode=1;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show all entries">🌐 All: ${allResources.length}</span>
     <span class="stat community ${viewMode===2?'stat--active':''}" onclick="viewMode=2;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';" style="cursor:pointer" title="Show outside-WoT entries only">👥 Outside WoT: ${communityResources.length}</span>
     <span class="stat filtered">${filtered.length}${filterNote}${clearBtn ? ' — ' : ''}</span>

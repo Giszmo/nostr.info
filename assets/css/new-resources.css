@@ -100,6 +100,11 @@
 .stat.filtered  { color: #888; margin-left: auto; }
 .stat--active   { background: #e8f0fe; border-color: #8ab4f8; font-weight: 600; }
 .stat:hover:not(.stat--active) { background: #f0f4f8; }
+.anchor-pill-avatar {
+  width: 14px; height: 14px; border-radius: 50%;
+  vertical-align: -3px; margin: 0 3px 0 4px;
+  object-fit: cover;
+}
 .community-notice {
   padding: 7px 14px; margin-bottom: 10px; border-radius: 8px;
   background: #fff8e1; border: 1px solid #f9c74f; font-size: 13px; color: #7a5800;
