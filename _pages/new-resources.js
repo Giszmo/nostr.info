@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520m');
+console.log('[new-resources.js] version: 20260520n');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1946,7 +1946,7 @@ function renderResourceCard(r) {
     <div class="resource-header">
       <span class="resource-title">${esc(r.title)}</span>
       <div class="resource-header-right">
-        <a class="card-permalink" href="/${esc(slugSuffix(r.slug))}" title="Permalink — share this URL">🔗</a>
+        <a class="card-permalink" href="${esc(LIST_BASE_PATH + slugSuffix(r.slug))}" title="Permalink — share this URL">🔗</a>
         ${r.web ? `<a href="${esc(r.web)}" target="_blank" class="card-link-icon" title="Website">🌐</a>` : ''}
         ${r.git ? `<a href="${esc(r.git)}" target="_blank" class="card-link-icon" title="Source">💻</a>` : ''}
         ${deleteBtn}
@@ -2083,7 +2083,7 @@ function renderNipCard(r) {
     <div class="nip-header">
       <div class="nip-number">${esc(slugSuffix(r.slug).toUpperCase())}</div>
       <div class="nip-header-right">
-        <a class="card-permalink" href="/${esc(slugSuffix(r.slug))}" title="Permalink — share this URL">🔗</a>
+        <a class="card-permalink" href="${esc(LIST_BASE_PATH + slugSuffix(r.slug))}" title="Permalink — share this URL">🔗</a>
         ${deleteBtn}
         ${editBtn}
       </div>
@@ -2131,16 +2131,28 @@ function parseInstance(s) {
 const LIST_BASE_PATH = window.LIST_BASE_PATH
   || (NAMESPACE === 'nips' ? '/nips/' : '/newResources/');
 
-// Returns {slug, anchor} | null based on current location.
-//   /nip-24          → {slug:'nips/nip-24', anchor:null}
-//   /nip-24#kind-0   → {slug:'nips/nip-24', anchor:'kind-0'}
-//   /newNips/        → null (list view)
-// Back-compat: still accepts the legacy compound fragment ("#nip-24/kind-0")
-// for any pre-migration links that haven't been republished yet.
+// Returns {slug, anchor} | null based on current location. Entries live
+// under LIST_BASE_PATH so the path is /nips/<slug>, /newResources/<slug>,
+// etc. — the prefix keeps slugs from colliding with other top-level routes.
+//   /nips/nip-24            → {slug:'nips/nip-24', anchor:null}
+//   /nips/nip-24#kind-0     → {slug:'nips/nip-24', anchor:'kind-0'}
+//   /nips/ or /nips/index   → null (list view)
+// Back-compat: legacy compound fragment ("#nip-24/kind-0") and root-level
+// /<slug> paths still resolve for any links published before this scheme.
 function parseLocation() {
   const path = location.pathname.replace(/\/+$/, '');
   const base = LIST_BASE_PATH.replace(/\/+$/, '');
-  if (path && path !== base) {
+  const prefix = base + '/';
+  if (path === base || path === base + '/index.html') {
+    // List view — fall through to hash handling below
+  } else if (path.startsWith(prefix)) {
+    const suffix = path.slice(prefix.length);
+    if (suffix) {
+      const anchor = (location.hash || '').replace(/^#/, '').trim() || null;
+      return { slug: NAMESPACE + '/' + suffix.toLowerCase(), anchor };
+    }
+  } else if (path && path !== base) {
+    // Pre-scope root-level path (e.g. published before the /nips/ prefix).
     const suffix = path.split('/').pop();
     if (suffix) {
       const anchor = (location.hash || '').replace(/^#/, '').trim() || null;
@@ -2211,9 +2223,7 @@ function focusEntry(slug, anchor) {
 // User-initiated navigation: write the URL bar, run focusEntry, push history.
 function navigateToEntry(slug, anchor) {
   const suffix = slugSuffix(slug);
-  const url = '/' + suffix + (anchor ? '#' + anchor : '');
-  // Only push if it actually changes the URL — avoids duplicate history entries
-  // when user re-clicks the same link.
+  const url = LIST_BASE_PATH + suffix + (anchor ? '#' + anchor : '');
   if (location.pathname + location.hash !== url) {
     history.pushState({ slug, anchor }, '', url);
   }
@@ -2251,23 +2261,33 @@ function refreshFocusedFromData() {
 }
 
 // Intercept clicks on internal anchors that point at one of our entry paths.
-// Without this every "/nip-24" link would do a full page load.
+// Recognises both the new scoped form (/nips/nip-24) and the legacy bare form
+// (/nip-24) for links published before the prefix scheme.
 document.addEventListener('click', e => {
   if (e.defaultPrevented) return;
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
   const a = e.target.closest && e.target.closest('a');
   if (!a) return;
   const href = a.getAttribute('href');
-  if (!href || !href.startsWith('/')) return;        // only root-relative
+  if (!href || !href.startsWith('/')) return;
   if (a.target === '_blank' || a.hasAttribute('download')) return;
   let url;
   try { url = new URL(href, location.origin); } catch(_) { return; }
   if (url.origin !== location.origin) return;
-  // Only intercept single-segment paths under root (e.g. /nip-24, /coracle).
-  const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
-  if (parts.length !== 1) return;
-  const slug = NAMESPACE + '/' + parts[0].toLowerCase();
-  // Match against loaded data so we don't hijack non-entry links.
+  const p = url.pathname.replace(/\/+$/, '');
+  const base = LIST_BASE_PATH.replace(/\/+$/, '');
+  let suffix = null;
+  if (p === base + '/' || p === base) {
+    return; // link to the list itself — let browser handle it
+  } else if (p.startsWith(base + '/')) {
+    suffix = p.slice(base.length + 1);
+  } else {
+    // Legacy bare /<suffix> path (still allowed for backward compat).
+    const parts = p.split('/').filter(Boolean);
+    if (parts.length === 1) suffix = parts[0];
+  }
+  if (!suffix || suffix.includes('/')) return;
+  const slug = NAMESPACE + '/' + suffix.toLowerCase();
   if (!allResources.find(x => x.slug === slug)) return;
   e.preventDefault();
   navigateToEntry(slug, url.hash.replace(/^#/, '') || null);
