@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520');
+console.log('[new-resources.js] version: 20260520b');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -45,6 +45,46 @@ let viewMode          = 0;  // 0 = WoT only, 1 = all, 2 = proposals only
 let searchQuery       = '';
 let loadedFrom        = '…';
 let profileCache      = {};   // pubkey hex → {name, picture, npub, lud16}
+
+// Persistent profile cache, shared across /newResources, /newNips, /resources, /nips.
+// Lets the anchor pill show "<name>'s WoT" on first paint instead of "<npub1…>'s WoT"
+// for anyone we've seen on any nostr.info page before.
+const PROFILE_LS_KEY = 'nostr-info-profile-cache-v1';
+const PROFILE_LS_MAX = 2000;
+
+function hydrateProfileCache() {
+  try {
+    const raw = localStorage.getItem(PROFILE_LS_KEY);
+    if (!raw) return;
+    const map = JSON.parse(raw);
+    for (const [pk, p] of Object.entries(map)) {
+      if (!profileCache[pk]) profileCache[pk] = p;
+    }
+  } catch(e) {}
+}
+
+let _profilePersistTimer = null;
+function setProfile(pubkey, data) {
+  if (!pubkey || !data) return;
+  profileCache[pubkey] = data;
+  // Coalesce writes — profile floods during loadSecondary would otherwise hammer localStorage.
+  clearTimeout(_profilePersistTimer);
+  _profilePersistTimer = setTimeout(persistProfileCache, 300);
+}
+
+function persistProfileCache() {
+  try {
+    let entries = Object.entries(profileCache);
+    if (entries.length > PROFILE_LS_MAX) {
+      // Drop entries without a name first, then arbitrary truncation
+      entries.sort((a, b) => (b[1]?.name ? 1 : 0) - (a[1]?.name ? 1 : 0));
+      entries = entries.slice(0, PROFILE_LS_MAX);
+    }
+    localStorage.setItem(PROFILE_LS_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch(e) {}
+}
+
+hydrateProfileCache();
 let reactionCache     = {};   // slug → {byAuthor: {pubkeyHex: {emoji,eventId,created_at}}, zapMsat, zaps: [{senderHex,msat,created_at,eventId}]}
 
 // renderOrder: slug[] — set once by relay data, never changed by user actions.
@@ -817,7 +857,7 @@ async function loadReplies(slug, authorHex) {
       queryAll(RELAYS.slice(0, 1), { kinds: [0], authors: [ev.pubkey] }, pev => {
         try {
           const c = JSON.parse(pev.content);
-          profileCache[ev.pubkey] = { name: c.display_name||c.name||'', picture: c.picture||'', lud16: c.lud16||'', npub: hexToNpub(ev.pubkey) };
+          setProfile(ev.pubkey, { name: c.display_name||c.name||'', picture: c.picture||'', lud16: c.lud16||'', npub: hexToNpub(ev.pubkey) });
         } catch(e) {}
       }, 3000);
     }
@@ -1022,12 +1062,12 @@ async function connectRelays() {
     profileEvents.forEach(ev => {
       try {
         const c = JSON.parse(ev.content);
-        profileCache[ev.pubkey] = {
+        setProfile(ev.pubkey, {
           name:    c.display_name || c.name || '',
           picture: c.picture || '',
           npub:    hexToNpub(ev.pubkey),
           lud16:   c.lud16 || '',
-        };
+        });
       } catch(e){}
     });
     reactionEvents.forEach(ev => {
@@ -1199,12 +1239,12 @@ async function loadSecondary() {
       trackEv(ev);
       try {
         const c = JSON.parse(ev.content);
-        profileCache[ev.pubkey] = {
+        setProfile(ev.pubkey, {
           name:    c.display_name || c.name || '',
           picture: c.picture || '',
           npub:    hexToNpub(ev.pubkey),
           lud16:   c.lud16 || '',
-        };
+        });
       } catch(e){}
     }, 6000);
   }
@@ -1392,6 +1432,29 @@ async function setAnchor(pubkey) {
   dedupAndRender();
   loadSecondary();
   updateAnchorUI();
+  // Fire-and-forget: ensure the anchor's own profile is fetched so the pill stops
+  // showing a truncated npub. Re-render once it arrives. Skip if already cached.
+  fetchAnchorProfile(pubkey);
+}
+
+async function fetchAnchorProfile(pubkey) {
+  if (!pubkey || profileCache[pubkey]) return;
+  try {
+    let got = false;
+    await queryAll(RELAYS.slice(0, 3), { kinds: [0], authors: [pubkey] }, ev => {
+      try {
+        const c = JSON.parse(ev.content);
+        setProfile(pubkey, {
+          name:    c.display_name || c.name || '',
+          picture: c.picture || '',
+          npub:    hexToNpub(pubkey),
+          lud16:   c.lud16 || '',
+        });
+        got = true;
+      } catch(e) {}
+    }, 4000);
+    if (got) { render(); updateAnchorUI(); }
+  } catch(e) {}
 }
 
 // ─── Dedup & parse ────────────────────────────────────────────────────────────
@@ -2168,16 +2231,17 @@ async function fetchOwnProfile() {
   await queryAll(RELAYS.slice(0, 2), { kinds: [0], authors: [loggedInPubkey] }, ev => {
     try {
       const c = JSON.parse(ev.content);
-      profileCache[loggedInPubkey] = {
+      setProfile(loggedInPubkey, {
         name:    c.display_name || c.name || '',
         picture: c.picture || '',
         lud16:   c.lud16 || '',
         npub:    hexToNpub(loggedInPubkey),
-      };
+      });
     } catch(e) {}
   }, 4000);
-  // After fetching, re-render header with real data
+  // After fetching, re-render header AND stats bar (anchor pill may reference us).
   updateLoginUI();
+  render();
 }
 
 function launchLogin() {
@@ -2411,7 +2475,7 @@ function onAuthorNpubInput(val) {
       queryAll(RELAYS.slice(0,2), { kinds:[0], authors:[hex] }, ev => {
         try {
           const c = JSON.parse(ev.content);
-          profileCache[hex] = { name: c.display_name||c.name||'', picture: c.picture||'', lud16: c.lud16||'', npub: hexToNpub(hex) };
+          setProfile(hex, { name: c.display_name||c.name||'', picture: c.picture||'', lud16: c.lud16||'', npub: hexToNpub(hex) });
         } catch(e) {}
       }, 4000).then(() => renderSplitEditor(_editSplits));
     }
@@ -2543,7 +2607,7 @@ function editResource(slug) {
     queryAll(RELAYS.slice(0,2), { kinds:[0], authors:[loggedInPubkey] }, ev => {
       try {
         const c = JSON.parse(ev.content);
-        profileCache[loggedInPubkey] = { name: c.display_name||c.name||'', picture: c.picture||'', lud16: c.lud16||'', npub: hexToNpub(loggedInPubkey) };
+        setProfile(loggedInPubkey, { name: c.display_name||c.name||'', picture: c.picture||'', lud16: c.lud16||'', npub: hexToNpub(loggedInPubkey) });
       } catch(e) {}
     }, 4000).then(() => { renderSplitEditor(_editSplits); updateSplitSuggestions(slug); });
   }
@@ -3092,7 +3156,7 @@ function adoptSplitSuggestion(pubkey, weight) {
     queryAll(RELAYS.slice(0,2), { kinds:[0], authors:[pubkey] }, ev => {
       try {
         const c = JSON.parse(ev.content);
-        profileCache[pubkey] = { name: c.display_name||c.name||'', picture: c.picture||'', npub: hexToNpub(pubkey), lud16: c.lud16||'' };
+        setProfile(pubkey, { name: c.display_name||c.name||'', picture: c.picture||'', npub: hexToNpub(pubkey), lud16: c.lud16||'' });
       } catch(e){}
     }, 4000).then(() => { renderSplitEditor(_editSplits); updateSplitSuggestions(_editingSlug); });
   }
@@ -3158,7 +3222,7 @@ function addSplitRow() {
     queryAll(RELAYS.slice(0,2), { kinds:[0], authors:[hex] }, ev => {
       try {
         const c = JSON.parse(ev.content);
-        profileCache[hex] = { name: c.display_name||c.name||'', picture: c.picture||'', npub: hexToNpub(hex), lud16: c.lud16||'' };
+        setProfile(hex, { name: c.display_name||c.name||'', picture: c.picture||'', npub: hexToNpub(hex), lud16: c.lud16||'' });
       } catch(e) {}
     }, 4000).then(() => renderSplitEditor(_editSplits));
   }
