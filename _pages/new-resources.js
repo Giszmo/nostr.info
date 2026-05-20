@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520k');
+console.log('[new-resources.js] version: 20260520l');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1946,7 +1946,7 @@ function renderResourceCard(r) {
     <div class="resource-header">
       <span class="resource-title">${esc(r.title)}</span>
       <div class="resource-header-right">
-        <a class="card-permalink" href="#${esc(slugSuffix(r.slug))}" title="Permalink — opens this entry in a modal you can share">🔗</a>
+        <a class="card-permalink" href="/${esc(slugSuffix(r.slug))}" title="Permalink — share this URL">🔗</a>
         ${r.web ? `<a href="${esc(r.web)}" target="_blank" class="card-link-icon" title="Website">🌐</a>` : ''}
         ${r.git ? `<a href="${esc(r.git)}" target="_blank" class="card-link-icon" title="Source">💻</a>` : ''}
         ${deleteBtn}
@@ -2083,7 +2083,7 @@ function renderNipCard(r) {
     <div class="nip-header">
       <div class="nip-number">${esc(slugSuffix(r.slug).toUpperCase())}</div>
       <div class="nip-header-right">
-        <a class="card-permalink" href="#${esc(slugSuffix(r.slug))}" title="Permalink — opens this entry in a modal you can share">🔗</a>
+        <a class="card-permalink" href="/${esc(slugSuffix(r.slug))}" title="Permalink — share this URL">🔗</a>
         ${deleteBtn}
         ${editBtn}
       </div>
@@ -2105,11 +2105,12 @@ function renderCard(r) {
   return NAMESPACE === 'nips' ? renderNipCard(r) : renderResourceCard(r);
 }
 
-// ─── Focused entry view (fragment-linked, in-place page swap) ────────────────
-// /newNips/#nip-05 replaces the list with NIP-05's full card and a back button.
-// Internal links inside an article (`[NIP-05](#nip-05)`) trigger the same swap
-// via hashchange. Normal document flow — no position:fixed overlay, no mobile
-// Safari jitter. Browser back returns to the list; we restore the prior scroll.
+// ─── Focused entry view (path-routed, in-place page swap) ────────────────────
+// /nip-05 replaces the list with NIP-05's full card; the URL stays a real path
+// so it survives copy/paste outside the SPA. Cross-NIP links use absolute paths
+// (`[Kind 0](/nip-24#kind-0)`) — standard fragments, standard scrolling.
+// Normal document flow; History.pushState handles in-app navigation; nginx
+// try_files maps `/<slug>` → `<list-page>/index.html` for direct hits.
 function slugSuffix(fullSlug) {
   const i = (fullSlug || '').indexOf('/');
   return i === -1 ? fullSlug : fullSlug.slice(i + 1);
@@ -2124,9 +2125,26 @@ function parseInstance(s) {
   if (parts.length === 1) return { name: parts[0], url: parts[0], comment: '' };
   return { name: parts[0], url: parts[1] || '', comment: parts[2] || '' };
 }
-// Returns {slug, anchor} | null. Compound form "#nip-24/kind-0" splits into
-// slug part (path-style focused entry) and anchor (in-entry scroll target).
-function parseFragment() {
+
+// The /newNips/ or /newResources/ page that owns the entry routes.
+const LIST_BASE_PATH = NAMESPACE === 'nips' ? '/newNips/' : '/newResources/';
+
+// Returns {slug, anchor} | null based on current location.
+//   /nip-24          → {slug:'nips/nip-24', anchor:null}
+//   /nip-24#kind-0   → {slug:'nips/nip-24', anchor:'kind-0'}
+//   /newNips/        → null (list view)
+// Back-compat: still accepts the legacy compound fragment ("#nip-24/kind-0")
+// for any pre-migration links that haven't been republished yet.
+function parseLocation() {
+  const path = location.pathname.replace(/\/+$/, '');
+  const base = LIST_BASE_PATH.replace(/\/+$/, '');
+  if (path && path !== base) {
+    const suffix = path.split('/').pop();
+    if (suffix) {
+      const anchor = (location.hash || '').replace(/^#/, '').trim() || null;
+      return { slug: NAMESPACE + '/' + suffix.toLowerCase(), anchor };
+    }
+  }
   const raw = (location.hash || '').replace(/^#/, '').trim();
   if (!raw) return null;
   const slashIdx = raw.indexOf('/');
@@ -2137,7 +2155,7 @@ function parseFragment() {
   };
 }
 function slugFromFragment() {
-  const p = parseFragment();
+  const p = parseLocation();
   return p ? p.slug : null;
 }
 // Djot wraps headings in <section id="Heading-Title">, preserving original
@@ -2184,26 +2202,41 @@ function focusEntry(slug, anchor) {
     _focusedSlug = slug;
     render();
   }
-  // Scroll: to anchor if provided (after layout); else top.
   if (anchor) requestAnimationFrame(() => scrollToAnchorInFocused(anchor));
   else window.scrollTo(0, 0);
+}
+
+// User-initiated navigation: write the URL bar, run focusEntry, push history.
+function navigateToEntry(slug, anchor) {
+  const suffix = slugSuffix(slug);
+  const url = '/' + suffix + (anchor ? '#' + anchor : '');
+  // Only push if it actually changes the URL — avoids duplicate history entries
+  // when user re-clicks the same link.
+  if (location.pathname + location.hash !== url) {
+    history.pushState({ slug, anchor }, '', url);
+  }
+  focusEntry(slug, anchor);
 }
 
 function closeFocusedEntry() {
   if (!_focusedSlug) return;
   _focusedSlug = null;
-  if (location.hash) {
-    history.replaceState(null, '', location.pathname + location.search);
+  if (location.pathname !== LIST_BASE_PATH || location.hash) {
+    history.pushState({}, '', LIST_BASE_PATH);
   }
   render();
   window.scrollTo(0, _savedScrollY || 0);
 }
 
-function syncFocusToHash() {
-  const p = parseFragment();
+// Read the URL and align focus state with it. Used for initial load and for
+// popstate (browser back/forward).
+function syncFocusToLocation() {
+  const p = parseLocation();
   if (p) focusEntry(p.slug, p.anchor);
-  else if (_focusedSlug) closeFocusedEntry();
+  else if (_focusedSlug) { _focusedSlug = null; render(); window.scrollTo(0, _savedScrollY || 0); }
 }
+// Back-compat name used by other code paths.
+const syncFocusToHash = syncFocusToLocation;
 
 // If we're showing a "Loading…" placeholder and the entry just arrived,
 // re-render and re-apply any sub-anchor from the URL.
@@ -2211,11 +2244,35 @@ function refreshFocusedFromData() {
   if (!_focusedSlug) return;
   if (!allResources.find(x => x.slug === _focusedSlug)) return;
   render();
-  const p = parseFragment();
+  const p = parseLocation();
   if (p?.anchor) requestAnimationFrame(() => scrollToAnchorInFocused(p.anchor));
 }
 
-window.addEventListener('hashchange', syncFocusToHash);
+// Intercept clicks on internal anchors that point at one of our entry paths.
+// Without this every "/nip-24" link would do a full page load.
+document.addEventListener('click', e => {
+  if (e.defaultPrevented) return;
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+  const a = e.target.closest && e.target.closest('a');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  if (!href || !href.startsWith('/')) return;        // only root-relative
+  if (a.target === '_blank' || a.hasAttribute('download')) return;
+  let url;
+  try { url = new URL(href, location.origin); } catch(_) { return; }
+  if (url.origin !== location.origin) return;
+  // Only intercept single-segment paths under root (e.g. /nip-24, /coracle).
+  const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+  if (parts.length !== 1) return;
+  const slug = NAMESPACE + '/' + parts[0].toLowerCase();
+  // Match against loaded data so we don't hijack non-entry links.
+  if (!allResources.find(x => x.slug === slug)) return;
+  e.preventDefault();
+  navigateToEntry(slug, url.hash.replace(/^#/, '') || null);
+});
+
+window.addEventListener('popstate', syncFocusToLocation);
+window.addEventListener('hashchange', syncFocusToLocation);
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape' && _focusedSlug) closeFocusedEntry();
 });
