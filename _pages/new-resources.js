@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260520i');
+console.log('[new-resources.js] version: 20260520j');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -2124,10 +2124,35 @@ function parseInstance(s) {
   if (parts.length === 1) return { name: parts[0], url: parts[0], comment: '' };
   return { name: parts[0], url: parts[1] || '', comment: parts[2] || '' };
 }
-function slugFromFragment() {
-  const raw = (location.hash || '').replace(/^#/, '').trim().toLowerCase();
+// Returns {slug, anchor} | null. Compound form "#nip-24/kind-0" splits into
+// slug part (path-style focused entry) and anchor (in-entry scroll target).
+function parseFragment() {
+  const raw = (location.hash || '').replace(/^#/, '').trim();
   if (!raw) return null;
-  return NAMESPACE + '/' + raw;
+  const slashIdx = raw.indexOf('/');
+  if (slashIdx === -1) return { slug: NAMESPACE + '/' + raw.toLowerCase(), anchor: null };
+  return {
+    slug:   NAMESPACE + '/' + raw.slice(0, slashIdx).toLowerCase(),
+    anchor: raw.slice(slashIdx + 1),
+  };
+}
+function slugFromFragment() {
+  const p = parseFragment();
+  return p ? p.slug : null;
+}
+// Djot wraps headings in <section id="Heading-Title">, preserving original
+// casing. NIP markdown links use lowercase. Match case-insensitively.
+function scrollToAnchorInFocused(anchor) {
+  if (!anchor) return;
+  const focused = document.querySelector('.focused-entry');
+  if (!focused) return;
+  let el = focused.querySelector('#' + (window.CSS?.escape ? CSS.escape(anchor) : anchor));
+  if (!el) {
+    const lowered = anchor.toLowerCase();
+    el = Array.from(focused.querySelectorAll('[id]'))
+      .find(e => e.id.toLowerCase() === lowered);
+  }
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 let _focusedSlug = null;
@@ -2152,12 +2177,16 @@ function renderFocusedEntry() {
   }
 }
 
-function focusEntry(slug) {
-  if (!slug || slug === _focusedSlug) return;
-  if (!_focusedSlug) _savedScrollY = window.scrollY;
-  _focusedSlug = slug;
-  render();
-  window.scrollTo(0, 0);
+function focusEntry(slug, anchor) {
+  if (!slug) return;
+  if (slug !== _focusedSlug) {
+    if (!_focusedSlug) _savedScrollY = window.scrollY;
+    _focusedSlug = slug;
+    render();
+  }
+  // Scroll: to anchor if provided (after layout); else top.
+  if (anchor) requestAnimationFrame(() => scrollToAnchorInFocused(anchor));
+  else window.scrollTo(0, 0);
 }
 
 function closeFocusedEntry() {
@@ -2171,15 +2200,19 @@ function closeFocusedEntry() {
 }
 
 function syncFocusToHash() {
-  const slug = slugFromFragment();
-  if (slug) focusEntry(slug);
+  const p = parseFragment();
+  if (p) focusEntry(p.slug, p.anchor);
   else if (_focusedSlug) closeFocusedEntry();
 }
 
-// If we're showing a "Loading…" placeholder and the entry just arrived, re-render.
+// If we're showing a "Loading…" placeholder and the entry just arrived,
+// re-render and re-apply any sub-anchor from the URL.
 function refreshFocusedFromData() {
   if (!_focusedSlug) return;
-  if (allResources.find(x => x.slug === _focusedSlug)) render();
+  if (!allResources.find(x => x.slug === _focusedSlug)) return;
+  render();
+  const p = parseFragment();
+  if (p?.anchor) requestAnimationFrame(() => scrollToAnchorInFocused(p.anchor));
 }
 
 window.addEventListener('hashchange', syncFocusToHash);
