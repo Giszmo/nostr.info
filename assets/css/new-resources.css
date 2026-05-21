@@ -46,6 +46,16 @@
   border: 1px solid #dadce0; border-radius: 6px;
   font-size: 13px; box-sizing: border-box;
 }
+/* iOS Safari zooms the viewport when a text input with font-size < 16px
+   gains focus. Override on touch-size viewports so typing keeps the page
+   at its natural zoom. */
+@media (max-width: 720px) {
+  input[type="text"], input[type="search"], input[type="url"],
+  input[type="email"], input[type="number"], input[type="tel"],
+  input:not([type]), textarea {
+    font-size: 16px !important;
+  }
+}
 .submit-actions { margin-top: 12px; display: flex; gap: 8px; }
 .submit-actions button {
   padding: 7px 18px; border: none; border-radius: 6px;

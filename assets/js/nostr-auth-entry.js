@@ -197,8 +197,8 @@ function showModal() {
 
   const style = document.createElement('style');
   style.textContent = `
-    #na-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);font-family:system-ui,-apple-system,sans-serif}
-    #na-backdrop{width:100%;max-width:420px;margin:16px}
+    #na-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.7);font-family:system-ui,-apple-system,sans-serif;overflow-y:auto;padding:5vh 0;-webkit-overflow-scrolling:touch}
+    #na-backdrop{width:100%;max-width:420px;margin:0 16px}
     #na-box{background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#e0e0e0;overflow:hidden}
     #na-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #333}
     #na-header h3{margin:0;font-size:1.1rem}
@@ -224,15 +224,20 @@ function showModal() {
   d.onclick = (e) => { if (e.target === d) hideModal(); };
 
   d.querySelector('#na-ext-btn').onclick = async () => {
-    // Detect extension dynamically: anything on window.nostr that is NOT our shim
-    // and has getPublicKey is an NIP-07 extension.
-    const ext = (window.nostr && !window.nostr._nostrAuth && typeof window.nostr.getPublicKey === 'function')
+    // Our defineProperty shim hides extensions that set window.nostr after we
+    // install — those are captured into extNostr by the setter. Other
+    // extensions install via Object.defineProperty themselves and overwrite
+    // our property entirely; for those window.nostr returns their object, not
+    // our shim. Check both paths so detection works in either case.
+    const fromWindow = (window.nostr && !window.nostr._nostrAuth && typeof window.nostr.getPublicKey === 'function')
       ? window.nostr
       : null;
+    const ext = extNostr || fromWindow;
     if (!ext) {
       d.querySelector('#na-ext-hint').style.display = 'block';
       return;
     }
+    extNostr = ext; // keep the resolved reference for later signEvent calls
     try {
       const pk = await ext.getPublicKey();
       extNostr = ext; // capture for signEvent routing
