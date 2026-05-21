@@ -186,7 +186,6 @@
   transition: opacity 0.15s; line-height: 1;
 }
 .card-link-icon:hover { opacity: 1; }
-.gh-stars { height: 18px; }
 .resource-meta {
   font-size: 12px; color: #666; margin-bottom: 6px;
 }

@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260521a');
+console.log('[new-resources.js] version: 20260521b');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1816,13 +1816,6 @@ function renderResourceCard(r) {
   const emojis = Object.entries(counts).filter(([e]) => e !== '+' && e !== '-').sort((a,b)=>b[1]-a[1]).slice(0,5);
   if (emojis.length) reactionHtml = emojis.map(([e,n]) => `<span class="pill reaction">${esc(e)} ${n}</span>`).join('');
 
-  // GitHub stars — shown only when count is known from shields.io (hide on 'invalid')
-  let ghStars = '';
-  if (r.git?.includes('github.com')) {
-    const ghPath = r.git.replace('https://github.com/', '');
-    ghStars = `<img class="gh-stars" src="https://img.shields.io/github/stars/${esc(ghPath)}.svg?style=social" alt="stars" loading="lazy" onerror="this.style.display='none'">`;
-  }
-
   // Edit button — always visible. If not logged in, clicking opens login modal first.
   const editBtn = `<button class="edit-btn" onclick="requireLogin(()=>editResource('${esc(r.slug)}'))" title="Suggest an edit">✎ Edit</button>`;
 
@@ -1951,7 +1944,6 @@ function renderResourceCard(r) {
         ${r.git ? `<a href="${esc(r.git)}" target="_blank" class="card-link-icon" title="Source">💻</a>` : ''}
         ${deleteBtn}
         ${editBtn}
-        ${ghStars}
       </div>
     </div>
     ${bylineHtml}
