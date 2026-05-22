@@ -453,6 +453,22 @@
   line-height: 1;
   cursor: pointer;
 }
+
+/* Reserve vertical space for elements that fill in after relay data arrives,
+   so the layout doesn't shift below them. Numbers picked to roughly match
+   the typical populated size. */
+#toggles { min-height: 180px; }
+#results { min-height: 70vh; }
+
+/* Skip layout/paint of cards that aren't anywhere near the viewport.
+   The browser still allocates the rough vertical space via
+   contain-intrinsic-size, then renders the card lazily when it scrolls
+   close enough. Drops first-paint cost from full-list rebuilds to just
+   the above-the-fold cards. */
+.resource-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
 .user-login-btn:hover { background: #268a3a; }
 .user-login-btn:active { background: #1f7430; }
 .user-chip {
