@@ -9259,6 +9259,17 @@ var nostrAuth = (() => {
   var RELAYS = ["wss://relay.primal.net", "wss://relay.nsec.app", "wss://nos.lol"];
   var LS_KEY = "nostrauth_session";
   var LS_ACCOUNTS_KEY = "nostrauth_accounts_v1";  // [{type,pubkey,sk?,bp?,data?}, …]
+  // One-time migration: if there's an active session predating the multi-
+  // account list, add it to the list so "Add account" doesn't orphan it.
+  try {
+    const _active = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    let _list = [];
+    try { _list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
+    if (_active && _active.pubkey && !_list.some(a => a && a.pubkey === _active.pubkey)) {
+      _list.push(_active);
+      localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(_list));
+    }
+  } catch(_) {}
   var signer = null;
   var extNostr = null;
   var modal = null;
@@ -9306,16 +9317,22 @@ var nostrAuth = (() => {
   document.addEventListener("nlLogout", () => logout());
   function saveSession(obj) {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(obj));
-      // Also maintain a multi-account list so "+ Switch account" can come
-      // back to a previously-used login without re-prompting.
+      // Before overwriting nostrauth_session, archive whatever was there so
+      // logins that predate the multi-account list (or accounts the user is
+      // about to be displaced from) don't vanish.
+      let prev = null;
+      try { prev = JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch(_) {}
       let list = [];
       try { list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
+      if (prev && prev.pubkey && !list.some(a => a && a.pubkey === prev.pubkey)) {
+        list.push(prev);
+      }
+      localStorage.setItem(LS_KEY, JSON.stringify(obj));
       if (obj && obj.pubkey) {
         list = list.filter(a => a && a.pubkey !== obj.pubkey);
         list.push(obj);
-        localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(list));
       }
+      localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(list));
     } catch (e) {
     }
   }
