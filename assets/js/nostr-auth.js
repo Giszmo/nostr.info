@@ -9265,11 +9265,14 @@ var nostrAuth = (() => {
     const _active = JSON.parse(localStorage.getItem(LS_KEY) || "null");
     let _list = [];
     try { _list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
+    console.log("[nostr-auth:init] active=" + (_active ? (_active.type+"/"+(_active.pubkey||"").slice(0,8)) : "null")
+      + " list.len=" + _list.length);
     if (_active && _active.pubkey && !_list.some(a => a && a.pubkey === _active.pubkey)) {
       _list.push(_active);
       localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(_list));
+      console.log("[nostr-auth:init]   migrated active into list");
     }
-  } catch(_) {}
+  } catch(e) { console.warn("[nostr-auth:init] threw", e && e.message); }
   var signer = null;
   var extNostr = null;
   var modal = null;
@@ -9315,23 +9318,30 @@ var nostrAuth = (() => {
   }
   document.addEventListener("nlLaunch", () => showModal());
   document.addEventListener("nlLogout", () => logout());
+  function _diagAcct(a) {
+    if (!a) return "null";
+    return (a.type || "?") + "/" + (a.pubkey ? a.pubkey.slice(0, 8) : "??")
+      + (a.type === "bunker" ? ("(sk:" + (a.sk ? "y" : "n") + ",bp:" + (a.bp ? "y" : "n") + ")")
+        : a.type === "nsec" ? ("(data:" + (a.data ? "y" : "n") + ")")
+        : "");
+  }
+  function _diagList(arr) {
+    return "[" + (arr || []).map(_diagAcct).join(", ") + "]";
+  }
   function saveSession(obj) {
     try {
-      // Before overwriting nostrauth_session, archive whatever was there so
-      // logins that predate the multi-account list (or accounts the user is
-      // about to be displaced from) don't vanish.
       let prev = null;
       try { prev = JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch(_) {}
       let list = [];
       try { list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
+      console.log("[nostr-auth:save] in obj=" + _diagAcct(obj) + " prev=" + _diagAcct(prev) + " list=" + _diagList(list));
       if (prev && prev.pubkey && !list.some(a => a && a.pubkey === prev.pubkey)) {
-        // Only archive prev if it has enough info to switch back to (signers
-        // need their secrets/bunker-params; bare pubkeys aren't restorable).
         const restorable =
           (prev.type === "ext")    ||
           (prev.type === "nsec"   && prev.data) ||
           (prev.type === "bunker" && prev.sk && prev.bp);
-        if (restorable) list.push(prev);
+        if (restorable) { list.push(prev); console.log("[nostr-auth:save]   archived prev"); }
+        else console.log("[nostr-auth:save]   prev not restorable, skipped");
       }
       localStorage.setItem(LS_KEY, JSON.stringify(obj));
       if (obj && obj.pubkey) {
@@ -9339,13 +9349,20 @@ var nostrAuth = (() => {
         list.push(obj);
       }
       localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(list));
+      console.log("[nostr-auth:save] out list=" + _diagList(list));
     } catch (e) {
+      console.warn("[nostr-auth:save] threw", e && e.message);
     }
   }
   function clearSession() {
     try {
+      const prev = localStorage.getItem(LS_KEY);
+      const list = localStorage.getItem(LS_ACCOUNTS_KEY);
+      console.log("[nostr-auth:clear] removing session prev=" + (prev ? _diagAcct(JSON.parse(prev)) : "null")
+        + " list=" + (list ? _diagList(JSON.parse(list)) : "[]"));
       localStorage.removeItem(LS_KEY);
     } catch (e) {
+      console.warn("[nostr-auth:clear] threw", e && e.message);
     }
   }
   // Switch to a previously-stored account by pubkey. Returns true on success.
@@ -9355,43 +9372,47 @@ var nostrAuth = (() => {
     let list = [];
     try { list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
     const acct = list.find(a => a && a.pubkey === pubkey);
-    if (!acct) return false;
+    console.log("[nostr-auth:switch] target=" + pubkey.slice(0,8) + " found=" + _diagAcct(acct) + " list=" + _diagList(list));
+    if (!acct) { console.warn("[nostr-auth:switch] no stored account for that pubkey"); return false; }
     // Bail any in-flight bunker connection
     if (abortCtrl) { try { abortCtrl.abort(); } catch(_) {} abortCtrl = null; }
     signer = null;
     if (acct.type === "nsec") {
       try {
         const decoded = decode2(acct.data);
-        if (decoded.type !== "nsec") return false;
+        if (decoded.type !== "nsec") { console.warn("[nostr-auth:switch] nsec decode wrong type"); return false; }
         const sk = decoded.data;
         signer = { _isLocal: true, secretKey: sk, getPublicKey: () => Promise.resolve(pubkey) };
         _sessionType = "nsec";
         saveSession(acct);
         emitLogin(pubkey);
+        console.log("[nostr-auth:switch] nsec ok");
         return true;
-      } catch(_) { return false; }
+      } catch(e) { console.warn("[nostr-auth:switch] nsec error", e && e.message); return false; }
     }
     if (acct.type === "ext") {
-      // The extension may or may not still be installed; keep it as the
-      // signer reference. signEvent will route to extNostr.
       signer = { _isExt: true, getPublicKey: () => Promise.resolve(pubkey) };
       _sessionType = "ext";
       saveSession(acct);
       emitLogin(pubkey);
+      console.log("[nostr-auth:switch] ext ok");
       return true;
     }
     if (acct.type === "bunker") {
       try {
         const sk = hexToBytes2(acct.sk);
         const s = BunkerSigner.fromBunker(sk, acct.bp);
+        console.log("[nostr-auth:switch] bunker connecting bp=" + acct.bp);
         await s.connect();
         signer = s;
         _sessionType = "bunker";
         saveSession(acct);
         emitLogin(pubkey);
+        console.log("[nostr-auth:switch] bunker ok");
         return true;
-      } catch(_) { return false; }
+      } catch(e) { console.warn("[nostr-auth:switch] bunker error", e && e.message); return false; }
     }
+    console.warn("[nostr-auth:switch] unknown type", acct.type);
     return false;
   }
   window.nostrAuthSwitchAccount = switchToStoredAccount;
@@ -9406,6 +9427,7 @@ var nostrAuth = (() => {
     } catch(_) {}
   };
   function logout() {
+    console.log("[nostr-auth:logout] type=" + _sessionType + " active=" + (signer ? "yes" : "no"));
     if (abortCtrl) {
       abortCtrl.abort();
       abortCtrl = null;
@@ -9417,6 +9439,7 @@ var nostrAuth = (() => {
     document.dispatchEvent(new CustomEvent("nlAuth", { detail: { type: "logout" } }));
   }
   function emitLogin(pubkey) {
+    console.log("[nostr-auth:emit] login pubkey=" + (pubkey||"").slice(0,8));
     document.dispatchEvent(new CustomEvent("nlAuth", { detail: { type: "login", pubkey } }));
   }
   (async function restoreSession() {

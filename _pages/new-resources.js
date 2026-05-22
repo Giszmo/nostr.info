@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522q-stage');
+console.log('[new-resources.js] version: 20260522r-stage');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -3823,11 +3823,17 @@ function doLogout() {
 async function pickStoredAccount(pubkey) {
   _userMenuOpen = false;
   const dd = document.getElementById('userMenu'); if (dd) dd.setAttribute('hidden', '');
-  if (typeof window.nostrAuthSwitchAccount !== 'function') return;
+  if (typeof window.nostrAuthSwitchAccount !== 'function') {
+    console.warn('[user-menu] nostrAuthSwitchAccount missing');
+    return;
+  }
+  const before = (window.nostrAuthListAccounts?.() || []).map(a => (a.type||'?')+'/'+(a.pubkey||'').slice(0,8));
+  console.log('[user-menu] pickStoredAccount target=' + pubkey.slice(0,8) + ' before=[' + before.join(', ') + ']');
   try {
     const ok = await window.nostrAuthSwitchAccount(pubkey);
-    if (!ok) console.warn('[user-menu] switch failed for', pubkey.slice(0, 16));
-  } catch(e) { console.warn('[user-menu] switch error:', e.message); }
+    const after = (window.nostrAuthListAccounts?.() || []).map(a => (a.type||'?')+'/'+(a.pubkey||'').slice(0,8));
+    console.log('[user-menu] pickStoredAccount ok=' + ok + ' after=[' + after.join(', ') + ']');
+  } catch(e) { console.warn('[user-menu] switch error:', e && e.message); }
 }
 
 async function publishEvent(signed) {
