@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522s-stage');
+console.log('[new-resources.js] version: 20260522t-stage');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -3687,11 +3687,10 @@ function updateLoginUI() {
     if (allResources.length) render();
     return;
   }
-  // Logged-in: avatar chip + dropdown. Chip name follows the current anchor
-  // since switching trust anchor is the dominant action; the auth section
-  // below the divider clarifies which account is actually signing.
-  const pk = anchorPubkey || loggedInPubkey;
-  const me = _profileBits(pk);
+  // Logged-in: avatar chip + dropdown. The chip ALWAYS reflects the signed-in
+  // account ("who am I acting as"), independent of the anchor — switching the
+  // WoT anchor changes the list, not who's signing.
+  const me = _profileBits(loggedInPubkey);
   host.innerHTML = `
     <button class="user-chip" type="button" tabindex="0" onclick="toggleUserMenu(event)" title="Account &amp; trust anchor">
       <img src="${esc(me.avatar)}" onerror="this.src='/images/nostrich.webp'">
