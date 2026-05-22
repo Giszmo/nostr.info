@@ -145,6 +145,21 @@ function bech32ToHex(bech32str) {
 const CURATOR = bech32ToHex(CURATOR_NPUB);
 anchorPubkey = CURATOR;  // default trust anchor is the curator
 
+// Hydrate the WoT from localStorage synchronously at module load, so cards
+// arriving from IDB/relays are marked in-WoT immediately on subsequent visits.
+// (loadContributorsCache is declared lower; hoisted by const? No — `function`
+// declarations are hoisted, const isn't. So we inline the localStorage read
+// here and the formal saver/loader sit alongside buildContributors below.)
+try {
+  const WOT_LS_KEY = 'nostr-info-wot-v1';
+  const WOT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  const all = JSON.parse(localStorage.getItem(WOT_LS_KEY) || '{}');
+  const entry = all[NAMESPACE + ':' + CURATOR];
+  if (entry && Date.now() - entry.ts < WOT_TTL_MS) {
+    for (const k of Object.keys(entry.map || {})) contributors.set(k, entry.map[k]);
+  }
+} catch(_) {}
+
 function hexToNpub(hex) {
   const bytes=new Uint8Array(hex.length/2);
   for(let i=0;i<hex.length;i+=2)bytes[i/2]=parseInt(hex.slice(i,i+2),16);
@@ -1312,8 +1327,38 @@ async function resolveNamespaceDefinition(ownerPubkey) {
   return def;
 }
 
+// Persist a built contributor set so the next load can mark WoT entries
+// immediately instead of showing "In <X>'s WoT: 0" for 5+ seconds while the
+// kind:3 chain re-queries.
+const WOT_LS_KEY = 'nostr-info-wot-v1';
+const WOT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+function wotKey(anchorPubkey) { return NAMESPACE + ':' + anchorPubkey; }
+function saveContributorsCache(anchorPubkey) {
+  try {
+    const map = {}; for (const [k, v] of contributors) map[k] = v;
+    const all = JSON.parse(localStorage.getItem(WOT_LS_KEY) || '{}');
+    all[wotKey(anchorPubkey)] = { map, ts: Date.now() };
+    localStorage.setItem(WOT_LS_KEY, JSON.stringify(all));
+  } catch(_) {}
+}
+function loadContributorsCache(anchorPubkey) {
+  try {
+    const all = JSON.parse(localStorage.getItem(WOT_LS_KEY) || '{}');
+    const entry = all[wotKey(anchorPubkey)];
+    if (!entry) return null;
+    if (Date.now() - entry.ts > WOT_TTL_MS) return null;
+    const m = new Map();
+    for (const k of Object.keys(entry.map || {})) m.set(k, entry.map[k]);
+    return m;
+  } catch(_) { return null; }
+}
+
 async function buildContributors(anchorPubkey) {
-  contributors = new Map();
+  // If we have a cached set for this anchor, seed it immediately so the
+  // first render after this resolves has the WoT marks. The relay queries
+  // below will then refresh and replace.
+  const cached = loadContributorsCache(anchorPubkey);
+  contributors = cached || new Map();
   const def = namespaceDefinition || await resolveNamespaceDefinition(anchorPubkey);
   if (!def) {
     // Fallback: if no namespace definition, only the anchor is a contributor
@@ -1386,6 +1431,8 @@ async function buildContributors(anchorPubkey) {
       }, 4000);
     } catch(e) {}
   }
+  // Persist for the next page load — see WOT_LS_KEY notes above.
+  saveContributorsCache(anchorPubkey);
 }
 
 function wotTrust(pubkey) {
