@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522h-stage');
+console.log('[new-resources.js] version: 20260522j-stage');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -2807,15 +2807,27 @@ function editResource(slug) {
   document.getElementById('sfNips').value      = srcTags.filter(t=>t[0]==='nip').map(t=>t[1]).join(', ');
   document.getElementById('sfProgLangs').value = srcTags.filter(t=>t[0]==='progLang').map(t=>t[1]).join(', ');
   document.getElementById('sfLicense').value   = srcTags.find(t=>t[0]==='license')?.[1] || '';
-  // Instances: stringify each entry as "Name | url | comment" or just url
-  let srcContent = {}; try { srcContent = JSON.parse(srcEv?.content || '{}'); } catch(e) {}
-  const instLines = (srcContent.instances || []).map(i => {
-    if (typeof i === 'string') return i;
-    const parts = [i.url || ''];
-    if (i.name && i.name !== i.url) parts.unshift(i.name);
-    if (i.comment) parts.push(i.comment);
-    return parts.length > 1 ? parts.join(' | ') : parts[0];
-  });
+  // Instances: stringify each entry as "Name | url | comment" or just url.
+  // Source order: parsed r.instances (kind:30890 'instance' tags, already
+  // strings) → tags directly → legacy JSON content.instances (objects).
+  let instLines = [];
+  if (Array.isArray(r.instances) && r.instances.length) {
+    instLines = r.instances.map(i => typeof i === 'string' ? i : [i.name, i.url, i.comment].filter(Boolean).join(' | '));
+  } else {
+    const tagInsts = srcTags.filter(t => t[0] === 'instance').map(t => t[1]);
+    if (tagInsts.length) {
+      instLines = tagInsts;
+    } else {
+      let srcContent = {}; try { srcContent = JSON.parse(srcEv?.content || '{}'); } catch(e) {}
+      instLines = (srcContent.instances || []).map(i => {
+        if (typeof i === 'string') return i;
+        const parts = [i.url || ''];
+        if (i.name && i.name !== i.url) parts.unshift(i.name);
+        if (i.comment) parts.push(i.comment);
+        return parts.length > 1 ? parts.join(' | ') : parts[0];
+      });
+    }
+  }
   document.getElementById('sfInstances').value = instLines.join('\n');
   const discEl = document.getElementById('sfDiscontinued');
   if (discEl) discEl.checked = r.discontinued || false;
