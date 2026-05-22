@@ -9259,19 +9259,23 @@ var nostrAuth = (() => {
   var RELAYS = ["wss://relay.primal.net", "wss://relay.nsec.app", "wss://nos.lol"];
   var LS_KEY = "nostrauth_session";
   var LS_ACCOUNTS_KEY = "nostrauth_accounts_v1";  // [{type,pubkey,sk?,bp?,data?}, …]
-  // One-time migration: if there's an active session predating the multi-
-  // account list, add it to the list so "Add account" doesn't orphan it.
+  // One-time migration / hygiene pass: if there's an active session
+  // predating the multi-account list, add it. Also drop any list entries
+  // that lack a pubkey (legacy bunker saves before v…s wrote it).
   try {
     const _active = JSON.parse(localStorage.getItem(LS_KEY) || "null");
     let _list = [];
     try { _list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
-    console.log("[nostr-auth:init] active=" + (_active ? (_active.type+"/"+(_active.pubkey||"").slice(0,8)) : "null")
+    const before = _list.length;
+    _list = _list.filter(a => a && a.pubkey);
+    if (_list.length !== before) console.log("[nostr-auth:init] pruned " + (before - _list.length) + " orphan entries");
+    console.log("[nostr-auth:init] active=" + (_active ? (_active.type+"/"+(_active.pubkey||"??").slice(0,8)) : "null")
       + " list.len=" + _list.length);
     if (_active && _active.pubkey && !_list.some(a => a && a.pubkey === _active.pubkey)) {
       _list.push(_active);
-      localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(_list));
       console.log("[nostr-auth:init]   migrated active into list");
     }
+    localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(_list));
   } catch(e) { console.warn("[nostr-auth:init] threw", e && e.message); }
   var signer = null;
   var extNostr = null;
@@ -9485,6 +9489,12 @@ var nostrAuth = (() => {
           const pk = await s.getPublicKey();
           signer = s;
           _sessionType = "bunker";
+          // Heal legacy session that was stored without a pubkey field — now
+          // we know it, write it back so the multi-account list keys cleanly.
+          if (!saved.pubkey) {
+            console.log("[nostr-auth:restore] healing bunker session with pubkey=" + pk.slice(0,8));
+            saveSession({ type: "bunker", pubkey: pk, sk: saved.sk, bp: saved.bp });
+          }
           resolveReady(true);
           emitLogin(pk);
         } catch (e) {
@@ -9644,7 +9654,7 @@ var nostrAuth = (() => {
         const pk = await s.getPublicKey();
         signer = s;
         _sessionType = "bunker";
-        saveSession({ type: "bunker", sk: bytesToHex3(sk), bp: s.bp });
+        saveSession({ type: "bunker", pubkey: pk, sk: bytesToHex3(sk), bp: s.bp });
         hideModal();
         emitLogin(pk);
       } catch (e) {
@@ -9660,7 +9670,7 @@ var nostrAuth = (() => {
         const sk = decoded.data, pk = getPublicKey(sk);
         signer = { _isLocal: true, secretKey: sk, getPublicKey: () => Promise.resolve(pk) };
         _sessionType = "nsec";
-        saveSession({ type: "nsec", data: val });
+        saveSession({ type: "nsec", pubkey: pk, data: val });
         hideModal();
         emitLogin(pk);
       } catch (e) {
@@ -9732,7 +9742,7 @@ var nostrAuth = (() => {
       signer = s;
       _sessionType = "bunker";
       const bunkerPk = await s.getPublicKey();
-      saveSession({ type: "bunker", sk: bytesToHex3(sk), bp: s.bp });
+      saveSession({ type: "bunker", pubkey: bunkerPk, sk: bytesToHex3(sk), bp: s.bp });
       hideModal();
       emitLogin(bunkerPk);
     } catch (e) {
