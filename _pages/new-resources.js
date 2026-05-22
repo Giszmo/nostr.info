@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522o-stage');
+console.log('[new-resources.js] version: 20260522p-stage');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1710,19 +1710,27 @@ function setStatus(msg) {
   el.textContent = msg;
 }
 
-// Anchor pill: shows the currently-selected trust anchor with a caret that
-// opens an inline picker. The pill body itself still clears filters + sets
-// viewMode 0 (legacy behavior). The caret toggles the picker independently.
+// Anchor pill. When `isActive`, this is the trust anchor currently in effect
+// and the body click clears filters + asserts WoT view. Otherwise the body
+// click switches the anchor to this pubkey. The active pill carries a small
+// ▾ caret that opens the inline popover for picking arbitrary anchors.
 function renderAnchorPill(pubkey, isActive, count) {
   const p = profileCache[pubkey] || {};
   const npub = hexToNpub(pubkey);
   const name = p.name || (npub.slice(0, 12) + '…');
   const avatar = `<img src="${esc(p.picture || '/images/nostrich.webp')}" onerror="this.onerror=null;this.src='/images/nostrich.webp'" class="anchor-pill-avatar" alt="">`;
   const cls = 'stat curated' + (isActive ? ' stat--active' : '');
-  const bodyClick = `viewMode=0;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';`;
+  const countHtml = isActive ? `: ${count}` : '';
+  const bodyClick = isActive
+    ? `viewMode=0;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';`
+    : `viewMode=0;pickAnchor('${esc(pubkey)}');`;
+  const caret = isActive
+    ? `<button class="anchor-pill-caret" type="button" onclick="toggleAnchorPicker(event)" title="Switch trust anchor"${_anchorPopoverOpen ? ' aria-expanded="true"' : ''}>▾</button>`
+    : '';
+  const tip = isActive ? `Show ${esc(name)}'s WoT only` : `Switch to ${esc(name)}'s WoT`;
   return `<span class="${cls} anchor-pill-host">
-    <span class="anchor-pill-body" onclick="${bodyClick}" title="Show ${esc(name)}'s WoT only">🔭 In ${avatar}${esc(name)}'s WoT: ${count}</span>
-    <button class="anchor-pill-caret" type="button" onclick="toggleAnchorPicker(event)" title="Switch trust anchor"${_anchorPopoverOpen ? ' aria-expanded="true"' : ''}>▾</button>
+    <span class="anchor-pill-body" onclick="${bodyClick}" title="${tip}">🔭 In ${avatar}${esc(name)}'s WoT${countHtml}</span>
+    ${caret}
   </span>`;
 }
 
@@ -1847,7 +1855,15 @@ function render() {
   const filterNote = hasFilters
     ? ` (filtered from ${pool.length})`
     : '';
-  const anchorPills = renderAnchorPill(anchorPubkey, viewMode===0, curatedResources.length);
+  // Render the active anchor pill plus a one-click switch back to the
+  // curator (when the user is on their own WoT) or to the user (when on
+  // the curator's WoT and logged in). Other anchors come from the caret
+  // popover.
+  let anchorPills = renderAnchorPill(anchorPubkey, viewMode===0, curatedResources.length);
+  const alt =
+    anchorPubkey !== CURATOR ? CURATOR :
+    (loggedInPubkey && loggedInPubkey !== CURATOR ? loggedInPubkey : null);
+  if (alt) anchorPills += renderAnchorPill(alt, false, 0);
 
   const totalLive = curatedResources.length + communityResources.length;
   const deletedPill = deletedResources.length
