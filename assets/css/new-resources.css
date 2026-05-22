@@ -538,7 +538,10 @@
   width: 100%; padding: 6px 10px;
   border: 0; border-radius: 6px;
   background: transparent; cursor: pointer;
-  text-align: left; color: inherit; font: inherit;
+  text-align: left; color: inherit;
+  /* Minima's button styling inherits a 54px line-height. Force it back so
+     the menu rows aren't 66px tall. */
+  font: 13px/1.3 system-ui, -apple-system, sans-serif;
 }
 .user-menu-row:hover { background: #f1f3f4; }
 .user-menu-row--active { background: #e8f0fe; }
@@ -568,7 +571,8 @@
   width: calc(100% - 4px); margin: 4px 2px 0;
   padding: 8px 10px; border-radius: 6px;
   border: 1px solid #dadce0; background: #fff;
-  font: inherit; font-size: 13px; cursor: pointer; text-align: left;
+  font: 13px/1.3 system-ui, -apple-system, sans-serif;
+  cursor: pointer; text-align: left;
 }
 .user-menu-action:hover { background: #f1f3f4; }
 .user-menu-action--primary { background: #2563eb; color: #fff; border-color: #2563eb; text-align: center; }

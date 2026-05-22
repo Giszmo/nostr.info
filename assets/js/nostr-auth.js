@@ -9258,6 +9258,7 @@ var nostrAuth = (() => {
   };
   var RELAYS = ["wss://relay.primal.net", "wss://relay.nsec.app", "wss://nos.lol"];
   var LS_KEY = "nostrauth_session";
+  var LS_ACCOUNTS_KEY = "nostrauth_accounts_v1";  // [{type,pubkey,sk?,bp?,data?}, …]
   var signer = null;
   var extNostr = null;
   var modal = null;
@@ -9306,6 +9307,15 @@ var nostrAuth = (() => {
   function saveSession(obj) {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(obj));
+      // Also maintain a multi-account list so "+ Switch account" can come
+      // back to a previously-used login without re-prompting.
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
+      if (obj && obj.pubkey) {
+        list = list.filter(a => a && a.pubkey !== obj.pubkey);
+        list.push(obj);
+        localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(list));
+      }
     } catch (e) {
     }
   }
@@ -9315,6 +9325,63 @@ var nostrAuth = (() => {
     } catch (e) {
     }
   }
+  // Switch to a previously-stored account by pubkey. Returns true on success.
+  // For nsec we have the key locally; for bunker we re-establish the connection
+  // (BunkerSigner is reachable here in the bundle). For ext we re-detect.
+  async function switchToStoredAccount(pubkey) {
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) {}
+    const acct = list.find(a => a && a.pubkey === pubkey);
+    if (!acct) return false;
+    // Bail any in-flight bunker connection
+    if (abortCtrl) { try { abortCtrl.abort(); } catch(_) {} abortCtrl = null; }
+    signer = null;
+    if (acct.type === "nsec") {
+      try {
+        const decoded = decode2(acct.data);
+        if (decoded.type !== "nsec") return false;
+        const sk = decoded.data;
+        signer = { _isLocal: true, secretKey: sk, getPublicKey: () => Promise.resolve(pubkey) };
+        _sessionType = "nsec";
+        saveSession(acct);
+        emitLogin(pubkey);
+        return true;
+      } catch(_) { return false; }
+    }
+    if (acct.type === "ext") {
+      // The extension may or may not still be installed; keep it as the
+      // signer reference. signEvent will route to extNostr.
+      signer = { _isExt: true, getPublicKey: () => Promise.resolve(pubkey) };
+      _sessionType = "ext";
+      saveSession(acct);
+      emitLogin(pubkey);
+      return true;
+    }
+    if (acct.type === "bunker") {
+      try {
+        const sk = hexToBytes2(acct.sk);
+        const s = BunkerSigner.fromBunker(sk, acct.bp);
+        await s.connect();
+        signer = s;
+        _sessionType = "bunker";
+        saveSession(acct);
+        emitLogin(pubkey);
+        return true;
+      } catch(_) { return false; }
+    }
+    return false;
+  }
+  window.nostrAuthSwitchAccount = switchToStoredAccount;
+  window.nostrAuthListAccounts = function() {
+    try { return JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || []; } catch(_) { return []; }
+  };
+  window.nostrAuthRemoveAccount = function(pubkey) {
+    try {
+      let list = JSON.parse(localStorage.getItem(LS_ACCOUNTS_KEY) || "[]") || [];
+      list = list.filter(a => a && a.pubkey !== pubkey);
+      localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(list));
+    } catch(_) {}
+  };
   function logout() {
     if (abortCtrl) {
       abortCtrl.abort();
@@ -9425,6 +9492,12 @@ var nostrAuth = (() => {
             <p class="na-label">\u{1F9E9} Browser Extension</p>
             <button class="na-btn" id="na-ext-btn">Use Browser Extension</button>
             <p class="na-hint" id="na-ext-hint" style="display:none;margin-top:4px;color:#e57373">No NIP-07 extension detected.</p>
+          </div>
+          <div class="na-section" id="na-viewas-section">
+            <p class="na-label">\u{1F50D} View only (read-only)</p>
+            <p class="na-hint" style="margin:0 0 6px;">Browse using someone else's Web of Trust. No signing.</p>
+            <input type="text" id="na-viewas-in" placeholder="npub1… or name@domain" autocomplete="off" />
+            <button class="na-btn" id="na-viewas-btn">View as</button>
           </div>
         </div>
         <div id="na-footer"></div>
@@ -9547,6 +9620,36 @@ var nostrAuth = (() => {
       } catch (e) {
         setFooter("Invalid nsec: " + e.message);
       }
+    };
+    // Read-only: accept npub1… or name@domain and emit an "anchor" event the
+    // host app picks up to switch the trust anchor without granting signing.
+    d.querySelector("#na-viewas-btn").onclick = async () => {
+      const el = d.querySelector("#na-viewas-in");
+      const val = el.value.trim();
+      if (!val) return;
+      let hex = null;
+      try {
+        if (/^[0-9a-f]{64}$/i.test(val)) hex = val.toLowerCase();
+        else if (val.toLowerCase().startsWith("npub1")) {
+          const decoded = decode2(val);
+          if (decoded.type === "npub") hex = decoded.data;
+        } else if (val.includes("@")) {
+          el.disabled = true; const old = el.placeholder; el.placeholder = "Resolving…";
+          const m = val.match(/^([^@\s]+)@([^@\s]+)$/);
+          if (m) {
+            const r = await fetch(`https://${m[2]}/.well-known/nostr.json?name=${encodeURIComponent(m[1])}`, { mode: "cors" });
+            if (r.ok) {
+              const data = await r.json();
+              const h = data?.names?.[m[1]];
+              if (typeof h === "string" && /^[0-9a-f]{64}$/i.test(h)) hex = h.toLowerCase();
+            }
+          }
+          el.disabled = false; el.placeholder = old;
+        }
+      } catch (e) { setFooter("Lookup failed: " + e.message); return; }
+      if (!hex) { setFooter("Not a valid npub or NIP-05."); return; }
+      hideModal();
+      document.dispatchEvent(new CustomEvent("nlAnchor", { detail: { pubkey: hex } }));
     };
     generateQR();
   }

@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522k-stage');
+console.log('[new-resources.js] version: 20260522m-stage');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -3699,24 +3699,49 @@ function renderUserMenu() {
     </button>`;
   };
 
-  const sessionType = window.nostr?._getSessionType?.() || (loggedInPubkey ? 'bunker' : null);
+  // Session type: prefer the shim's _getSessionType (still installed for
+  // nsec/bunker logins). After ext login we restored the extension as
+  // window.nostr, so the shim is gone — fall back to the persisted session
+  // record written by saveSession in the bundle.
+  let sessionType = window.nostr?._getSessionType?.();
+  if (!sessionType && loggedInPubkey) {
+    try { sessionType = JSON.parse(localStorage.getItem('nostrauth_session') || 'null')?.type || null; } catch(_) {}
+  }
   const sessionLabel = sessionType === 'ext' ? '🧩 Browser extension'
     : sessionType === 'nsec' ? '🔑 Local key'
-    : sessionType ? '🔗 Bunker / QR signer'
+    : sessionType === 'bunker' ? '🔗 Bunker / QR signer'
     : '';
 
+  // Stored accounts (multi-account list) — written by the bundle on every
+  // saveSession call. Includes the active one + any prior logins.
+  const storedAccounts = (typeof window !== 'undefined' && typeof window.nostrAuthListAccounts === 'function')
+    ? window.nostrAuthListAccounts() : [];
+  const accountLabel = (t) => t === 'ext' ? '🧩 ext' : t === 'nsec' ? '🔑 nsec' : '🔗 bunker';
   const youBlock = loggedInPubkey ? (() => {
-    const b = _profileBits(loggedInPubkey);
+    const others = storedAccounts.filter(a => a && a.pubkey && a.pubkey !== loggedInPubkey);
+    const activeRow = (() => {
+      const b = _profileBits(loggedInPubkey);
+      return `<div class="user-menu-row user-menu-row--active">
+        <img src="${esc(b.avatar)}" onerror="this.src='/images/nostrich.webp'">
+        <span class="user-menu-row-name">${esc(b.name)}</span>
+        <span class="user-menu-row-meta">${esc(sessionLabel)}</span>
+      </div>`;
+    })();
+    const otherRows = others.map(a => {
+      const b = _profileBits(a.pubkey);
+      return `<button class="user-menu-row" type="button" onclick="pickStoredAccount('${esc(a.pubkey)}')" title="Switch to this account">
+        <img src="${esc(b.avatar)}" onerror="this.src='/images/nostrich.webp'">
+        <span class="user-menu-row-name">${esc(b.name)}</span>
+        <span class="user-menu-row-meta">${esc(accountLabel(a.type))}</span>
+      </button>`;
+    }).join('');
     return `
       <div class="user-menu-section">
         <div class="user-menu-heading">🔑 Signed in</div>
-        <div class="user-menu-row user-menu-row--active">
-          <img src="${esc(b.avatar)}" onerror="this.src='/images/nostrich.webp'">
-          <span class="user-menu-row-name">${esc(b.name)}</span>
-          <span class="user-menu-row-meta">${esc(sessionLabel)}</span>
-        </div>
+        ${activeRow}
+        ${otherRows}
         <button class="user-menu-action" type="button" onclick="doLogout()">↩ Sign out</button>
-        <button class="user-menu-action" type="button" onclick="launchLogin()" title="Add a second account (current logout-first)">+ Switch account</button>
+        <button class="user-menu-action" type="button" onclick="launchLogin()">+ Add account</button>
       </div>`;
   })() : `
       <div class="user-menu-section">
@@ -3767,6 +3792,20 @@ function doLogout() {
   nwcClearConnection();
   if (window.nostr?.logout) window.nostr.logout();
   else document.dispatchEvent(new CustomEvent('nlLogout'));
+}
+
+// Multi-account switch: hand off to the bundle's switchToStoredAccount, which
+// re-establishes the bunker connection / reinstates the local signer / etc.,
+// then fires the nlAuth login event that our listener picks up to refresh
+// loggedInPubkey + the chip.
+async function pickStoredAccount(pubkey) {
+  _userMenuOpen = false;
+  const dd = document.getElementById('userMenu'); if (dd) dd.setAttribute('hidden', '');
+  if (typeof window.nostrAuthSwitchAccount !== 'function') return;
+  try {
+    const ok = await window.nostrAuthSwitchAccount(pubkey);
+    if (!ok) console.warn('[user-menu] switch failed for', pubkey.slice(0, 16));
+  } catch(e) { console.warn('[user-menu] switch error:', e.message); }
 }
 
 async function publishEvent(signed) {
@@ -3958,6 +3997,15 @@ window.addEventListener("load", async () => {
   startLiveSubscription();
   document.getElementById("searchInput")?.addEventListener("input", e => {
     searchQuery = e.target.value; renderOrder = null; render();
+  });
+
+  // Read-only viewer: the login modal's "View as" button dispatches this with
+  // a resolved hex pubkey. Swap the trust anchor (no signing capability).
+  document.addEventListener("nlAnchor", e => {
+    const pk = e.detail?.pubkey;
+    if (!pk) return;
+    rememberPubkey(pk);
+    setAnchor(pk);
   });
 
   // Listen for future login/logout events (manual login via modal)
