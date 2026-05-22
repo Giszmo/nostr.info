@@ -443,33 +443,86 @@
   padding: 16px 18px; overflow-y: auto; flex: 1;
 }
 
-/* ── Auth dropdown ────────────────────────────────────────────────────────── */
+/* ── Unified user/anchor chip + menu ────────────────────────────────────── */
 #loggedInAs { position: relative; display: inline-flex; align-items: center; }
-.auth-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  cursor: pointer; user-select: none; padding: 2px 6px;
-  border-radius: 20px; border: 1px solid transparent;
+.user-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px 2px 2px;
+  border-radius: 999px;
+  border: 1px solid #dadce0;
+  background: #fff;
+  cursor: pointer;
+  font: inherit; color: #222;
+  line-height: 1; max-width: 220px;
 }
-.auth-chip:hover { background: #f1f3f4; border-color: #dadce0; }
-.auth-dropdown {
-  position: absolute; top: calc(100% + 4px); right: 0;
-  background: #fff; border: 1px solid #dadce0; border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-  min-width: 220px; padding: 10px 12px; z-index: 9000;
-  font-size: 12px; color: #333;
+.user-chip:hover { background: #f1f3f4; border-color: #c5c8cc; }
+.user-chip > img {
+  width: 24px; height: 24px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
 }
-.auth-dropdown-npub {
-  font-family: monospace; font-size: 10px; color: #888;
-  word-break: break-all; margin-bottom: 6px; padding-bottom: 6px;
-  border-bottom: 1px solid #f0f0f0;
+.user-chip-name {
+  font-size: 13px; max-width: 140px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.auth-dropdown-method { color: #555; margin-bottom: 10px; }
-.auth-dropdown-logout {
-  width: 100%; padding: 6px; border: 1px solid #dadce0;
-  border-radius: 6px; background: #fff; cursor: pointer;
-  font-size: 12px; color: #c5221f; text-align: center;
+.user-chip-caret { font-size: 10px; color: #888; }
+
+.user-menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: #fff; border: 1px solid #dadce0; border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+  min-width: 280px; max-width: 320px; padding: 6px;
+  z-index: 9000; font-size: 13px; color: #222;
 }
-.auth-dropdown-logout:hover { background: #fce8e6; }
+.user-menu[hidden] { display: none; }
+.user-menu-section + .user-menu-section {
+  border-top: 1px solid #f0f0f0;
+  margin-top: 6px; padding-top: 6px;
+}
+.user-menu-heading {
+  font-size: 11px; color: #80868b;
+  text-transform: uppercase; letter-spacing: .04em;
+  padding: 8px 10px 4px;
+}
+.user-menu-row {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 6px 10px;
+  border: 0; border-radius: 6px;
+  background: transparent; cursor: pointer;
+  text-align: left; color: inherit; font: inherit;
+}
+.user-menu-row:hover { background: #f1f3f4; }
+.user-menu-row--active { background: #e8f0fe; }
+.user-menu-row > img {
+  width: 22px; height: 22px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+}
+.user-menu-row-name {
+  font-size: 13px; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.user-menu-row-meta { font-size: 11px; color: #80868b; }
+.user-menu-form {
+  display: flex; gap: 6px; padding: 8px 10px 4px;
+}
+.user-menu-form input {
+  flex: 1; padding: 6px 8px;
+  border: 1px solid #dadce0; border-radius: 6px;
+  font-size: 13px;
+}
+.user-menu-form input.invalid { border-color: #c5221f; background: #fce8e6; }
+.user-menu-form-btn {
+  padding: 6px 10px; border: 0; border-radius: 6px;
+  background: #2563eb; color: #fff; font-size: 12px; cursor: pointer;
+}
+.user-menu-action {
+  width: calc(100% - 4px); margin: 4px 2px 0;
+  padding: 8px 10px; border-radius: 6px;
+  border: 1px solid #dadce0; background: #fff;
+  font: inherit; font-size: 13px; cursor: pointer; text-align: left;
+}
+.user-menu-action:hover { background: #f1f3f4; }
+.user-menu-action--primary { background: #2563eb; color: #fff; border-color: #2563eb; text-align: center; }
+.user-menu-action--primary:hover { background: #1e4fb5; }
 
 /* ── Proposals panel (inline under card) ─────────────────────────────────── */
 .resource-proposals { margin-top: 6px; }

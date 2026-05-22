@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522c');
+console.log('[new-resources.js] version: 20260522e');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1440,7 +1440,7 @@ async function setAnchor(pubkey) {
   renderOrder = null;
   dedupAndRender();
   loadSecondary();
-  updateAnchorUI();
+  updateLoginUI();   // chip name follows the anchor — needs to repaint
   // Fire-and-forget: ensure the anchor's own profile is fetched so the pill stops
   // showing a truncated npub. Re-render once it arrives. Skip if already cached.
   fetchAnchorProfile(pubkey);
@@ -1462,7 +1462,7 @@ async function fetchAnchorProfile(pubkey) {
         got = true;
       } catch(e) {}
     }, 4000);
-    if (got) { render(); updateAnchorUI(); }
+    if (got) { render(); updateLoginUI(); }
   } catch(e) {}
 }
 
@@ -3489,150 +3489,209 @@ function seedSplitWithSelf(existingSplits) {
   return [{ pubkey: loggedInPubkey, weight: 100 }, ...existingSplits];
 }
 
-function updateAnchorUI() {
-  const chip = document.getElementById('anchorChip');
-  if (!chip) return;
-  const anchorProf = profileCache[anchorPubkey] || {};
-  const anchorNpub = hexToNpub(anchorPubkey);
-  const anchorName = anchorProf.name || (anchorNpub.slice(0, 12) + '…');
-  const isDefault  = anchorPubkey === CURATOR;
-  const isSelf     = anchorPubkey === loggedInPubkey;
+// ─── Unified user / anchor chip ─────────────────────────────────────────────
+// The header chip always shows the current trust anchor. Clicking opens a
+// single dropdown that covers both "view as someone else's WoT" (anchor
+// switching, with NIP-05 / npub entry) and "signed in as" (login/logout).
+// The legacy #anchorChip / #loginBtn elements stay in the DOM but hidden so
+// the existing Jekyll header template doesn't need to change.
+//
+// TODO multi-account: the dropdown currently has "+ Switch account" which
+// just opens the login modal (and logs the previous account out first).
+// To support fast switching we'd need to store ALL accounts in localStorage
+// (currently nostr-auth.js only persists one) and let signEvent route to
+// the active one. That requires changes inside nostr-auth.js (the prebuilt
+// bundle) which we don't have a build pipeline for yet — deferred.
 
-  if (isSelf) {
-    // When viewing own WoT, chip is redundant (it's them)
-    chip.style.display = 'none';
+const KNOWN_PUBKEYS_LS_KEY = 'nostr-info-known-pubkeys-v1';
+function loadKnownPubkeys() {
+  try { return JSON.parse(localStorage.getItem(KNOWN_PUBKEYS_LS_KEY) || '[]'); } catch(_) { return []; }
+}
+function saveKnownPubkeys(arr) {
+  try { localStorage.setItem(KNOWN_PUBKEYS_LS_KEY, JSON.stringify(arr)); } catch(_) {}
+}
+function rememberPubkey(hex) {
+  if (!/^[0-9a-f]{64}$/i.test(hex)) return;
+  const arr = loadKnownPubkeys();
+  if (!arr.includes(hex)) { arr.push(hex); saveKnownPubkeys(arr); }
+}
+
+// NIP-05: "name@domain" → hex pubkey via /.well-known/nostr.json?name=
+async function resolveNip05(addr) {
+  const m = String(addr || '').trim().match(/^([^@\s]+)@([^@\s]+)$/);
+  if (!m) return null;
+  try {
+    const r = await fetch(`https://${m[2]}/.well-known/nostr.json?name=${encodeURIComponent(m[1])}`, { mode: 'cors' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const hex = data?.names?.[m[1]];
+    if (typeof hex === 'string' && /^[0-9a-f]{64}$/i.test(hex)) return hex.toLowerCase();
+  } catch(_) {}
+  return null;
+}
+
+function _profileBits(pubkey) {
+  const p = profileCache[pubkey] || {};
+  const npub = hexToNpub(pubkey);
+  return {
+    name:   p.name || (npub.slice(0, 14) + '…'),
+    avatar: p.picture || '/images/nostrich.webp',
+    npub,
+  };
+}
+
+function updateAnchorUI() {
+  // Legacy element kept for backwards-compat; the unified chip lives in
+  // #loggedInAs now. Hide the old one so it doesn't show up in two places.
+  const oldChip = document.getElementById('anchorChip');
+  if (oldChip) oldChip.style.display = 'none';
+}
+
+let _userMenuOpen = false;
+
+function updateLoginUI() {
+  const loginBtn = document.getElementById('loginBtn');
+  if (loginBtn) loginBtn.style.display = 'none'; // unified chip subsumes it
+  const host = document.getElementById('loggedInAs');
+  if (!host) return;
+  const pk = anchorPubkey || CURATOR;
+  const me = _profileBits(pk);
+  host.innerHTML = `
+    <button class="user-chip" type="button" tabindex="0" onclick="toggleUserMenu(event)" title="Account &amp; trust anchor">
+      <img src="${esc(me.avatar)}" onerror="this.src='/images/nostrich.webp'">
+      <span class="user-chip-name">${esc(me.name)}</span>
+      <span class="user-chip-caret">▾</span>
+    </button>
+    <div class="user-menu" id="userMenu" hidden></div>
+  `;
+  if (_userMenuOpen) renderUserMenu();
+  if (allResources.length) render();
+}
+
+function toggleUserMenu(e) {
+  if (e) e.stopPropagation();
+  const dd = document.getElementById('userMenu');
+  if (!dd) return;
+  _userMenuOpen = dd.hasAttribute('hidden');
+  if (_userMenuOpen) {
+    renderUserMenu();
+    dd.removeAttribute('hidden');
+    setTimeout(() => document.addEventListener('click', function _c() {
+      _userMenuOpen = false;
+      dd.setAttribute('hidden', '');
+      document.removeEventListener('click', _c);
+    }), 0);
   } else {
-    chip.style.display = 'inline';
-    chip.innerHTML = `🔭 <a href="javascript:void(0)" onclick="openAnchorPicker()" style="color:#888;text-decoration:none;" title="Change trust anchor">${esc(anchorName)}'s WoT</a>`;
+    dd.setAttribute('hidden', '');
   }
 }
 
-let _anchorPickerModal = null;
+function renderUserMenu() {
+  const dd = document.getElementById('userMenu');
+  if (!dd) return;
 
-function openAnchorPicker() {
-  // Build list of known resource publishers from what we've seen
-  const publishers = [...new Set(allResourceEvents.map(e => e.pubkey))]
-    .filter(pk => pk && pk.length === 64)
-    .sort((a, b) => {
-      // sort by number of events published
-      const ca = allResourceEvents.filter(e => e.pubkey === a).length;
-      const cb = allResourceEvents.filter(e => e.pubkey === b).length;
-      return cb - ca;
-    })
-    .slice(0, 50);
+  // Anchor candidates (deduped). Order: current, default curator, self,
+  // remembered pubkeys, then the most prolific recent publishers.
+  const cands = [];
+  const seen = new Set();
+  const push = (pk) => { if (pk && !seen.has(pk)) { seen.add(pk); cands.push(pk); } };
+  push(anchorPubkey);
+  push(CURATOR);
+  if (loggedInPubkey) push(loggedInPubkey);
+  loadKnownPubkeys().forEach(push);
+  [...new Set(allResourceEvents.map(e => e.pubkey))]
+    .filter(p => p && p.length === 64)
+    .sort((a, b) =>
+      allResourceEvents.filter(e => e.pubkey === b).length -
+      allResourceEvents.filter(e => e.pubkey === a).length)
+    .slice(0, 8)
+    .forEach(push);
 
-  const rows = publishers.map(pk => {
-    const p    = profileCache[pk] || {};
-    const npub = hexToNpub(pk);
-    const name = p.name || (npub.slice(0, 16) + '…');
-    const cnt  = allResourceEvents.filter(e => e.pubkey === pk).length;
-    const avatar = p.picture
-      ? `<img src="${esc(p.picture)}" onerror="this.src='/images/nostrich.webp'" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:5px;">`
-      : `<img src="/images/nostrich.webp" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:5px;">`;
-    const active = pk === anchorPubkey ? ' style="font-weight:600;background:#e8f0fe;"' : '';
-    return `<div class="anchor-row"${active} onclick="pickAnchor('${esc(pk)}')">
-      ${avatar}<span>${esc(name)}</span>
-      <span style="margin-left:auto;font-size:11px;color:#aaa;">${cnt} events</span>
-    </div>`;
-  }).join('');
+  const anchorRow = (pk) => {
+    const b = _profileBits(pk);
+    const active = pk === anchorPubkey ? ' user-menu-row--active' : '';
+    const label =
+      pk === CURATOR && pk === loggedInPubkey ? ' (you · default)' :
+      pk === CURATOR ? ' (default)' :
+      pk === loggedInPubkey ? ' (you)' : '';
+    return `<button class="user-menu-row${active}" type="button" onclick="pickAnchor('${esc(pk)}')">
+      <img src="${esc(b.avatar)}" onerror="this.src='/images/nostrich.webp'">
+      <span class="user-menu-row-name">${esc(b.name)}${esc(label)}</span>
+    </button>`;
+  };
 
-  if (!_anchorPickerModal) {
-    const dm = document.createElement('div');
-    dm.id = 'anchorPickerModal';
-    dm.style.cssText = 'position:fixed;inset:0;z-index:9200;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
-    dm.addEventListener('click', e => { if (e.target === dm) dm.style.display='none'; });
-    document.body.appendChild(dm);
-    _anchorPickerModal = dm;
-  }
+  const sessionType = window.nostr?._getSessionType?.() || (loggedInPubkey ? 'bunker' : null);
+  const sessionLabel = sessionType === 'ext' ? '🧩 Browser extension'
+    : sessionType === 'nsec' ? '🔑 Local key'
+    : sessionType ? '🔗 Bunker / QR signer'
+    : '';
 
-  _anchorPickerModal.innerHTML = `
-    <div style="background:#fff;border-radius:10px;max-width:480px;width:100%;margin:16px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
-      <div style="padding:14px 18px;border-bottom:1px solid #e0e0e0;flex-shrink:0;">
-        <strong style="font-size:15px;">🔭 Choose trust anchor</strong>
-        <p style="margin:6px 0 0;font-size:12px;color:#666;">Whose follows define what's curated? Default = ${esc(hexToNpub(CURATOR).slice(0,16))}… (Leo's curator account)</p>
-      </div>
-      <div style="overflow-y:auto;flex:1;padding:8px 0;">
-        ${rows || '<p style="padding:12px 18px;color:#888;font-size:13px;">No publishers loaded yet.</p>'}
-      </div>
-      <div style="padding:12px 18px;border-top:1px solid #e0e0e0;flex-shrink:0;">
-        <div style="font-size:12px;margin-bottom:6px;color:#555;">Or enter any npub:</div>
-        <div style="display:flex;gap:8px;">
-          <input id="anchorNpubInput" type="text" placeholder="npub1…" style="flex:1;padding:6px;border:1px solid #dadce0;border-radius:6px;font-size:13px;font-family:monospace;">
-          <button onclick="pickAnchorFromInput()" style="padding:6px 14px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;">Use</button>
+  const youBlock = loggedInPubkey ? (() => {
+    const b = _profileBits(loggedInPubkey);
+    return `
+      <div class="user-menu-section">
+        <div class="user-menu-heading">🔑 Signed in</div>
+        <div class="user-menu-row user-menu-row--active">
+          <img src="${esc(b.avatar)}" onerror="this.src='/images/nostrich.webp'">
+          <span class="user-menu-row-name">${esc(b.name)}</span>
+          <span class="user-menu-row-meta">${esc(sessionLabel)}</span>
         </div>
-        ${loggedInPubkey ? `<button onclick="pickAnchor('${esc(loggedInPubkey)}')" style="margin-top:8px;padding:6px 14px;border:1px solid #dadce0;border-radius:6px;background:#f8f9fa;cursor:pointer;font-size:12px;width:100%;">↩ Use my own WoT</button>` : ''}
-        <button onclick="pickAnchor('${esc(CURATOR)}')" style="margin-top:6px;padding:6px 14px;border:1px solid #dadce0;border-radius:6px;background:#f8f9fa;cursor:pointer;font-size:12px;width:100%;">↩ Use default curator (Leo's curator)</button>
+        <button class="user-menu-action" type="button" onclick="doLogout()">↩ Sign out</button>
+        <button class="user-menu-action" type="button" onclick="launchLogin()" title="Add a second account (current logout-first)">+ Switch account</button>
+      </div>`;
+  })() : `
+      <div class="user-menu-section">
+        <button class="user-menu-action user-menu-action--primary" type="button" onclick="launchLogin()">🔑 Log in</button>
+      </div>`;
+
+  dd.innerHTML = `
+    <div class="user-menu-section">
+      <div class="user-menu-heading">🔭 Viewing as</div>
+      ${cands.map(anchorRow).join('')}
+      <div class="user-menu-form">
+        <input id="anchorNpubInput" type="text" placeholder="npub1… or name@domain" autocomplete="off" />
+        <button type="button" class="user-menu-form-btn" onclick="pickAnchorFromInput()">View</button>
       </div>
-    </div>`;
-  _anchorPickerModal.style.display = 'flex';
+    </div>
+    ${youBlock}
+  `;
+  dd.querySelector('.user-menu-form input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); pickAnchorFromInput(); }
+  });
+  // Stop the document-level close handler from triggering on dropdown clicks
+  dd.onclick = e => e.stopPropagation();
 }
 
 function pickAnchor(pubkey) {
-  if (_anchorPickerModal) _anchorPickerModal.style.display = 'none';
+  _userMenuOpen = false;
+  const dd = document.getElementById('userMenu'); if (dd) dd.setAttribute('hidden', '');
   setAnchor(pubkey);
 }
 
-function pickAnchorFromInput() {
-  const val = document.getElementById('anchorNpubInput')?.value?.trim();
+async function pickAnchorFromInput() {
+  const el = document.getElementById('anchorNpubInput');
+  const val = el?.value?.trim();
   if (!val) return;
   let hex = null;
-  if (val.startsWith('npub1')) hex = bech32ToHex(val);
-  else if (/^[0-9a-f]{64}$/.test(val)) hex = val;
-  if (!hex) { alert('Invalid npub or hex pubkey'); return; }
+  if (/^[0-9a-f]{64}$/i.test(val)) hex = val.toLowerCase();
+  else if (val.toLowerCase().startsWith('npub1')) hex = bech32ToHex(val);
+  else if (val.includes('@')) {
+    el.disabled = true; const old = el.placeholder; el.placeholder = 'Resolving…';
+    hex = await resolveNip05(val);
+    el.disabled = false; el.placeholder = old;
+  }
+  if (!hex) {
+    el?.classList.add('invalid');
+    setTimeout(() => el?.classList.remove('invalid'), 1500);
+    return;
+  }
+  rememberPubkey(hex);
   pickAnchor(hex);
 }
 
-function updateLoginUI() {
-  const loginBtn   = document.getElementById('loginBtn');
-  const loggedAs   = document.getElementById('loggedInAs');
-  if (loggedInPubkey) {
-    if (loginBtn)   loginBtn.style.display = 'none';
-    const npub = hexToNpub(loggedInPubkey);
-    const prof = profileCache[loggedInPubkey] || {};
-    const avatarSrc = prof.picture || '/images/nostrich.webp';
-    const name = prof.name ? esc(prof.name) : npub.slice(0,14) + '…';
-    const sessionType = window.nostr?._getSessionType?.() || 'bunker';
-    const sessionLabel = sessionType === 'ext' ? '🧩 Browser extension'
-      : sessionType === 'nsec' ? '🔑 Local key'
-      : '🔗 Bunker / QR signer';
-    if (loggedAs) loggedAs.innerHTML = `
-      <span class="auth-chip" tabindex="0" onclick="toggleAuthDropdown(event)">
-        <img src="${esc(avatarSrc)}" onerror="this.src='/images/nostrich.webp'"
-          style="width:22px;height:22px;border-radius:50%;vertical-align:middle;">
-        <span style="vertical-align:middle;font-size:13px;">${name}</span>
-        <span style="vertical-align:middle;font-size:10px;color:#999;">▾</span>
-      </span>
-      <div class="auth-dropdown" id="authDropdown" style="display:none;">
-        <div class="auth-dropdown-npub">${npub}</div>
-        <div class="auth-dropdown-method">${sessionLabel}</div>
-        <button class="auth-dropdown-logout" onclick="doLogout()">↩ Logout</button>
-      </div>`;
-  } else {
-    if (loginBtn)   loginBtn.style.display = 'inline';
-    if (loggedAs)   loggedAs.textContent = '';
-  }
-  // Re-render cards so edit buttons / vote state update
-  if (allResources.length) render();
-  updateAnchorUI();
-}
-
-function toggleAuthDropdown(e) {
-  e.stopPropagation();
-  const dd = document.getElementById('authDropdown');
-  if (!dd) return;
-  const isOpen = dd.style.display !== 'none';
-  dd.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) {
-    // close on next outside click
-    setTimeout(() => document.addEventListener('click', function _c() {
-      dd.style.display = 'none';
-      document.removeEventListener('click', _c);
-    }), 0);
-  }
-}
-
 function doLogout() {
-  document.getElementById('authDropdown')?.style && (document.getElementById('authDropdown').style.display = 'none');
+  _userMenuOpen = false;
+  const dd = document.getElementById('userMenu'); if (dd) dd.setAttribute('hidden', '');
   nwcClearConnection();
   if (window.nostr?.logout) window.nostr.logout();
   else document.dispatchEvent(new CustomEvent('nlLogout'));
