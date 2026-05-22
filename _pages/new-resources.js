@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522e');
+console.log('[new-resources.js] version: 20260522f');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -41,7 +41,7 @@ let namespaceDefinition = null;  // kind:30891 for active namespace
 let contributors = new Map();    // pubkey → {hop, source} for active namespace
 let anchorPubkey;   // current trust anchor (set after CURATOR is defined)
 let tagCounts         = {};
-let activeTags        = window.DEFAULT_TAGS || ['client'];
+let activeTags        = window.DEFAULT_TAGS || [];
 let viewMode          = 0;  // 0 = WoT only, 1 = all, 2 = proposals only
 let searchQuery       = '';
 let loadedFrom        = '…';
@@ -3550,11 +3550,21 @@ function updateAnchorUI() {
 let _userMenuOpen = false;
 
 function updateLoginUI() {
-  const loginBtn = document.getElementById('loginBtn');
-  if (loginBtn) loginBtn.style.display = 'none'; // unified chip subsumes it
   const host = document.getElementById('loggedInAs');
   if (!host) return;
-  const pk = anchorPubkey || CURATOR;
+  // Logged-out: just a compact green Login button. No anchor switcher —
+  // anonymous visitors get the default curator's view silently; "view as"
+  // and explicit anchor selection are dropdown actions once logged in
+  // (and a planned login-screen "view-only" option).
+  if (!loggedInPubkey) {
+    host.innerHTML = `<button class="user-login-btn" type="button" onclick="launchLogin()">🔑 Login</button>`;
+    if (allResources.length) render();
+    return;
+  }
+  // Logged-in: avatar chip + dropdown. Chip name follows the current anchor
+  // since switching trust anchor is the dominant action; the auth section
+  // below the divider clarifies which account is actually signing.
+  const pk = anchorPubkey || loggedInPubkey;
   const me = _profileBits(pk);
   host.innerHTML = `
     <button class="user-chip" type="button" tabindex="0" onclick="toggleUserMenu(event)" title="Account &amp; trust anchor">
@@ -3590,8 +3600,8 @@ function renderUserMenu() {
   const dd = document.getElementById('userMenu');
   if (!dd) return;
 
-  // Anchor candidates (deduped). Order: current, default curator, self,
-  // remembered pubkeys, then the most prolific recent publishers.
+  // Anchor candidates (deduped). Only explicit/known pubkeys — no autodiscovery
+  // of recent publishers. Order: current, default curator, self, remembered.
   const cands = [];
   const seen = new Set();
   const push = (pk) => { if (pk && !seen.has(pk)) { seen.add(pk); cands.push(pk); } };
@@ -3599,13 +3609,6 @@ function renderUserMenu() {
   push(CURATOR);
   if (loggedInPubkey) push(loggedInPubkey);
   loadKnownPubkeys().forEach(push);
-  [...new Set(allResourceEvents.map(e => e.pubkey))]
-    .filter(p => p && p.length === 64)
-    .sort((a, b) =>
-      allResourceEvents.filter(e => e.pubkey === b).length -
-      allResourceEvents.filter(e => e.pubkey === a).length)
-    .slice(0, 8)
-    .forEach(push);
 
   const anchorRow = (pk) => {
     const b = _profileBits(pk);
@@ -3648,16 +3651,9 @@ function renderUserMenu() {
     <div class="user-menu-section">
       <div class="user-menu-heading">🔭 Viewing as</div>
       ${cands.map(anchorRow).join('')}
-      <div class="user-menu-form">
-        <input id="anchorNpubInput" type="text" placeholder="npub1… or name@domain" autocomplete="off" />
-        <button type="button" class="user-menu-form-btn" onclick="pickAnchorFromInput()">View</button>
-      </div>
     </div>
     ${youBlock}
   `;
-  dd.querySelector('.user-menu-form input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); pickAnchorFromInput(); }
-  });
   // Stop the document-level close handler from triggering on dropdown clicks
   dd.onclick = e => e.stopPropagation();
 }
@@ -3871,8 +3867,18 @@ async function submitResource() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+// Paint the header chip / login button immediately (before any awaits) so the
+// header doesn't show the legacy login button for 5+ seconds while we resolve
+// the saved signer session.
+(function paintHeaderEarly() {
+  const start = () => { try { updateLoginUI(); } catch(_) {} };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+
 window.addEventListener("load", async () => {
   logR("init:start");
+  updateLoginUI();
   startLiveSubscription();
   document.getElementById("searchInput")?.addEventListener("input", e => {
     searchQuery = e.target.value; renderOrder = null; render();

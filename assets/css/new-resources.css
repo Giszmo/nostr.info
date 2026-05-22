@@ -445,6 +445,16 @@
 
 /* ── Unified user/anchor chip + menu ────────────────────────────────────── */
 #loggedInAs { position: relative; display: inline-flex; align-items: center; }
+.user-login-btn {
+  padding: 5px 14px;
+  border: 0; border-radius: 999px;
+  background: #2f9e44; color: #fff;
+  font: inherit; font-size: 13px; font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.user-login-btn:hover { background: #268a3a; }
+.user-login-btn:active { background: #1f7430; }
 .user-chip {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 2px 8px 2px 2px;
