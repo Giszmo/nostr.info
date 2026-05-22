@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522j-stage');
+console.log('[new-resources.js] version: 20260522k-stage');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -2376,7 +2376,25 @@ function renderSubmitCard() {
   </div>`;
 }
 
+// Filter UX: compact strip of group buttons by default; clicking a button
+// expands a pill panel beneath the strip. Multiple groups can be open at
+// once. Active filters add a count badge to their group button.
+const _expandedFilterGroups = new Set();
+function toggleFilterGroup(name) {
+  if (_expandedFilterGroups.has(name)) _expandedFilterGroups.delete(name);
+  else _expandedFilterGroups.add(name);
+  // re-render only the toggles (cheap); avoid full render() unless filters change.
+  renderToggles(_lastTogglePool || []);
+}
+
+let _lastTogglePool = null;
+
 function renderToggles(pool) {
+  _lastTogglePool = pool;
+  const toggles = document.getElementById('toggles');
+  if (!toggles) return;
+
+  // Compute the per-pill availability based on currently-active filters.
   const filtered = pool.filter(r => {
     if (!activeTags.length) return true;
     const all = [...r.tags, ...r.platforms, ...r.nips, ...(r.license ? [r.license] : [])];
@@ -2391,44 +2409,43 @@ function renderToggles(pool) {
     (r.status || []).forEach(s => available.add(s));
   });
 
-  const toggles = document.getElementById('toggles');
-  if (!toggles) return;
-  toggles.innerHTML = '';
+  const groups = NAMESPACE === 'nips'
+    ? [['Tags', allTags]]
+    : [
+        ['Platforms', allPlatforms],
+        ['Tags',      allRegularTags],
+        ['NIPs',      allNipsList],
+        ['Licenses',  allLicenses],
+      ];
 
-  function addGroup(label, items) {
+  const stripBtns = groups
+    .filter(([, items]) => items.length)
+    .map(([name, items]) => {
+      const activeCount = items.filter(t => activeTags.includes(t)).length;
+      const isOpen = _expandedFilterGroups.has(name);
+      const caret = isOpen ? '–' : '+';
+      const badge = activeCount ? ` <span class="filter-group-badge">${activeCount}</span>` : '';
+      return `<button class="filter-group-btn${isOpen ? ' open' : ''}${activeCount ? ' has-active' : ''}" type="button" onclick="toggleFilterGroup('${esc(name)}')">${esc(name)}${badge} <span class="filter-group-caret">${caret}</span></button>`;
+    }).join('');
+
+  const renderPills = (items) => {
     const active = items.filter(t => activeTags.includes(t));
     const avail  = items.filter(t => !activeTags.includes(t) && available.has(t));
     const unavail = items.filter(t => !activeTags.includes(t) && !available.has(t));
-    if (!active.length && !avail.length && !unavail.length) return;
-    const heading = document.createElement('div');
-    heading.className = 'toggle-group-label';
-    heading.textContent = label + ':';
-    toggles.appendChild(heading);
-    active.forEach(t => {
-      const b = document.createElement('span');
-      b.className='filter-pill active'; b.textContent='✓ '+t+' ('+(tagCounts[t]||0)+')';
-      b.onclick=()=>clickTag(t); toggles.appendChild(b);
-    });
-    avail.forEach(t => {
-      const b = document.createElement('span');
-      b.className='filter-pill available'; b.textContent=t+' ('+(tagCounts[t]||0)+')';
-      b.onclick=()=>clickTag(t); toggles.appendChild(b);
-    });
-    unavail.forEach(t => {
-      const b = document.createElement('span');
-      b.className='filter-pill unavailable'; b.textContent=t+' ('+(tagCounts[t]||0)+')';
-      b.onclick=()=>clickTag(t); toggles.appendChild(b);
-    });
-  }
+    const span = (cls, prefix, t) => `<span class="filter-pill ${cls}" onclick="clickTag('${esc(t)}')">${prefix}${esc(t)} (${tagCounts[t] || 0})</span>`;
+    return [
+      ...active.map(t => span('active', '✓ ', t)),
+      ...avail.map(t => span('available', '', t)),
+      ...unavail.map(t => span('unavailable', '', t)),
+    ].join('');
+  };
 
-  if (NAMESPACE === 'nips') {
-    addGroup('Tags', allTags);
-  } else {
-    addGroup('Platforms', allPlatforms);
-    addGroup('Tags', allRegularTags);
-    addGroup('NIPs', allNipsList);
-    addGroup('Licenses', allLicenses);
-  }
+  const expandedPanels = groups
+    .filter(([name, items]) => _expandedFilterGroups.has(name) && items.length)
+    .map(([name, items]) => `<div class="filter-panel" role="region" aria-label="${esc(name)} filters">${renderPills(items)}</div>`)
+    .join('');
+
+  toggles.innerHTML = `<div class="filter-strip">${stripBtns}</div>${expandedPanels}`;
 }
 
 function clickTag(t) {

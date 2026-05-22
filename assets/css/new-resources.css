@@ -75,22 +75,46 @@
   gap: 6px;
   margin-bottom: 16px;
 }
+/* Compact strip of group buttons. Click a button to expand its pill panel. */
+.filter-strip {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.filter-group-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid #dadce0; border-radius: 999px;
+  background: #fff;
+  font: inherit; font-size: 12px; line-height: 1;
+  color: #333; cursor: pointer;
+}
+.filter-group-btn:hover { background: #f1f3f4; }
+.filter-group-btn.open  { background: #e8f0fe; border-color: #8ab4f8; color: #1967d2; }
+.filter-group-btn.has-active { border-color: #137333; }
+.filter-group-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  background: #137333; color: #fff;
+  border-radius: 999px; font-size: 10px; line-height: 1;
+}
+.filter-group-caret { color: #80868b; font-size: 12px; line-height: 1; }
+.filter-group-btn.open .filter-group-caret { color: #1967d2; }
+
+.filter-panel {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  margin: 6px 0 0; padding: 8px 10px;
+  border: 1px solid #e8eaed; border-radius: 8px; background: #fafbfd;
+}
 .filter-pill {
-  font-size: 11px; padding: 2px 9px; border-radius: 12px;
-  cursor: pointer; user-select: none; border: 1px solid transparent;
+  display: inline-block;       /* prevent flex-row stretching to row height */
+  font-size: 12px; line-height: 1;
+  padding: 4px 9px; border-radius: 999px;
+  cursor: pointer; user-select: none;
+  border: 1px solid transparent;
 }
 .filter-pill.active   { background: #137333; color: #fff; }
 .filter-pill.available { background: #e8eaed; color: #444; border-color: #dadce0; }
 .filter-pill.available:hover { background: #d3d5d9; }
 .filter-pill.unavailable { background: #f1f3f4; color: #9aa0a6; border-color: #e8eaed; }
-.toggle-group-label {
-  width: 100%;
-  font-size: 11px;
-  font-weight: 600;
-  color: #555;
-  margin: 8px 0 2px;
-}
-.toggle-group-label:first-child { margin-top: 0; }
 
 /* ── Stats bar ────────────────────────────────────────────────────────── */
 .stats-bar {
@@ -455,9 +479,9 @@
 }
 
 /* Reserve vertical space for elements that fill in after relay data arrives,
-   so the layout doesn't shift below them. Numbers picked to roughly match
-   the typical populated size. */
-#toggles { min-height: 180px; }
+   so the layout doesn't shift below them. The filter strip is short by
+   default (collapsed groups) — expansion is user-initiated, exempt from CLS. */
+#toggles { min-height: 40px; }
 #results { min-height: 70vh; }
 
 /* Skip layout/paint of cards that aren't anywhere near the viewport.
