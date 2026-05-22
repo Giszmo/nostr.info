@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522b');
+console.log('[new-resources.js] version: 20260522c');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -71,6 +71,13 @@ function setProfile(pubkey, data) {
   // Coalesce writes — profile floods during loadSecondary would otherwise hammer localStorage.
   clearTimeout(_profilePersistTimer);
   _profilePersistTimer = setTimeout(persistProfileCache, 300);
+  // If this is the logged-in user's profile, refresh the header chip too —
+  // it stays stale otherwise after a fresh login (fetchOwnProfile may resolve
+  // before loadSecondary delivers the kind:0 from the relays we actually hit).
+  if (typeof loggedInPubkey !== 'undefined' && pubkey === loggedInPubkey
+      && typeof updateLoginUI === 'function') {
+    try { updateLoginUI(); } catch(_) {}
+  }
 }
 
 function persistProfileCache() {
@@ -2298,14 +2305,17 @@ function renderSubmitCard() {
   const name = prof.name || (npub.slice(0, 12) + '…') || 'You';
   const avatar = prof.picture || '/images/nostrich.webp';
 
+  const isNips = NAMESPACE === 'nips';
   const cta = pubKey
-    ? '<span style="color:#2563eb;font-weight:500;">+ Submit your resource</span>'
+    ? `<span style="color:#2563eb;font-weight:500;">+ Submit your ${isNips ? 'NIP' : 'resource'}</span>`
     : '<span style="color:#2563eb;font-weight:500;">Log in to submit</span>';
   const onclick = pubKey ? 'showSubmitForm()' : 'requireLogin(null)';
+  const placeholderLabel = isNips ? 'Your NIP here?' : 'Your project here?';
+  const submitTitle = isNips ? 'Submit a new NIP' : 'Submit a new Nostr resource';
 
-  return `<div class="resource-card resource-card--submit" onclick="${onclick}" title="Submit a new Nostr resource">
+  return `<div class="resource-card resource-card--submit" onclick="${onclick}" title="${submitTitle}">
     <div class="resource-header">
-      <span class="resource-title" style="color:#999;font-weight:400;">Your project here?</span>
+      <span class="resource-title" style="color:#999;font-weight:400;">${placeholderLabel}</span>
     </div>
     <div class="byline">
       <span class="byline-publisher">
