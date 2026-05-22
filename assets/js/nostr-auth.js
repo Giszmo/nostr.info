@@ -9468,13 +9468,23 @@ var nostrAuth = (() => {
       // our descriptor; for those window.nostr returns their object. Check
       // both so detection works in either case.
       const fromWindow = window.nostr && !window.nostr._nostrAuth && typeof window.nostr.getPublicKey === "function" ? window.nostr : null;
-      const ext = extNostr || fromWindow;
+      // Prefer the live window.nostr when it's a real extension (e.g. user just
+      // installed keys.band/nostash mid-session) so we don't hang on a stale
+      // extNostr that no longer routes to anything.
+      const ext = fromWindow || extNostr;
+      console.log("[nostr-auth] ext-btn: extNostr=" + !!extNostr + " fromWindow=" + !!fromWindow + " using=" + (ext ? (ext === extNostr ? "extNostr" : "fromWindow") : "none"));
       if (!ext) {
         d.querySelector("#na-ext-hint").style.display = "block";
         return;
       }
+      setFooter("Waiting for extension…");
       try {
-        const pk = await ext.getPublicKey();
+        const pk = await Promise.race([
+          ext.getPublicKey(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("extension didn't respond in 15s")), 15000)),
+        ]);
+        console.log("[nostr-auth] ext-btn: getPublicKey resolved", pk && pk.slice(0, 16) + "…");
+        if (!pk || typeof pk !== "string") throw new Error("extension returned no pubkey");
         extNostr = ext;
         signer = { _isExt: true, getPublicKey: () => Promise.resolve(pk) };
         _sessionType = "ext";
@@ -9482,6 +9492,7 @@ var nostrAuth = (() => {
         hideModal();
         emitLogin(pk);
       } catch (e) {
+        console.warn("[nostr-auth] ext-btn:", e.message);
         setFooter("Extension rejected: " + e.message);
       }
     };

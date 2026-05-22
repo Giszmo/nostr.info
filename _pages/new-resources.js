@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260521c');
+console.log('[new-resources.js] version: 20260522a');
 
 const RELAYS = [
   'wss://relay.primal.net',
