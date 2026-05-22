@@ -9478,6 +9478,18 @@ var nostrAuth = (() => {
         return;
       }
       setFooter("Waiting for extension…");
+      // keys.band / nos2x re-enter via window.nostr.* internally (e.g. to
+      // verify the call is from the page they expect). Our defineProperty
+      // shim would route those re-entrant calls to its own getPublicKey,
+      // which throws "Not logged in", and the extension can silently stall
+      // waiting on us. Temporarily restore the extension as the live
+      // window.nostr so re-entrant calls go where they should.
+      const ourDesc = Object.getOwnPropertyDescriptor(window, "nostr");
+      const restoreShim = () => {
+        try { delete window.nostr; } catch(_) {}
+        try { if (ourDesc) Object.defineProperty(window, "nostr", ourDesc); } catch(_) {}
+      };
+      try { delete window.nostr; window.nostr = ext; } catch(_) {}
       try {
         const pk = await Promise.race([
           ext.getPublicKey(),
@@ -9489,11 +9501,15 @@ var nostrAuth = (() => {
         signer = { _isExt: true, getPublicKey: () => Promise.resolve(pk) };
         _sessionType = "ext";
         saveSession({ type: "ext", pubkey: pk });
+        // Keep the extension as window.nostr (don't restoreShim) — our
+        // shim's signEvent would just bounce to extNostr anyway, and any
+        // re-entrant call inside signEvent has the same trap potential.
         hideModal();
         emitLogin(pk);
       } catch (e) {
         console.warn("[nostr-auth] ext-btn:", e.message);
         setFooter("Extension rejected: " + e.message);
+        restoreShim();
       }
     };
     d.querySelector("#na-bunker-btn").onclick = async () => {
