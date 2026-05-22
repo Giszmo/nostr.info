@@ -9510,12 +9510,6 @@ var nostrAuth = (() => {
             <button class="na-btn" id="na-ext-btn">Use Browser Extension</button>
             <p class="na-hint" id="na-ext-hint" style="display:none;margin-top:4px;color:#e57373">No NIP-07 extension detected.</p>
           </div>
-          <div class="na-section" id="na-viewas-section">
-            <p class="na-label">\u{1F50D} View only (read-only)</p>
-            <p class="na-hint" style="margin:0 0 6px;">Browse using someone else's Web of Trust. No signing.</p>
-            <input type="text" id="na-viewas-in" placeholder="npub1… or name@domain" autocomplete="off" />
-            <button class="na-btn" id="na-viewas-btn">View as</button>
-          </div>
         </div>
         <div id="na-footer"></div>
       </div>
@@ -9637,36 +9631,6 @@ var nostrAuth = (() => {
       } catch (e) {
         setFooter("Invalid nsec: " + e.message);
       }
-    };
-    // Read-only: accept npub1… or name@domain and emit an "anchor" event the
-    // host app picks up to switch the trust anchor without granting signing.
-    d.querySelector("#na-viewas-btn").onclick = async () => {
-      const el = d.querySelector("#na-viewas-in");
-      const val = el.value.trim();
-      if (!val) return;
-      let hex = null;
-      try {
-        if (/^[0-9a-f]{64}$/i.test(val)) hex = val.toLowerCase();
-        else if (val.toLowerCase().startsWith("npub1")) {
-          const decoded = decode2(val);
-          if (decoded.type === "npub") hex = decoded.data;
-        } else if (val.includes("@")) {
-          el.disabled = true; const old = el.placeholder; el.placeholder = "Resolving…";
-          const m = val.match(/^([^@\s]+)@([^@\s]+)$/);
-          if (m) {
-            const r = await fetch(`https://${m[2]}/.well-known/nostr.json?name=${encodeURIComponent(m[1])}`, { mode: "cors" });
-            if (r.ok) {
-              const data = await r.json();
-              const h = data?.names?.[m[1]];
-              if (typeof h === "string" && /^[0-9a-f]{64}$/i.test(h)) hex = h.toLowerCase();
-            }
-          }
-          el.disabled = false; el.placeholder = old;
-        }
-      } catch (e) { setFooter("Lookup failed: " + e.message); return; }
-      if (!hex) { setFooter("Not a valid npub or NIP-05."); return; }
-      hideModal();
-      document.dispatchEvent(new CustomEvent("nlAnchor", { detail: { pubkey: hex } }));
     };
     generateQR();
   }

@@ -140,6 +140,28 @@
   object-fit: cover;
 }
 
+/* Anchor pill body vs. caret: clicking the body clears filters; the small
+   caret opens the anchor picker popover. */
+.anchor-pill-host { display: inline-flex; align-items: center; gap: 4px; padding-right: 4px; }
+.anchor-pill-body { cursor: pointer; }
+.anchor-pill-caret {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; padding: 0;
+  border: 0; border-radius: 999px;
+  background: transparent; color: inherit;
+  font: inherit; font-size: 11px; line-height: 1; cursor: pointer;
+}
+.anchor-pill-caret:hover { background: rgba(0,0,0,0.06); }
+
+.anchor-popover {
+  margin: 6px 0 10px;
+  padding: 6px;
+  border: 1px solid #dadce0; border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  max-width: 380px;
+}
+
 /* ── Focused entry view (in place of the list when #slug is set) ─────────── */
 .focused-back {
   display: inline-flex; align-items: center;

@@ -6,7 +6,7 @@ permalink: /js/new-resources.js
 // nostr.info - Collaborative Directories NIP Demo (kind:30890/30891)
 // Parallel implementation; does NOT touch /nips/ or /resources/
 
-console.log('[new-resources.js] version: 20260522n-stage');
+console.log('[new-resources.js] version: 20260522o-stage');
 
 const RELAYS = [
   'wss://relay.primal.net',
@@ -1710,22 +1710,66 @@ function setStatus(msg) {
   el.textContent = msg;
 }
 
+// Anchor pill: shows the currently-selected trust anchor with a caret that
+// opens an inline picker. The pill body itself still clears filters + sets
+// viewMode 0 (legacy behavior). The caret toggles the picker independently.
 function renderAnchorPill(pubkey, isActive, count) {
   const p = profileCache[pubkey] || {};
   const npub = hexToNpub(pubkey);
   const name = p.name || (npub.slice(0, 12) + '…');
-  const avatar = p.picture
-    ? `<img src="${esc(p.picture)}" onerror="this.onerror=null;this.src='/images/nostrich.webp'" class="anchor-pill-avatar" alt="">`
-    : `<img src="/images/nostrich.webp" class="anchor-pill-avatar" alt="">`;
-  const countHtml = isActive ? `: ${count}` : '';
-  // Active pill: clicking re-asserts viewMode 0 + clears filters (legacy behavior).
-  // Inactive pill: clicking switches the anchor to this pubkey AND lands in WoT view.
-  const onclick = isActive
-    ? `viewMode=0;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';`
-    : `viewMode=0;pickAnchor('${esc(pubkey)}');`;
+  const avatar = `<img src="${esc(p.picture || '/images/nostrich.webp')}" onerror="this.onerror=null;this.src='/images/nostrich.webp'" class="anchor-pill-avatar" alt="">`;
   const cls = 'stat curated' + (isActive ? ' stat--active' : '');
-  const tip = isActive ? `Show ${esc(name)}'s WoT` : `Switch to ${esc(name)}'s WoT`;
-  return `<span class="${cls}" onclick="${onclick}" style="cursor:pointer" title="${tip}">🔭 In ${avatar}${esc(name)}'s WoT${countHtml}</span>`;
+  const bodyClick = `viewMode=0;activeTags=[];searchQuery='';renderOrder=null;render();document.getElementById('searchInput').value='';`;
+  return `<span class="${cls} anchor-pill-host">
+    <span class="anchor-pill-body" onclick="${bodyClick}" title="Show ${esc(name)}'s WoT only">🔭 In ${avatar}${esc(name)}'s WoT: ${count}</span>
+    <button class="anchor-pill-caret" type="button" onclick="toggleAnchorPicker(event)" title="Switch trust anchor"${_anchorPopoverOpen ? ' aria-expanded="true"' : ''}>▾</button>
+  </span>`;
+}
+
+let _anchorPopoverOpen = false;
+function toggleAnchorPicker(e) {
+  if (e) e.stopPropagation();
+  _anchorPopoverOpen = !_anchorPopoverOpen;
+  render();
+  if (_anchorPopoverOpen) {
+    setTimeout(() => document.addEventListener('click', function _c(ev) {
+      if (ev.target && ev.target.closest && ev.target.closest('.anchor-popover')) return;
+      _anchorPopoverOpen = false;
+      document.removeEventListener('click', _c);
+      render();
+    }), 0);
+  }
+}
+
+function renderAnchorPopover() {
+  const cands = [];
+  const seen = new Set();
+  const push = pk => { if (pk && !seen.has(pk)) { seen.add(pk); cands.push(pk); } };
+  push(anchorPubkey);
+  push(CURATOR);
+  if (loggedInPubkey) push(loggedInPubkey);
+  loadKnownPubkeys().forEach(push);
+
+  const row = (pk) => {
+    const b = _profileBits(pk);
+    const active = pk === anchorPubkey ? ' user-menu-row--active' : '';
+    const label =
+      pk === CURATOR && pk === loggedInPubkey ? ' (you · default)' :
+      pk === CURATOR ? ' (default)' :
+      pk === loggedInPubkey ? ' (you)' : '';
+    return `<button class="user-menu-row${active}" type="button" onclick="pickAnchor('${esc(pk)}')">
+      <img src="${esc(b.avatar)}" onerror="this.src='/images/nostrich.webp'">
+      <span class="user-menu-row-name">${esc(b.name)}${esc(label)}</span>
+    </button>`;
+  };
+
+  return `<div class="anchor-popover" role="dialog" aria-label="Trust anchor">
+    ${cands.map(row).join('')}
+    <div class="user-menu-form">
+      <input id="anchorNpubInput" type="text" placeholder="npub1… or name@domain" autocomplete="off" />
+      <button class="user-menu-form-btn" type="button" onclick="pickAnchorFromInput()">View</button>
+    </div>
+  </div>`;
 }
 
 function render() {
@@ -1803,17 +1847,7 @@ function render() {
   const filterNote = hasFilters
     ? ` (filtered from ${pool.length})`
     : '';
-  const isCuratorAnchor = anchorPubkey === CURATOR;
-  const isSelfAnchor    = loggedInPubkey && anchorPubkey === loggedInPubkey;
-  const isOtherAnchor   = !isCuratorAnchor && !isSelfAnchor;
-  const activeCount     = curatedResources.length;
-  let anchorPills = renderAnchorPill(CURATOR, isCuratorAnchor && viewMode===0, activeCount);
-  if (loggedInPubkey && loggedInPubkey !== CURATOR) {
-    anchorPills += renderAnchorPill(loggedInPubkey, isSelfAnchor && viewMode===0, activeCount);
-  }
-  if (isOtherAnchor) {
-    anchorPills += renderAnchorPill(anchorPubkey, viewMode===0, activeCount);
-  }
+  const anchorPills = renderAnchorPill(anchorPubkey, viewMode===0, curatedResources.length);
 
   const totalLive = curatedResources.length + communityResources.length;
   const deletedPill = deletedResources.length
@@ -1826,7 +1860,7 @@ function render() {
     ${deletedPill}
     <span class="stat filtered">${filtered.length}${filterNote}${clearBtn ? ' — ' : ''}</span>
     ${clearBtn}
-  </div>`;
+  </div>${_anchorPopoverOpen ? renderAnchorPopover() : ''}`;
 
   html += filtered.map(r => renderCard(r)).join('');
 
@@ -3676,29 +3710,6 @@ function renderUserMenu() {
   const dd = document.getElementById('userMenu');
   if (!dd) return;
 
-  // Anchor candidates (deduped). Only explicit/known pubkeys — no autodiscovery
-  // of recent publishers. Order: current, default curator, self, remembered.
-  const cands = [];
-  const seen = new Set();
-  const push = (pk) => { if (pk && !seen.has(pk)) { seen.add(pk); cands.push(pk); } };
-  push(anchorPubkey);
-  push(CURATOR);
-  if (loggedInPubkey) push(loggedInPubkey);
-  loadKnownPubkeys().forEach(push);
-
-  const anchorRow = (pk) => {
-    const b = _profileBits(pk);
-    const active = pk === anchorPubkey ? ' user-menu-row--active' : '';
-    const label =
-      pk === CURATOR && pk === loggedInPubkey ? ' (you · default)' :
-      pk === CURATOR ? ' (default)' :
-      pk === loggedInPubkey ? ' (you)' : '';
-    return `<button class="user-menu-row${active}" type="button" onclick="pickAnchor('${esc(pk)}')">
-      <img src="${esc(b.avatar)}" onerror="this.src='/images/nostrich.webp'">
-      <span class="user-menu-row-name">${esc(b.name)}${esc(label)}</span>
-    </button>`;
-  };
-
   // Session type: prefer the shim's _getSessionType (still installed for
   // nsec/bunker logins). After ext login we restored the extension as
   // window.nostr, so the shim is gone — fall back to the persisted session
@@ -3748,14 +3759,9 @@ function renderUserMenu() {
         <button class="user-menu-action user-menu-action--primary" type="button" onclick="launchLogin()">🔑 Log in</button>
       </div>`;
 
-  dd.innerHTML = `
-    <div class="user-menu-section">
-      <div class="user-menu-heading">🔭 Viewing as</div>
-      ${cands.map(anchorRow).join('')}
-    </div>
-    ${youBlock}
-  `;
-  // Stop the document-level close handler from triggering on dropdown clicks
+  // Anchor selection lives on the WoT pill in the stats bar, not here —
+  // the chip dropdown is sign-in only ("who am I acting as").
+  dd.innerHTML = youBlock;
   dd.onclick = e => e.stopPropagation();
 }
 
